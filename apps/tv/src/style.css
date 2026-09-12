@@ -9,20 +9,20 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .bg-gradient { background: radial-gradient(120% 90% at 20% 10%, #1b3a5c 0%, #0b1a2b 55%, #050a12 100%); }
 
 .slot { position: absolute; z-index: 2; }
-.w { height: 100%; width: 100%; padding: 1.2vw 1.5vw; border-radius: 1.2vw;
+.w { min-height: 100%; width: 100%; padding: 1vw 1.4vw; border-radius: 1.2vw;
      background: rgba(10, 16, 28, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
      border: 1px solid rgba(255,255,255,.12); box-shadow: 0 .6vw 2vw rgba(0,0,0,.35);
-     display: flex; flex-direction: column; justify-content: center; transition: opacity .5s; }
+     display: flex; flex-direction: column; justify-content: flex-start; gap: .2vw; transition: opacity .5s; }
 .theme-light .w { background: rgba(255,255,255,.7); color: #10203a; border-color: rgba(0,0,0,.08); }
 .w.stale { opacity: .55; }
-.title { font-size: 1.4vw; letter-spacing: .04em; text-transform: uppercase; opacity: .8; display: flex; justify-content: space-between; align-items: center; }
+.title { font-size: 1.2vw; letter-spacing: .04em; text-transform: uppercase; opacity: .8; display: flex; justify-content: space-between; align-items: center; }
 .badge { font-size: .9vw; text-transform: none; letter-spacing: 0; background: #b3261e; color: #fff; padding: .15vw .6vw; border-radius: 1vw; }
-.big { font-size: 4.2vw; font-weight: 700; line-height: 1.1; margin: .4vw 0; font-variant-numeric: tabular-nums; }
-.sub { font-size: 1.4vw; opacity: .8; }
+.big { font-size: 3.6vw; font-weight: 700; line-height: 1.15; margin: .1vw 0; font-variant-numeric: tabular-nums; }
+.sub { font-size: 1.3vw; opacity: .8; }
 .text { font-size: 2vw; text-align: center; text-shadow: 0 .2vw .6vw rgba(0,0,0,.6); }
 .row { display: flex; justify-content: space-between; font-size: 1.5vw; padding: .25vw 0; border-bottom: 1px solid rgba(255,255,255,.08); }
 .row:last-child { border-bottom: 0; }
-.bar { height: .8vw; background: rgba(255,255,255,.15); border-radius: .4vw; overflow: hidden; margin: .3vw 0 .5vw; }
+.bar { height: .7vw; background: rgba(255,255,255,.15); border-radius: .4vw; overflow: hidden; margin: .3vw 0 .5vw; }
 .fill { height: 100%; background: linear-gradient(90deg, #35c46a, #8ee08a); transition: width 1s; }
 
 .msg { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; font-size: 2.5vw; text-align: center; padding: 4vw; }
