@@ -31,7 +31,7 @@ export interface Member { userId: string; email: string; name: string | null; ro
 export interface Invite { id: string; role: OrgRole; expiresAt: string; usedAt: string | null }
 export interface Device {
   id: string; name: string | null; hw: string | null; fw: string | null; online: boolean; lastSeenAt: string | null;
-  inverterSerial: string | null; inverterType: number | null; modelId: string | null; stickSerial: number | null;
+  inverterSerial: string | null; inverterType: number | null; modelId: string | null; stickSerial: number | null; batteryKwh: number | null; minSoc: number;
   state: Record<string, number | string | boolean> | null; stateUpdatedAt: string | null; stale: boolean;
 }
 export interface Screen { id: string; orgId: string; name: string; config: ScreenConfig; viewToken: string; createdAt: string; updatedAt: string }

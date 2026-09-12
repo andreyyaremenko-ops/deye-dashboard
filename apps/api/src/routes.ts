@@ -93,8 +93,8 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   });
   app.patch("/api/orgs/:orgId/devices/:deviceId", async (req) => {
     const u = requireUser(req); const { orgId, deviceId } = z.object({ orgId: uuid, deviceId: z.string() }).parse(req.params);
-    const { name } = z.object({ name: z.string().min(1).max(100) }).parse(req.body);
-    return dev.renameDevice(db, orgId, u.id, deviceId, name);
+    const patch = z.object({ name: z.string().min(1).max(100).optional(), batteryKwh: z.number().min(0.1).max(1000).nullable().optional(), minSoc: z.number().int().min(0).max(90).optional() }).parse(req.body);
+    return dev.updateDevice(db, orgId, u.id, deviceId, patch);
   });
   app.post("/api/orgs/:orgId/devices/:deviceId/unclaim", async (req, reply) => {
     const u = requireUser(req); const { orgId, deviceId } = z.object({ orgId: uuid, deviceId: z.string() }).parse(req.params);

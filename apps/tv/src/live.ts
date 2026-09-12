@@ -13,17 +13,27 @@ const WATCHDOG_MS = 90_000;
 export interface LiveStore {
   screen: PublicScreen | null;
   states: Map<string, DeviceState>;
+  /** історія SOC за останню годину для прогнозу часу на батареї: deviceId -> [[epochMs, soc]] */
+  socHistory: Map<string, [number, number][]>;
   status: ConnStatus;
   error: string | null;
 }
 
 export function startLive(token: string, onChange: (s: LiveStore) => void) {
-  const store: LiveStore = { screen: null, states: new Map(), status: "connecting", error: null };
+  const store: LiveStore = { screen: null, states: new Map(), socHistory: new Map(), status: "connecting", error: null };
+  const trackSoc = (st: DeviceState) => {
+    const soc = st.metrics.bat_soc; if (typeof soc !== "number") return;
+    const t = Date.parse(st.updatedAt) || Date.now();
+    const h = store.socHistory.get(st.deviceId) ?? [];
+    if (h.length && h[h.length - 1]![0] >= t) return;
+    h.push([t, soc]); while (h.length && h[0]![0] < t - 3600_000) h.shift();
+    store.socHistory.set(st.deviceId, h);
+  };
   let ws: WebSocket | null = null;
   let lastMsg = Date.now();
   let backoff = 1000;
   let stopped = false;
-  const emit = () => onChange({ ...store, states: new Map(store.states) });
+  const emit = () => onChange({ ...store, states: new Map(store.states), socHistory: new Map(store.socHistory) });
 
   async function load() {
     try {
@@ -57,7 +67,8 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
         store.screen = msg.screen as PublicScreen;
         for (const st of (msg.screen as PublicScreen).states) store.states.set(st.deviceId, st);
       } else if (msg.type === "state") {
-        store.states.set(msg.deviceId, { deviceId: msg.deviceId, updatedAt: msg.updatedAt, metrics: msg.metrics, stale: false });
+        const st = { deviceId: msg.deviceId, updatedAt: msg.updatedAt, metrics: msg.metrics, stale: false };
+        store.states.set(msg.deviceId, st); trackSoc(st);
       }
       store.status = "live";
       emit();

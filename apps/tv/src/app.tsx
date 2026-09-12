@@ -61,7 +61,8 @@ export function App() {
     {src ? <VideoBackground src={src} /> : <GradientBackground />}
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
-        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId} />
+        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}
+          device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined} />
       </div>
     ))}
     {radioUrl && <audio ref={audio} preload="none" />}

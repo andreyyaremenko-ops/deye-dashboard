@@ -57,6 +57,13 @@
       "when": 1789243310133,
       "tag": "0007_logger_frames",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789250605427,
+      "tag": "0008_battery_settings",
+      "breakpoints": true
     }
   ]
 }

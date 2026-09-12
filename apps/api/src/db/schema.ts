@@ -75,6 +75,8 @@ export const devices = pgTable("devices", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   online: boolean("online").notNull().default(false),
   fwChannel: text("fw_channel").notNull().default("stable"),   // stable | beta
+  batteryKwh: doublePrecision("battery_kwh"),                  // ємність батареї для прогнозу часу роботи
+  minSoc: integer("min_soc").notNull().default(20),            // нижче не розряджаємо (налаштування інвертора)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("devices_org_idx").on(t.orgId)]);
 

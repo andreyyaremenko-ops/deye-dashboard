@@ -53,17 +53,22 @@ export async function listDevices(db: Db, orgId: string) {
   return db.select({
     id: devices.id, name: devices.name, hw: devices.hw, fw: devices.fw, online: devices.online,
     lastSeenAt: devices.lastSeenAt, inverterSerial: devices.inverterSerial, inverterType: devices.inverterType,
-    modelId: devices.modelId, stickSerial: devices.stickSerial,
+    modelId: devices.modelId, stickSerial: devices.stickSerial, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc,
     state: deviceState.state, stateUpdatedAt: deviceState.updatedAt,
   }).from(devices).leftJoin(deviceState, eq(deviceState.deviceId, devices.id)).where(eq(devices.orgId, orgId));
 }
 
-export async function renameDevice(db: Db, orgId: string, actorId: string, deviceId: string, name: string) {
+export async function updateDevice(db: Db, orgId: string, actorId: string, deviceId: string, patch: { name?: string; batteryKwh?: number | null; minSoc?: number }) {
   await requireRole(db, orgId, actorId, "admin");
-  const res = await db.update(devices).set({ name }).where(and(eq(devices.id, deviceId), eq(devices.orgId, orgId))).returning();
+  const set: Partial<typeof devices.$inferInsert> = {};
+  if (patch.name !== undefined) set.name = patch.name;
+  if (patch.batteryKwh !== undefined) set.batteryKwh = patch.batteryKwh;
+  if (patch.minSoc !== undefined) set.minSoc = patch.minSoc;
+  const res = await db.update(devices).set(set).where(and(eq(devices.id, deviceId), eq(devices.orgId, orgId))).returning();
   if (!res.length) throw notFound("Device not found");
   return res[0];
 }
+export const renameDevice = (db: Db, orgId: string, actorId: string, deviceId: string, name: string) => updateDevice(db, orgId, actorId, deviceId, { name });
 
 export async function deviceInOrg(db: Db, orgId: string, deviceId: string) {
   const [d] = await db.select().from(devices).where(and(eq(devices.id, deviceId), eq(devices.orgId, orgId)));

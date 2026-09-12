@@ -8,7 +8,7 @@ export function Landing({ me }: { me: Me | null }) {
     <header className="land-top">
       <div className="brand">☀ Deye Dashboard</div>
       <nav>
-        <a href="#how">Як це працює</a><a href="#features">Можливості</a><a href="#pricing">Тарифи</a>
+        <a href="#outage">Відключення</a><a href="#how">Як це працює</a><a href="#features">Можливості</a><a href="#pricing">Тарифи</a>
         {me ? <Link href="/app" className="btn btn-primary">Кабінет</Link> : <><Link href="/login" className="btn btn-ghost">Увійти</Link><Link href="/signup" className="btn btn-primary">Спробувати безкоштовно</Link></>}
       </nav>
     </header>
@@ -16,7 +16,7 @@ export function Landing({ me }: { me: Me | null }) {
     <section className="hero">
       <div className="hero-text">
         <h1>Ваша сонячна станція наживо на телевізорі в залі</h1>
-        <p>Гості бачать, що кава зварена на сонці: генерація, батарея, споживання поверх спокійного відеофону. Плюс меню закладу, радіо і QR-коди. Працює з інверторами Deye через Solarman-стік, без додаткового обладнання.</p>
+        <p>Один екран у залі замість дзвінків власнику: під час відключень персонал сам бачить залишок батареї і скільки годин заклад протримається. Гості бачать, що кава зварена на сонці. Плюс меню, радіо і QR-коди. Працює з інверторами Deye через Solarman-стік, без додаткового обладнання.</p>
         <div className="hero-cta">
           <Link href="/signup" className="btn btn-primary big">Підключити заклад</Link>
           <a href="#how" className="btn big">Як це працює</a>
@@ -24,6 +24,16 @@ export function Landing({ me }: { me: Me | null }) {
         <p className="muted small">Безкоштовний тариф назавжди. Налаштування займає 10 хвилин.</p>
       </div>
       <div className="hero-shot"><img src="/landing/screen.jpg" alt="Екран на телевізорі: камін, показники станції, меню" /></div>
+    </section>
+
+    <section id="outage" className="land-sec outage-sec">
+      <h2>Коли вимкнули світло</h2>
+      <p className="lead">Власнику більше не дзвонять із питанням «скільки ще протримаємось». Екран відповідає сам.</p>
+      <div className="steps">
+        <div className="step"><span className="n">⚡</span><h3>Мережі немає — екран покаже одразу</h3><p>Віджет мережі стає червоним: «світло вимкнено, працюємо від батареї». Персонал бачить це з бару, не заходячи в застосунки.</p></div>
+        <div className="step"><span className="n">🔋</span><h3>Скільки годин лишилось</h3><p>Залишок батареї і прогноз «≈ 3 год 20 хв при поточному споживанні». Впав нижче 40% — жовтий, наближається до мінімуму — червоний.</p></div>
+        <div className="step"><span className="n">🍳</span><h3>Що можна вмикати</h3><p>Споживання наживо: увімкнули гриль чи бойлер — цифра і прогноз змінились тут же. Персонал сам вирішує, що відкласти до світла.</p></div>
+      </div>
     </section>
 
     <section id="how" className="land-sec">

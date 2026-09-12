@@ -1,4 +1,5 @@
 import type { DeviceState } from "./types.ts";
+import { estimateRuntime, fmtHours, gridDown } from "@deye/shared/energy";
 
 type M = Record<string, number | string | boolean>;
 const num = (m: M | undefined, k: string): number | null => (typeof m?.[k] === "number" ? (m[k] as number) : null);
@@ -20,12 +21,14 @@ function isNight(m: M | undefined): boolean {
 import { ChartWidget } from "./chart.tsx";
 import { QrWidget } from "./qr.tsx";
 
-interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string }
+interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string;
+  device?: { batteryKwh: number | null; minSoc: number }; socHistory?: [number, number][] }
 
-export function Widget({ type, state, props, token, deviceId }: Props) {
+export function Widget({ type, state, props, token, deviceId, device, socHistory }: Props) {
   const m = state?.metrics;
   const stale = !state || state.stale;
-  const cls = `w w-${type}${stale ? " stale" : ""}`;
+  const outage = !!m && gridDown(m);
+  const cls = `w w-${type}${stale ? " stale" : ""}${outage ? " outage" : ""}`;
   switch (type) {
     case "pv": {
       const pv = num(m, "pv_w");
@@ -38,15 +41,22 @@ export function Widget({ type, state, props, token, deviceId }: Props) {
     case "battery": {
       const soc = num(m, "bat_soc"); const w = num(m, "bat_w");
       const dir = w === null ? "" : w > 20 ? "розряд" : w < -20 ? "заряд" : "спокій";
-      return <Card cls={cls} title="Батарея" stale={stale}>
+      const est = m ? estimateRuntime(m, { capacityKwh: device?.batteryKwh, minSoc: device?.minSoc ?? 20, socHistory }) : null;
+      const level = soc === null ? "" : soc <= (device?.minSoc ?? 20) + 10 ? " crit" : soc <= 40 ? " low" : "";
+      return <Card cls={cls + level} title="Батарея" stale={stale}>
         <Big>{soc === null ? "—" : `${soc}%`}</Big>
         <div class="bar"><div class="fill" style={{ width: `${soc ?? 0}%` }} /></div>
         <Sub>{dir}{w !== null && dir !== "спокій" ? ` ${fmtW(Math.abs(w))}` : ""}</Sub>
+        {est && dir === "розряд" && <div class="runtime">≈ {fmtHours(est.hours)} при поточному споживанні</div>}
       </Card>;
     }
     case "grid": {
       const w = num(m, "grid_w");
       const dir = w === null ? "" : w > 20 ? "з мережі" : w < -20 ? "у мережу" : "баланс";
+      if (outage) return <Card cls={cls} title="Мережа" stale={stale}>
+        <Big>немає</Big>
+        <Sub>світло вимкнено · працюємо від батареї</Sub>
+      </Card>;
       return <Card cls={cls} title="Мережа" stale={stale}>
         <Big>{fmtW(w === null ? null : Math.abs(w))}</Big>
         <Sub>{dir}{num(m, "grid_hz") !== null ? ` · ${(num(m, "grid_hz") as number).toFixed(1)} Hz` : ""}</Sub>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { api, ApiError, type Device, type Org } from "../api.ts";
-import { Card, ErrorBox, ago } from "../components/ui.tsx";
+import { Btn, Card, ErrorBox, Field, ago, useAction } from "../components/ui.tsx";
 import { BarChart, Legend, LineChart, type Row } from "../components/charts.tsx";
 
 const PERIODS = [{ id: "day", label: "Доба", hours: 24, step: "5m" }, { id: "week", label: "Тиждень", hours: 7 * 24, step: "1h" }, { id: "month", label: "Місяць", hours: 30 * 24, step: "1h" }] as const;
@@ -35,6 +35,12 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
     void api.get<{ day: string }[]>(`/api/orgs/${org.id}/devices/${deviceId}/history/daily?days=${period.id === "month" ? 30 : period.id === "week" ? 7 : 7}`).then(setDaily).catch(() => {});
   }, [org.id, deviceId, period, allowed]);
 
+  const [kwh, setKwh] = useState(""); const [minSoc, setMinSoc] = useState("20");
+  useEffect(() => { if (device) { setKwh(device.batteryKwh?.toString() ?? ""); setMinSoc(String(device.minSoc ?? 20)); } }, [device?.id, device?.batteryKwh, device?.minSoc]);
+  const saveBat = useAction(async () => {
+    const d = await api.patch<Device>(`/api/orgs/${org.id}/devices/${deviceId}`, { batteryKwh: kwh ? Number(kwh) : null, minSoc: Number(minSoc) });
+    setDevice((prev) => (prev ? { ...prev, batteryKwh: d.batteryKwh, minSoc: d.minSoc } : prev));
+  });
   const m = device?.state ?? {};
   const num = (k: string) => (typeof m[k] === "number" ? (m[k] as number) : null);
   return <>
@@ -47,6 +53,15 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
       {[["Сонце", num("pv_w"), "W"], ["Споживання", num("load_w"), "W"], ["Мережа", num("grid_w"), "W"], ["Батарея", num("bat_soc"), "%"], ["Сьогодні сонце", num("pv_day_kwh"), "kWh"], ["Сьогодні спожито", num("load_day_kwh"), "kWh"]].map(([l, v, u]) =>
         <div key={String(l)} className="kpi"><span className="muted small">{l}</span><b>{v === null ? "—" : u === "W" ? (Math.abs(v as number) >= 1000 ? `${((v as number) / 1000).toFixed(2)} kW` : `${Math.round(v as number)} W`) : `${v} ${u}`}</b></div>)}
     </div>
+    <Card title="Батарея та відключення світла">
+      <p className="muted small">З ємністю батареї екран покаже персоналу, скільки годин заклад протримається при поточному споживанні. Без неї прогноз рахується за швидкістю розряду.</p>
+      <div className="row">
+        <Field label="Ємність батареї, kWh"><input type="number" step="0.1" min="0.1" value={kwh} onChange={(e) => setKwh(e.currentTarget.value)} placeholder="напр. 10" disabled={org.role === "staff"} /></Field>
+        <Field label="Мінімальний заряд, % (уставка інвертора)"><input type="number" min="0" max="90" value={minSoc} onChange={(e) => setMinSoc(e.currentTarget.value)} disabled={org.role === "staff"} /></Field>
+        {org.role !== "staff" && <Btn kind="primary" onClick={() => saveBat.run(undefined)} disabled={saveBat.busy}>Зберегти</Btn>}
+      </div>
+      <ErrorBox err={saveBat.err} />
+    </Card>
     {!allowed ? <Card title="Історія"><p className="muted">Графіки та історія доступні в тарифі Pro.</p></Card> : <>
       <Card title="Потужність" actions={<div className="seg">{PERIODS.map((p) => <button key={p.id} className={p.id === period.id ? "on" : ""} onClick={() => setPeriod(p)}>{p.label}</button>)}</div>}>
         <ErrorBox err={err instanceof ApiError ? err : null} />

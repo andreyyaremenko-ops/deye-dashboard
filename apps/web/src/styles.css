@@ -84,3 +84,6 @@ textarea:focus { outline: 2px solid var(--accent); }
 .step .n { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; } .feat .ico { font-size: 1.6rem; }
 .plan .price { font-size: 1.8rem; font-weight: 700; margin: .2rem 0 .6rem; } .plan ul { margin: 0 0 1rem 1.1rem; padding: 0; color: #c9d2de; } .plan.pro { border-color: var(--accent); }
 .land-foot { display: flex; justify-content: space-between; gap: 1rem; padding-top: 2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; flex-wrap: wrap; }
+
+.outage-sec { background: linear-gradient(180deg, rgba(229,72,77,.08), transparent); border-radius: 14px; padding: 2rem 1.2rem; }
+.outage-sec .lead { font-size: 1.1rem; color: #e8edf4; margin: -.4rem 0 1.2rem; }
