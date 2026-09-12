@@ -13,6 +13,7 @@
   #include <WiFi.h>
 #endif
 #include <WiFiUdp.h>
+#include <WiFiClientSecure.h>
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -35,6 +36,7 @@ struct Config {
     char stickIp[16]  = "";      // порожньо = автопошук
     char stickSerial[12] = "";   // порожньо = з автопошуку
     char pollSec[4]   = "10";
+    char mqttTls[2]   = "0";     // "1" = TLS (без перевірки сертифіката у спайку)
 } cfg;
 
 static const char* CFG_PATH = "/config.json";
@@ -52,6 +54,7 @@ bool loadConfig() {
     strlcpy(cfg.stickIp, doc["stick_ip"] | "", sizeof cfg.stickIp);
     strlcpy(cfg.stickSerial, doc["stick_serial"] | "", sizeof cfg.stickSerial);
     strlcpy(cfg.pollSec, doc["poll_sec"] | "10", sizeof cfg.pollSec);
+    strlcpy(cfg.mqttTls, doc["mqtt_tls"] | "0", sizeof cfg.mqttTls);
     return true;
 }
 
@@ -60,7 +63,7 @@ void saveConfig() {
     doc["mqtt_host"] = cfg.mqttHost;  doc["mqtt_port"] = cfg.mqttPort;
     doc["mqtt_user"] = cfg.mqttUser;  doc["mqtt_pass"] = cfg.mqttPass;
     doc["stick_ip"] = cfg.stickIp;    doc["stick_serial"] = cfg.stickSerial;
-    doc["poll_sec"] = cfg.pollSec;
+    doc["poll_sec"] = cfg.pollSec;   doc["mqtt_tls"] = cfg.mqttTls;
     File f = LittleFS.open(CFG_PATH, "w");
     if (f) { serializeJson(doc, f); f.close(); }
 }
@@ -70,7 +73,12 @@ void saveConfig() {
 String deviceId;                  // з MAC: "a1b2c3d4e5f6"
 String topicBase;                 // "devices/<id>/"
 WiFiClient mqttNet;
-PubSubClient mqtt(mqttNet);
+#ifdef ESP8266
+BearSSL::WiFiClientSecure mqttTlsNet;
+#else
+WiFiClientSecure mqttTlsNet;
+#endif
+PubSubClient mqtt;
 
 struct Stick {
     IPAddress ip;
@@ -360,11 +368,32 @@ void onMqtt(char* topic, byte* data, unsigned int len) {
         }
         else if (!strcmp(cmd, "reboot")) { delay(100); ESP.restart(); }
         else if (!strcmp(cmd, "portal")) { LittleFS.remove(CFG_PATH); delay(100); ESP.restart(); }
+        else if (!strcmp(cmd, "mqtt")) {   // {"cmd":"mqtt","host":"...","port":8883,"user":"...","pass":"...","tls":true}
+            if (doc["host"].is<const char*>()) strlcpy(cfg.mqttHost, doc["host"], sizeof cfg.mqttHost);
+            if (doc["port"].is<int>()) snprintf(cfg.mqttPort, sizeof cfg.mqttPort, "%d", doc["port"].as<int>());
+            if (doc["user"].is<const char*>()) strlcpy(cfg.mqttUser, doc["user"], sizeof cfg.mqttUser);
+            if (doc["pass"].is<const char*>()) strlcpy(cfg.mqttPass, doc["pass"], sizeof cfg.mqttPass);
+            if (doc["tls"].is<bool>()) strlcpy(cfg.mqttTls, doc["tls"].as<bool>() ? "1" : "0", sizeof cfg.mqttTls);
+            saveConfig();
+            Serial.printf("[cmd] mqtt -> %s:%s tls=%s, reboot\n", cfg.mqttHost, cfg.mqttPort, cfg.mqttTls);
+            mqtt.publish((topicBase + "status").c_str(), "offline", true);
+            delay(300); ESP.restart();
+        }
     }
 }
 
 bool mqttConnect() {
     if (!cfg.mqttHost[0]) return false;
+    if (cfg.mqttTls[0] == '1') {
+        // Спайк: без перевірки сертифіката. Продакшн (ESP32): CA bundle.
+        mqttTlsNet.setInsecure();
+#ifdef ESP8266
+        mqttTlsNet.setBufferSizes(1024, 1024);  // RAM: ~16 KB замість 32
+#endif
+        mqtt.setClient(mqttTlsNet);
+    } else {
+        mqtt.setClient(mqttNet);
+    }
     mqtt.setServer(cfg.mqttHost, atoi(cfg.mqttPort));
     mqtt.setCallback(onMqtt);
     mqtt.setBufferSize(MQTT_MAX_PACKET_SIZE);
@@ -416,7 +445,8 @@ void setup() {
     WiFiManagerParameter pIp("stick_ip", "Stick IP (порожньо = автопошук)", cfg.stickIp, sizeof cfg.stickIp - 1);
     WiFiManagerParameter pSn("stick_serial", "Stick serial (порожньо = з пошуку)", cfg.stickSerial, sizeof cfg.stickSerial - 1);
     WiFiManagerParameter pPoll("poll_sec", "Poll interval, s", cfg.pollSec, sizeof cfg.pollSec - 1);
-    for (auto* p : {&pHost, &pPort, &pUser, &pPass, &pIp, &pSn, &pPoll}) wm.addParameter(p);
+    WiFiManagerParameter pTls("mqtt_tls", "MQTT TLS (1/0)", cfg.mqttTls, sizeof cfg.mqttTls - 1);
+    for (auto* p : {&pHost, &pPort, &pUser, &pPass, &pIp, &pSn, &pPoll, &pTls}) wm.addParameter(p);
     wm.setSaveConfigCallback([]() { shouldSave = true; });
     wm.setConfigPortalTimeout(300);
     wm.setConnectTimeout(30);
@@ -436,6 +466,7 @@ void setup() {
         strlcpy(cfg.stickIp, pIp.getValue(), sizeof cfg.stickIp);
         strlcpy(cfg.stickSerial, pSn.getValue(), sizeof cfg.stickSerial);
         strlcpy(cfg.pollSec, pPoll.getValue(), sizeof cfg.pollSec);
+        strlcpy(cfg.mqttTls, pTls.getValue()[0] == '1' ? "1" : "0", sizeof cfg.mqttTls);
         saveConfig();
         Serial.println("[cfg] saved");
     }
