@@ -2,7 +2,7 @@
 FROM node:24-alpine AS build
 RUN corepack enable && corepack prepare pnpm@12.4.1 --activate
 WORKDIR /repo
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./
 COPY apps/tv/package.json apps/tv/
 COPY apps/web/package.json apps/web/
 COPY packages/shared/package.json packages/shared/
