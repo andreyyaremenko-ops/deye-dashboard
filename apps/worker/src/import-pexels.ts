@@ -50,11 +50,15 @@ function bestFile(v: PexelsVideo) {
   return f.sort((a, b) => b.height - a.height)[0];
 }
 
-const existing = new Set((await sql`select source from backgrounds where org_id is null and source is not null`).map((r) => r.source as string));
+const rows = await sql`select source, name from backgrounds where org_id is null`;
+const existing = new Set(rows.map((r) => r.source as string));
+// скільки вже є на цей запит (імʼя = "Категорія: запит #n"), щоб не набирати повторно
+const countFor = (category: string, query: string) => rows.filter((r) => String(r.name).startsWith(`${category}: ${query} #`)).length;
 await mkdir(join(MEDIA_ROOT, "src"), { recursive: true });
 let added = 0;
 for (const p of PLAN) {
-  let taken = 0;
+  let taken = countFor(p.category, p.query);
+  if (taken >= p.take) continue;
   for (const v of await search(p.query)) {
     if (taken >= p.take) break;
     if (existing.has(v.url) || v.duration < MIN_S || v.duration > MAX_S || v.width < v.height) continue;
