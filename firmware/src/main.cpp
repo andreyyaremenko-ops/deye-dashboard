@@ -9,11 +9,23 @@
 #include <Arduino.h>
 #ifdef ESP8266
   #include <ESP8266WiFi.h>
+  #include <ESP8266HTTPClient.h>
+  #include <ESP8266httpUpdate.h>
+  #include <ESP8266WebServer.h>
+  #define WebServerT ESP8266WebServer
+  #define httpUpdateT ESPhttpUpdate
 #else
   #include <WiFi.h>
+  #include <HTTPClient.h>
+  #include <HTTPUpdate.h>
+  #include <WebServer.h>
+  #define WebServerT WebServer
+  #define httpUpdateT httpUpdate
 #endif
 #include <WiFiUdp.h>
 #include <WiFiClientSecure.h>
+#include "certs.h"
+#include "fw_pubkey.h"
 #include <WiFiManager.h>
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
@@ -24,6 +36,14 @@
 
 #ifndef PORTAL_PIN
 #define PORTAL_PIN 0
+#endif
+#ifndef API_HOST
+#define API_HOST "tv.sun-hunter.men"
+#endif
+#ifdef ESP8266
+#define HW_NAME "esp8266"
+#else
+#define HW_NAME "esp32"
 #endif
 
 // ------------------------------------------------------------------ config
@@ -36,7 +56,11 @@ struct Config {
     char stickIp[16]  = "";      // порожньо = автопошук
     char stickSerial[12] = "";   // порожньо = з автопошуку
     char pollSec[4]   = "10";
-    char mqttTls[2]   = "0";     // "1" = TLS (без перевірки сертифіката у спайку)
+    char mqttTls[2]   = "1";     // 0 = без TLS, 1 = TLS з перевіркою CA, 2 = TLS без перевірки
+    char apiHost[64]  = API_HOST; // сервер платформи (HTTPS: реєстрація, OTA)
+    char claimCode[10] = "";     // код привʼязки, показується в порталі і на сторінці статусу
+    char registered[2] = "0";    // "1" після успішної самореєстрації
+    char channel[8]   = "stable";
 } cfg;
 
 static const char* CFG_PATH = "/config.json";
@@ -54,7 +78,12 @@ bool loadConfig() {
     strlcpy(cfg.stickIp, doc["stick_ip"] | "", sizeof cfg.stickIp);
     strlcpy(cfg.stickSerial, doc["stick_serial"] | "", sizeof cfg.stickSerial);
     strlcpy(cfg.pollSec, doc["poll_sec"] | "10", sizeof cfg.pollSec);
-    strlcpy(cfg.mqttTls, doc["mqtt_tls"] | "0", sizeof cfg.mqttTls);
+    strlcpy(cfg.mqttTls, doc["mqtt_tls"] | "1", sizeof cfg.mqttTls);
+    strlcpy(cfg.apiHost, doc["api_host"] | API_HOST, sizeof cfg.apiHost);
+    strlcpy(cfg.claimCode, doc["claim_code"] | "", sizeof cfg.claimCode);
+    // старий конфіг без прапорця, але з обліковими даними — вважаємо зареєстрованим
+    strlcpy(cfg.registered, doc["registered"] | (cfg.mqttUser[0] ? "1" : "0"), sizeof cfg.registered);
+    strlcpy(cfg.channel, doc["channel"] | "stable", sizeof cfg.channel);
     return true;
 }
 
@@ -64,6 +93,8 @@ void saveConfig() {
     doc["mqtt_user"] = cfg.mqttUser;  doc["mqtt_pass"] = cfg.mqttPass;
     doc["stick_ip"] = cfg.stickIp;    doc["stick_serial"] = cfg.stickSerial;
     doc["poll_sec"] = cfg.pollSec;   doc["mqtt_tls"] = cfg.mqttTls;
+    doc["api_host"] = cfg.apiHost;   doc["claim_code"] = cfg.claimCode;
+    doc["registered"] = cfg.registered; doc["channel"] = cfg.channel;
     File f = LittleFS.open(CFG_PATH, "w");
     if (f) { serializeJson(doc, f); f.close(); }
 }
@@ -75,10 +106,27 @@ String topicBase;                 // "devices/<id>/"
 WiFiClient mqttNet;
 #ifdef ESP8266
 BearSSL::WiFiClientSecure mqttTlsNet;
+BearSSL::X509List trustAnchors(ISRG_ROOT_X1);
+BearSSL::PublicKey signPubKey(signing_pubkey);
+BearSSL::HashSHA256 otaHash;
+BearSSL::SigningVerifier otaSign(&signPubKey);
 #else
 WiFiClientSecure mqttTlsNet;
 #endif
 PubSubClient mqtt;
+WebServerT web(80);
+String lastError;                 // показується на сторінці статусу
+uint32_t lastOtaCheck = 0;
+bool otaRequested = false;
+
+bool timeSynced() { return time(nullptr) > 1700000000; }
+
+/** Чекаємо NTP: без правильного часу TLS з перевіркою сертифіката не пройде. */
+bool waitForTime(uint32_t ms) {
+    uint32_t t0 = millis();
+    while (!timeSynced() && millis() - t0 < ms) delay(100);
+    return timeSynced();
+}
 
 struct Stick {
     IPAddress ip;
@@ -100,6 +148,132 @@ uint8_t v5seq = 1;
 uint32_t pollSeq = 0;
 uint32_t lastPoll = 0;
 bool pollNow = false;
+
+
+// ------------------------------------------------------------ provisioning
+
+static const char CLAIM_ALPHABET[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+/** Перший запуск: сам генеруємо секрет і код привʼязки. Мережі ще може не бути. */
+void ensureCredentials() {
+    if (cfg.mqttUser[0] && cfg.mqttPass[0]) return;
+    strlcpy(cfg.mqttUser, deviceId.c_str(), sizeof cfg.mqttUser);
+    for (int i = 0; i < 48; i++) {
+        uint8_t v = (uint8_t)(RANDOM_REG32 >> (8 * (i % 4)));
+        cfg.mqttPass[i] = "0123456789abcdef"[v & 0xF];
+    }
+    cfg.mqttPass[48] = 0;
+    for (int i = 0; i < 8; i++) cfg.claimCode[i] = CLAIM_ALPHABET[(RANDOM_REG32 >> 3) % 32];
+    cfg.claimCode[8] = 0;
+    if (!cfg.mqttHost[0]) strlcpy(cfg.mqttHost, cfg.apiHost, sizeof cfg.mqttHost);
+    if (!strcmp(cfg.mqttPort, "1883")) strlcpy(cfg.mqttPort, "8883", sizeof cfg.mqttPort);
+    strlcpy(cfg.mqttTls, "1", sizeof cfg.mqttTls);
+    strlcpy(cfg.registered, "0", sizeof cfg.registered);
+    saveConfig();
+    Serial.printf("[prov] generated credentials, claim code %s\n", cfg.claimCode);
+}
+
+/** HTTPS-запит до сервера платформи. Повний RX-буфер: Caddy не вміє MFLN. */
+int httpsRequest(const char* method, const String& path, const String& body, String& out) {
+    if (!waitForTime(15000)) { lastError = "no NTP time"; return -1; }
+#ifdef ESP8266
+    BearSSL::WiFiClientSecure c;
+    c.setTrustAnchors(&trustAnchors);
+#else
+    WiFiClientSecure c;
+    c.setCACert(ISRG_ROOT_X1);
+#endif
+    c.setTimeout(15000);
+    HTTPClient http;
+    http.setTimeout(15000);
+    if (!http.begin(c, String("https://") + cfg.apiHost + path)) { lastError = "http begin failed"; return -1; }
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("User-Agent", "deye-esp/" FW_VERSION);
+    int code = !strcmp(method, "POST") ? http.POST(body) : http.GET();
+    out = code > 0 ? http.getString() : http.errorToString(code);
+    http.end();
+    return code;
+}
+
+/** Самореєстрація на сервері: secret + claim code один раз. */
+bool registerDevice() {
+    JsonDocument doc;
+    doc["id"] = deviceId; doc["secret"] = cfg.mqttPass; doc["claimCode"] = cfg.claimCode;
+    doc["hw"] = HW_NAME; doc["fw"] = FW_VERSION;
+    String body; serializeJson(doc, body);
+    String resp;
+    int code = httpsRequest("POST", "/api/devices/register", body, resp);
+    Serial.printf("[prov] register -> %d %s\n", code, resp.c_str());
+    if (code == 201) {
+        strlcpy(cfg.registered, "1", sizeof cfg.registered); saveConfig(); lastError = ""; return true;
+    }
+    if (code == 409 && resp.indexOf("claim_code_taken") >= 0) {   // колізія коду — новий код, повтор
+        for (int i = 0; i < 8; i++) cfg.claimCode[i] = CLAIM_ALPHABET[(RANDOM_REG32 >> 3) % 32];
+        saveConfig();
+        return false;
+    }
+    lastError = String("register ") + code + ": " + resp.substring(0, 120);
+    return false;
+}
+
+// -------------------------------------------------------------------- OTA
+
+/** Перевірка нової версії; оновлення лише підписаним образом (перевіряє Updater). */
+void checkOta(bool force) {
+    if (!force && millis() - lastOtaCheck < 6UL * 3600UL * 1000UL && lastOtaCheck) return;
+    lastOtaCheck = millis();
+    String resp;
+    int code = httpsRequest("GET", String("/api/firmware/latest?hw=" HW_NAME "&channel=") + cfg.channel, "", resp);
+    if (code == 404) { Serial.println("[ota] no firmware on server"); return; }
+    if (code != 200) { Serial.printf("[ota] check failed %d\n", code); return; }
+    JsonDocument doc;
+    if (deserializeJson(doc, resp)) return;
+    const char* version = doc["version"] | "";
+    const char* url = doc["url"] | "";
+    if (!strcmp(version, FW_VERSION) || !url[0]) { Serial.printf("[ota] up to date (%s)\n", FW_VERSION); return; }
+    Serial.printf("[ota] %s -> %s, downloading\n", FW_VERSION, version);
+    mqtt.publish((topicBase + "status").c_str(), "offline", true);
+    mqtt.disconnect(); delay(200);
+#ifdef ESP8266
+    BearSSL::WiFiClientSecure c;
+    c.setTrustAnchors(&trustAnchors);
+#else
+    WiFiClientSecure c;
+    c.setCACert(ISRG_ROOT_X1);
+#endif
+    httpUpdateT.rebootOnUpdate(true);
+    t_httpUpdate_return r = httpUpdateT.update(c, String("https://") + cfg.apiHost + url, FW_VERSION);
+    if (r == HTTP_UPDATE_FAILED) {
+        lastError = String("ota: ") + httpUpdateT.getLastErrorString();
+        Serial.printf("[ota] failed: %s\n", lastError.c_str());
+    }
+    // при успіху плата перезавантажується
+}
+
+// ------------------------------------------------------------ status page
+
+void webStatus() {
+    String h = F("<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width'><title>Deye ESP</title>"
+        "<style>body{font-family:system-ui;background:#111;color:#eee;padding:1.5em;max-width:40em}code{background:#222;padding:.1em .4em;border-radius:4px}"
+        "b.big{font-size:2em;letter-spacing:.15em}</style><h2>☀ Deye ESP</h2>");
+    h += "<p>Пристрій: <code>" + deviceId + "</code> · прошивка " FW_VERSION " · канал " + cfg.channel + "</p>";
+    h += "<p>Код привʼязки в кабінеті " + String(cfg.apiHost) + ":<br><b class=big>" + (cfg.claimCode[0] ? String(cfg.claimCode) : String("—")) + "</b></p>";
+    h += String("<p>Реєстрація: ") + (cfg.registered[0] == '1' ? "ок" : "ще ні") + " · MQTT: " + (mqtt.connected() ? "підключено" : "немає") +
+         " · стік: " + (stick.known ? stick.ip.toString() + " (" + String(stick.serial) + ")" : String("шукаю")) + "</p>";
+    h += "<p>WiFi " + WiFi.SSID() + " " + String(WiFi.RSSI()) + " dBm · вільно " + String(ESP.getFreeHeap()) + " B · uptime " + String(millis() / 1000) + " с</p>";
+    if (lastError.length()) h += "<p style=color:#f88>Помилка: " + lastError + "</p>";
+    web.send(200, "text/html; charset=utf-8", h);
+}
+
+void webStatusJson() {
+    JsonDocument doc;
+    doc["id"] = deviceId; doc["fw"] = FW_VERSION; doc["hw"] = HW_NAME; doc["channel"] = cfg.channel;
+    doc["registered"] = cfg.registered[0] == '1'; doc["claim_code"] = cfg.claimCode; doc["mqtt"] = mqtt.connected();
+    doc["stick_ip"] = stick.known ? stick.ip.toString() : ""; doc["stick_serial"] = stick.serial;
+    doc["rssi"] = WiFi.RSSI(); doc["heap"] = ESP.getFreeHeap(); doc["error"] = lastError;
+    String out; serializeJson(doc, out);
+    web.send(200, "application/json", out);
+}
 
 // --------------------------------------------------------------- discovery
 
@@ -350,10 +524,14 @@ void onMqtt(char* topic, byte* data, unsigned int len) {
             }
         }
         if (doc["interval"].is<int>()) pollIntervalMs = constrain(doc["interval"].as<int>(), 2, 600) * 1000;
-        Serial.printf("[cfg] %u ranges, interval %u ms\n", rangeCount, pollIntervalMs);
+        if (doc["channel"].is<const char*>() && strcmp(cfg.channel, doc["channel"])) {
+            strlcpy(cfg.channel, doc["channel"], sizeof cfg.channel); saveConfig();
+        }
+        Serial.printf("[cfg] %u ranges, interval %u ms, channel %s\n", rangeCount, pollIntervalMs, cfg.channel);
     } else if (t.endsWith("/cmd")) {
         const char* cmd = doc["cmd"] | "";
         if (!strcmp(cmd, "poll")) pollNow = true;
+        else if (!strcmp(cmd, "update")) otaRequested = true;
         else if (!strcmp(cmd, "rediscover")) {   // {"cmd":"rediscover","nocache":true,"scan_ms":700}
             stick.known = false; stick.lastDiscovery = 0;
             if (doc["nocache"] | false) cfg.stickIp[0] = 0;
@@ -384,11 +562,19 @@ void onMqtt(char* topic, byte* data, unsigned int len) {
 
 bool mqttConnect() {
     if (!cfg.mqttHost[0]) return false;
-    if (cfg.mqttTls[0] == '1') {
-        // Спайк: без перевірки сертифіката. Продакшн (ESP32): CA bundle.
-        mqttTlsNet.setInsecure();
+    if (cfg.mqttTls[0] == '1' || cfg.mqttTls[0] == '2') {
+        if (cfg.mqttTls[0] == '1') {
+            if (!waitForTime(15000)) { Serial.println("[mqtt] waiting for NTP before TLS"); return false; }
 #ifdef ESP8266
-        mqttTlsNet.setBufferSizes(1024, 1024);  // RAM: ~16 KB замість 32
+            mqttTlsNet.setTrustAnchors(&trustAnchors);
+#else
+            mqttTlsNet.setCACert(ISRG_ROOT_X1);
+#endif
+        } else {
+            mqttTlsNet.setInsecure();
+        }
+#ifdef ESP8266
+        mqttTlsNet.setBufferSizes(1024, 1024);  // Mosquitto підтримує MFLN: ~16 KB замість 32
 #endif
         mqtt.setClient(mqttTlsNet);
     } else {
@@ -409,7 +595,13 @@ bool mqttConnect() {
         publishInfo();
         Serial.printf("[mqtt] connected as %s\n", deviceId.c_str());
     } else {
+#ifdef ESP8266
+        char sslErr[80] = ""; mqttTlsNet.getLastSSLError(sslErr, sizeof sslErr);
+        Serial.printf("[mqtt] connect failed rc=%d ssl='%s' heap=%u\n", mqtt.state(), sslErr, ESP.getFreeHeap());
+        if (sslErr[0]) lastError = String("tls: ") + sslErr;
+#else
         Serial.printf("[mqtt] connect failed rc=%d\n", mqtt.state());
+#endif
     }
     return ok;
 }
@@ -433,6 +625,10 @@ void setup() {
 #endif
     }
     bool haveCfg = loadConfig();
+    ensureCredentials();
+#ifdef ESP8266
+    Update.installSignature(&otaHash, &otaSign);   // приймати лише підписані образи
+#endif
 
     pinMode(PORTAL_PIN, INPUT_PULLUP);
     bool forcePortal = digitalRead(PORTAL_PIN) == LOW;
@@ -445,8 +641,11 @@ void setup() {
     WiFiManagerParameter pIp("stick_ip", "Stick IP (порожньо = автопошук)", cfg.stickIp, sizeof cfg.stickIp - 1);
     WiFiManagerParameter pSn("stick_serial", "Stick serial (порожньо = з пошуку)", cfg.stickSerial, sizeof cfg.stickSerial - 1);
     WiFiManagerParameter pPoll("poll_sec", "Poll interval, s", cfg.pollSec, sizeof cfg.pollSec - 1);
-    WiFiManagerParameter pTls("mqtt_tls", "MQTT TLS (1/0)", cfg.mqttTls, sizeof cfg.mqttTls - 1);
-    for (auto* p : {&pHost, &pPort, &pUser, &pPass, &pIp, &pSn, &pPoll, &pTls}) wm.addParameter(p);
+    WiFiManagerParameter pTls("mqtt_tls", "MQTT TLS: 0 ні, 1 з перевіркою, 2 без перевірки", cfg.mqttTls, sizeof cfg.mqttTls - 1);
+    WiFiManagerParameter pApi("api_host", "Сервер платформи", cfg.apiHost, sizeof cfg.apiHost - 1);
+    String claimHtml = "<p style='font-size:1.1em'>Пристрій <b>" + deviceId + "</b><br>Код привʼязки в кабінеті: <b style='font-size:1.6em;letter-spacing:.15em'>" + String(cfg.claimCode) + "</b></p>";
+    WiFiManagerParameter pClaim(claimHtml.c_str());
+    for (auto* p : {&pClaim, &pApi, &pHost, &pPort, &pUser, &pPass, &pIp, &pSn, &pPoll, &pTls}) wm.addParameter(p);
     wm.setSaveConfigCallback([]() { shouldSave = true; });
     wm.setConfigPortalTimeout(300);
     wm.setConnectTimeout(30);
@@ -466,7 +665,8 @@ void setup() {
         strlcpy(cfg.stickIp, pIp.getValue(), sizeof cfg.stickIp);
         strlcpy(cfg.stickSerial, pSn.getValue(), sizeof cfg.stickSerial);
         strlcpy(cfg.pollSec, pPoll.getValue(), sizeof cfg.pollSec);
-        strlcpy(cfg.mqttTls, pTls.getValue()[0] == '1' ? "1" : "0", sizeof cfg.mqttTls);
+        strlcpy(cfg.mqttTls, pTls.getValue(), sizeof cfg.mqttTls);
+        if (pApi.getValue()[0]) strlcpy(cfg.apiHost, pApi.getValue(), sizeof cfg.apiHost);
         saveConfig();
         Serial.println("[cfg] saved");
     }
@@ -476,6 +676,10 @@ void setup() {
     if (cfg.stickSerial[0]) stick.serial = strtoul(cfg.stickSerial, nullptr, 10);
 
     configTime(0, 0, "pool.ntp.org", "time.google.com");
+    web.on("/", webStatus); web.on("/status.json", webStatusJson); web.begin();
+    Serial.printf("[web] status page at http://%s/\n", WiFi.localIP().toString().c_str());
+
+    if (cfg.registered[0] != '1') registerDevice();
     mqttConnect();
 }
 
@@ -485,6 +689,16 @@ uint32_t lastMqttTry = 0;
 
 void loop() {
     if (WiFi.status() != WL_CONNECTED) { delay(500); return; }
+    web.handleClient();
+
+    static uint32_t lastRegTry = 0;
+    if (cfg.registered[0] != '1' && millis() - lastRegTry > 60000) { lastRegTry = millis(); registerDevice(); }
+
+    if (otaRequested || (mqtt.connected() && millis() > 120000 && (lastOtaCheck == 0 || millis() - lastOtaCheck > 6UL * 3600UL * 1000UL))) {
+        bool force = otaRequested; otaRequested = false;
+        checkOta(force);
+        if (!mqtt.connected()) mqttConnect();
+    }
 
     if (!mqtt.connected() && millis() - lastMqttTry > 5000) {
         lastMqttTry = millis();

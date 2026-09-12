@@ -4,7 +4,7 @@ import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
 import { backgrounds, devices, organizations, plans, screens } from "../db/schema.ts";
 import { randomToken } from "../lib/crypto.ts";
 import { randomInt } from "node:crypto";
-import { badRequest, conflict, notFound } from "../lib/errors.ts";
+import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
@@ -112,7 +112,7 @@ export async function issuePairCode(db: Db, orgId: string, actorId: string, id: 
       if (!s) throw notFound("Screen not found");
       return { code, expiresAt };
     } catch (e) {
-      if (String(e).includes("screens_pair_code_idx")) continue; // колізія з чужим активним кодом
+      if (isUniqueViolation(e, "screens_pair_code_idx")) continue; // колізія з чужим активним кодом
       throw e;
     }
   }

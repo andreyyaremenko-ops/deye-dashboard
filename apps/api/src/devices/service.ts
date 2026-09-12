@@ -70,3 +70,26 @@ export async function deviceInOrg(db: Db, orgId: string, deviceId: string) {
   if (!d) throw notFound("Device not found");
   return d;
 }
+
+const HW_ALLOWED = new Set(["esp8266", "esp32"]);
+
+/**
+ * Самореєстрація (відкритий скетч): пристрій сам генерує секрет і claim-код і
+ * присилає їх один раз. Повторна реєстрація того ж id заборонена — секрет змінити
+ * можна лише після unclaim через superadmin.
+ */
+export async function selfRegister(db: Db, input: { id: string; secret: string; claimCode: string; hw: string; fw?: string }) {
+  if (!HW_ALLOWED.has(input.hw)) throw conflict("unsupported hw", "bad_hw");
+  if (input.secret.length < 24) throw conflict("secret too short", "bad_secret");
+  const code = normalizeClaimCode(input.claimCode);
+  if (code.length !== 8) throw conflict("claim code must be 8 chars", "bad_claim_code");
+  const r = await registerDevice(db, input.id, { secret: input.secret, claimCode: code, hw: input.hw });
+  if (input.fw) await db.update(devices).set({ fw: input.fw }).where(eq(devices.id, r.deviceId));
+  return { deviceId: r.deviceId };
+}
+
+export async function setChannel(db: Db, orgId: string, actorId: string, deviceId: string, channel: "stable" | "beta") {
+  await requireRole(db, orgId, actorId, "admin");
+  const res = await db.update(devices).set({ fwChannel: channel }).where(and(eq(devices.id, deviceId), eq(devices.orgId, orgId))).returning({ id: devices.id });
+  if (!res.length) throw notFound("Device not found");
+}

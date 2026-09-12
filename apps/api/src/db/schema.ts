@@ -74,8 +74,22 @@ export const devices = pgTable("devices", {
   claimedAt: timestamp("claimed_at", { withTimezone: true }),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
   online: boolean("online").notNull().default(false),
+  fwChannel: text("fw_channel").notNull().default("stable"),   // stable | beta
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("devices_org_idx").on(t.orgId)]);
+
+// Образи прошивок для OTA. Файл лежить у /media/firmware, підписаний приватним ключем збірки.
+export const firmware = pgTable("firmware", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  hw: text("hw").notNull(),                 // esp8266 | esp32
+  channel: text("channel").notNull(),       // stable | beta
+  version: text("version").notNull(),       // semver-подібний рядок, порівнюється як рядок з датою
+  file: text("file").notNull(),             // firmware/esp8266-0.2.0.bin.signed
+  sha256: text("sha256").notNull(),
+  size: integer("size").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("firmware_hw_channel_version_idx").on(t.hw, t.channel, t.version)]);
 
 // Hypertable (create_hypertable у custom-міграції 0001)
 export const telemetryRaw = pgTable("telemetry_raw", {
@@ -138,6 +152,6 @@ export const screens = pgTable("screens", {
 
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
-  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens,
+  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware,
 };
 export { sql };

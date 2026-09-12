@@ -40,7 +40,7 @@ describe("інжест реального payload з ESP8266", () => {
     // похідна метрика з карти в БД (регресія: derived не зберігався в inverter_models)
     expect(r.metrics.pv_w).toBe((r.metrics.pv1_w as number) + (r.metrics.pv2_w as number));
 
-    expect(published).toEqual([{ topic: `devices/${DEVICE}/cfg`, payload: JSON.stringify({ ranges: [[0, 22], [500, 700]], interval: 10 }), retain: true }]);
+    expect(published).toEqual([{ topic: `devices/${DEVICE}/cfg`, payload: JSON.stringify({ ranges: [[0, 22], [500, 700]], interval: 10, channel: "stable" }), retain: true }]);
 
     const [d] = await t.db.select().from(devices).where(eq(devices.id, DEVICE));
     expect(d).toMatchObject({ modelId: "deye-hp3", inverterType: 6, inverterSerial: "2309208317", stickSerial: 2763543833, online: true });

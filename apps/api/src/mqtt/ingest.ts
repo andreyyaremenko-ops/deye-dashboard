@@ -68,7 +68,7 @@ export async function handleTelemetry(deps: IngestDeps, deviceId: string, raw: B
         updates.modelId = map.id;
         deps.log.info({ deviceId, modelId }, "telemetry: model identified");
         // сервер керує списком регістрів для опитування
-        await deps.publish(`devices/${deviceId}/cfg`, JSON.stringify({ ranges: map.pollRanges, interval: 10 }), true);
+        await deps.publish(`devices/${deviceId}/cfg`, JSON.stringify({ ranges: map.pollRanges, interval: 10, channel: dev.fwChannel }), true);
       }
     }
   }

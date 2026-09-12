@@ -32,6 +32,7 @@ export type DeviceInfo = z.infer<typeof deviceInfoSchema>;
 export const deviceCfgSchema = z.object({
   ranges: z.array(z.tuple([z.number().int(), z.number().int()])).min(1).max(8),
   interval: z.number().int().min(2).max(600),
+  channel: z.enum(["stable", "beta"]).default("stable"),
 });
 export type DeviceCfg = z.infer<typeof deviceCfgSchema>;
 

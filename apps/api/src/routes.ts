@@ -7,6 +7,7 @@ import * as orgs from "./orgs/service.ts";
 import * as dev from "./devices/service.ts";
 import * as scr from "./screens/service.ts";
 import * as bgs from "./backgrounds/service.ts";
+import * as fw from "./firmware/service.ts";
 import { ACC, mqttAclCheck, mqttAuth, mqttSuperuser } from "./mqtt/acl.ts";
 import { isStale } from "./state/store.ts";
 import { badRequest, forbidden } from "./lib/errors.ts";
@@ -103,6 +104,37 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     await dev.deviceInOrg(db, orgId, deviceId);
     const s = await store.get(deviceId);
     return s ? { ...s, stale: isStale(s) } : { deviceId, updatedAt: null, metrics: {}, stale: true };
+  });
+
+  // самореєстрація відкритого скетча: rate-limit, без auth
+  app.post("/api/devices/register", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const body = z.object({ id: z.string(), secret: z.string().min(24).max(128), claimCode: z.string().min(8).max(12), hw: z.string(), fw: z.string().max(40).optional() }).parse(req.body);
+    return reply.code(201).send(await dev.selfRegister(db, body));
+  });
+  app.patch("/api/orgs/:orgId/devices/:deviceId/channel", async (req) => {
+    const u = requireUser(req); const { orgId, deviceId } = z.object({ orgId: uuid, deviceId: z.string() }).parse(req.params);
+    const { channel } = z.object({ channel: z.enum(["stable", "beta"]) }).parse(req.body);
+    await dev.setChannel(db, orgId, u.id, deviceId, channel);
+    return { ok: true };
+  });
+
+  // ---------------- firmware (OTA)
+  app.get("/api/firmware/latest", async (req) => {
+    const q = z.object({ hw: z.enum(fw.HWS), channel: z.enum(fw.CHANNELS).default("stable") }).parse(req.query);
+    return fw.latest(db, q.hw, q.channel);
+  });
+  app.get("/api/admin/firmware", async (req) => {
+    const u = requireUser(req); if (!u.isSuperadmin) throw forbidden();
+    return fw.listFirmware(db);
+  });
+  app.post("/api/admin/firmware", async (req, reply) => {
+    const u = requireUser(req); if (!u.isSuperadmin) throw forbidden();
+    const file = await req.file({ limits: { fileSize: 4 * 1024 * 1024, files: 1 } });
+    if (!file) throw badRequest("No file", "no_file");
+    const f = (k: string) => { const v = (file.fields as Record<string, { value?: string } | undefined>)[k]; return v?.value; };
+    const meta = z.object({ hw: z.string(), channel: z.string(), version: z.string(), notes: z.string().optional() })
+      .parse({ hw: f("hw"), channel: f("channel"), version: f("version"), notes: f("notes") });
+    return reply.code(201).send(await fw.uploadFirmware(db, deps.mediaRoot, meta, file.file));
   });
 
   // superadmin: реєстрація пристроїв (виробництво)

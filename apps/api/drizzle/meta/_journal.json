@@ -43,6 +43,13 @@
       "when": 1789239804373,
       "tag": "0005_pair_code",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789240572421,
+      "tag": "0006_firmware_ota",
+      "breakpoints": true
     }
   ]
 }
