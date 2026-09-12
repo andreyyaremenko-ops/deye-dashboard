@@ -36,10 +36,10 @@ client.on("connect", () => {
 client.on("error", (e) => app.log.warn({ err: e.message }, "mqtt error"));
 client.on("message", (topic, payload) => { void dispatch(ingest, topic, payload); });
 
-// Solarman-стіки в режимі push (Server B): TCP 10000
-const loggerServer = startLoggerServer({ db, log: app.log }, config.LOGGER_PORT);
+// Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
+const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGER_PORT);
 
-app.addHook("onClose", async () => { loggerServer.close(); client.end(true); await store.close(); await sql.end(); });
+app.addHook("onClose", async () => { stickServer.server.close(); client.end(true); await store.close(); await sql.end(); });
 
 try {
   await app.listen({ port: config.API_PORT, host: "0.0.0.0" });

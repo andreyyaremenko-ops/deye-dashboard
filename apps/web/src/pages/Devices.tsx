@@ -18,7 +18,7 @@ export function Devices({ org }: { org: Org }) {
   return <>
     {canEdit && <Card title="Привʼязати пристрій">
       <form className="row" onSubmit={onSubmit(() => claim.run(undefined))}>
-        <Field label="Код з корпусу (8 символів)"><input required value={code} onChange={(e) => setCode(e.currentTarget.value)} placeholder="2QTB-UR3N" style={{ textTransform: "uppercase" }} /></Field>
+        <Field label="Код з корпусу плати або серійник стіка"><input required value={code} onChange={(e) => setCode(e.currentTarget.value)} placeholder="2QTB-UR3N або 2763543833" style={{ textTransform: "uppercase" }} /></Field>
         <Field label="Назва (необовʼязково)"><input value={name} onChange={(e) => setName(e.currentTarget.value)} placeholder="Інвертор у залі" /></Field>
         <Btn type="submit" kind="primary" disabled={claim.busy}>Привʼязати</Btn>
       </form>

@@ -24,7 +24,7 @@ export async function registerDevice(db: Db, id: string, opts: { secret?: string
   return { deviceId, secret, claimCode };
 }
 
-/** Claim by code: привʼязка до організації, якщо пристрій ще нічий. */
+/** Claim by code: привʼязка до організації, якщо пристрій ще нічий. Для стіка в TCP-Client режимі код = його серійник. */
 export async function claimDevice(db: Db, orgId: string, actorId: string, code: string, name?: string) {
   await requireRole(db, orgId, actorId, "admin");
   const hash = sha256(normalizeClaimCode(code));
