@@ -1,5 +1,5 @@
 /**
- * DDL з drizzle/0000 і seed проганяються в PGlite (Postgres у WASM).
+ * DDL з усіх міграцій і seed проганяються в PGlite (Postgres у WASM).
  * Timescale-міграція 0001 тут не виконується — її перевіряє деплой.
  */
 import { describe, it, expect, beforeAll } from "vitest";
@@ -16,10 +16,11 @@ const pg = new PGlite();
 const db = drizzle(pg, { schema });
 
 beforeAll(async () => {
-  const file = readdirSync(dir).find((f) => f.startsWith("0000_"))!;
-  const sqlText = readFileSync(join(dir, file), "utf8");
-  for (const stmt of sqlText.split("--> statement-breakpoint")) {
-    if (stmt.trim()) await pg.exec(stmt);
+  // усі міграції, крім Timescale (її перевіряє деплой)
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".sql") && !f.includes("timescale")).sort()) {
+    for (const stmt of readFileSync(join(dir, file), "utf8").split("--> statement-breakpoint")) {
+      if (stmt.trim()) await pg.exec(stmt);
+    }
   }
   await seed(db);
 });
