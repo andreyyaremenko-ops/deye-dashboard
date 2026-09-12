@@ -11,6 +11,9 @@ import type { MonoClient, MonoInvoiceStatus } from "./mono.ts";
 
 type Db = PgDatabase<any, any, any>;
 export const MONTHS_ALLOWED = [1, 3, 6, 12] as const;
+/** Скільки місяців оплачується за період: 6 = 5 (місяць у подарунок), 12 = 10 (два місяці). */
+export const BILLABLE_MONTHS: Record<number, number> = { 1: 1, 3: 3, 6: 5, 12: 10 };
+export const priceFor = (priceMonth: number, months: number) => priceMonth * (BILLABLE_MONTHS[months] ?? months);
 
 export interface BillingDeps { db: Db; mono: MonoClient | null; publicUrl: string; log?: { info: (o: object, m?: string) => void; warn: (o: object, m?: string) => void } }
 
@@ -20,7 +23,9 @@ export async function billingInfo(db: Db, orgId: string) {
   const allPlans = await db.select({ id: plans.id, name: plans.name, priceMonth: plans.priceMonth, limits: plans.limits }).from(plans);
   const list = await db.select({ id: payments.id, planId: payments.planId, months: payments.months, amount: payments.amount, status: payments.status, createdAt: payments.createdAt, appliedAt: payments.appliedAt, pageUrl: payments.pageUrl })
     .from(payments).where(eq(payments.orgId, orgId)).orderBy(desc(payments.createdAt)).limit(20);
-  return { planId: org.planId, planUntil: org.planUntil, plans: allPlans, payments: list, months: MONTHS_ALLOWED };
+  const pro = allPlans.find((p) => p.id === "pro");
+  const options = MONTHS_ALLOWED.map((m) => ({ months: m, amount: pro?.priceMonth ? priceFor(pro.priceMonth, m) : 0, freeMonths: m - (BILLABLE_MONTHS[m] ?? m) }));
+  return { planId: org.planId, planUntil: org.planUntil, plans: allPlans, payments: list, months: MONTHS_ALLOWED, options };
 }
 
 /** Створити інвойс на N місяців Pro. Повертає pageUrl для редиректу. */
@@ -30,7 +35,7 @@ export async function checkout(deps: BillingDeps, orgId: string, userId: string,
   if (!(MONTHS_ALLOWED as readonly number[]).includes(months)) throw badRequest("months must be 1, 3, 6 or 12");
   const [plan] = await deps.db.select().from(plans).where(eq(plans.id, planId));
   if (!plan || !plan.priceMonth) throw badRequest("This plan is not sold online", "plan_not_sellable");
-  const amount = plan.priceMonth * months;
+  const amount = priceFor(plan.priceMonth, months);
   const [p] = await deps.db.insert(payments).values({ orgId, userId, planId, months, amount }).returning();
   const reference = p!.id;
   try {

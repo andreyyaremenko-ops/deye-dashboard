@@ -57,6 +57,7 @@ describe("підписка Pro через monobank", () => {
     expect(b.enabled).toBe(true); expect(b.planId).toBe("free"); expect(b.planUntil).toBeNull();
     expect(b.plans.find((p: { id: string }) => p.id === "pro").priceMonth).toBe(60000);
     expect(b.months).toEqual([1, 3, 6, 12]);
+    expect(b.options).toEqual([{ months: 1, amount: 60000, freeMonths: 0 }, { months: 3, amount: 180000, freeMonths: 0 }, { months: 6, amount: 300000, freeMonths: 1 }, { months: 12, amount: 600000, freeMonths: 2 }]);
   });
 
   it("checkout: лише owner, лише Pro, 3 міс = 1800 ₴, повертає pageUrl", async () => {
