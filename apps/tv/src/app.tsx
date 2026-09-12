@@ -1,0 +1,50 @@
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { startLive, type LiveStore } from "./live.ts";
+import { Widget } from "./widgets.tsx";
+import { GradientBackground, VideoBackground } from "./background.tsx";
+
+function tokenFromUrl(): string | null {
+  const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
+  return m?.[1] ?? new URLSearchParams(location.search).get("token");
+}
+
+export function App() {
+  const token = useMemo(tokenFromUrl, []);
+  const [live, setLive] = useState<LiveStore | null>(null);
+  const [needTap, setNeedTap] = useState(false);
+  const audio = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
+
+  const radioUrl = live?.screen?.config.radioUrl ?? null;
+  useEffect(() => {
+    const el = audio.current;
+    if (!el || !radioUrl) { setNeedTap(false); return; }
+    el.src = radioUrl;
+    el.play().then(() => setNeedTap(false)).catch(() => setNeedTap(true));
+  }, [radioUrl]);
+  const tap = () => { audio.current?.play().then(() => setNeedTap(false)).catch(() => {}); };
+
+  if (!token) return <Msg>Немає токена екрана в адресі</Msg>;
+  if (!live?.screen) return <Msg>{live?.error ?? "Завантаження…"}</Msg>;
+
+  const { screen } = live;
+  const files = screen.background?.files;
+  const video = files ? (files["1080"] ?? files["720"]) : null;
+  const src = video ? (video.startsWith("http") ? video : `/media/${video}`) : null;
+
+  return <div class={`screen theme-${screen.config.theme}`}>
+    {src ? <VideoBackground src={src} /> : <GradientBackground />}
+    {screen.config.widgets.map((w) => (
+      <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
+        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} />
+      </div>
+    ))}
+    {radioUrl && <audio ref={audio} preload="none" />}
+    {needTap && <div class="tap" onClick={tap}><div>▶ Натисніть для старту</div></div>}
+    {screen.branding && <div class="brand">powered by tv.sun-hunter.men</div>}
+    <div class={`conn conn-${live.status}`} title={live.status} />
+  </div>;
+}
+
+const Msg = ({ children }: { children: preact.ComponentChildren }) => <div class="screen theme-dark"><GradientBackground /><div class="msg">{children}</div></div>;

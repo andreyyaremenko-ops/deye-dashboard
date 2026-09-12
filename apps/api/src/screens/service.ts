@@ -1,7 +1,7 @@
 import { and, eq, count, inArray } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
-import { devices, organizations, plans, screens } from "../db/schema.ts";
+import { backgrounds, devices, organizations, plans, screens } from "../db/schema.ts";
 import { randomToken } from "../lib/crypto.ts";
 import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
@@ -76,10 +76,17 @@ export async function publicScreen(db: Db, token: string) {
   const own = referenced.length
     ? await db.select({ id: devices.id }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
+  let background: { files: Record<string, string> | null; preview: string | null } | null = null;
+  if (cfg.backgroundId) {
+    const [bg] = await db.select({ files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status })
+      .from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
+    if (bg && bg.status === "ready") background = { files: bg.files, preview: bg.preview };
+  }
   return {
     id: row.screen.id,
     name: row.screen.name,
     config: cfg,
+    background,
     deviceIds: own.map((d) => d.id),
     branding: row.planLimits.branding,
   };

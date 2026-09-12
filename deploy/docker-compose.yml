@@ -70,6 +70,14 @@ services:
     deploy: { resources: { limits: { memory: 256M } } }
     networks: [app]
 
+  # статика: docker compose run --rm static
+  static:
+    build: { context: .., dockerfile: deploy/static.Dockerfile }
+    profiles: [tools]
+    volumes:
+      - web_dist:/srv/web
+      - tv_dist:/srv/tv
+
   worker:
     build: { context: .., dockerfile: apps/worker/Dockerfile }
     restart: unless-stopped

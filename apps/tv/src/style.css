@@ -1,0 +1,34 @@
+* { box-sizing: border-box; }
+html, body, #app { margin: 0; height: 100%; overflow: hidden; background: #000; }
+body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #fff; cursor: none; }
+.screen { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+.bg { position: absolute; inset: 0; z-index: 0; background: #000; }
+.bgv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .8s linear; }
+.bgv.on { opacity: 1; }
+.bg-gradient { background: radial-gradient(120% 90% at 20% 10%, #1b3a5c 0%, #0b1a2b 55%, #050a12 100%); }
+
+.slot { position: absolute; z-index: 2; }
+.w { height: 100%; width: 100%; padding: 1.2vw 1.5vw; border-radius: 1.2vw;
+     background: rgba(10, 16, 28, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+     border: 1px solid rgba(255,255,255,.12); box-shadow: 0 .6vw 2vw rgba(0,0,0,.35);
+     display: flex; flex-direction: column; justify-content: center; transition: opacity .5s; }
+.theme-light .w { background: rgba(255,255,255,.7); color: #10203a; border-color: rgba(0,0,0,.08); }
+.w.stale { opacity: .55; }
+.title { font-size: 1.4vw; letter-spacing: .04em; text-transform: uppercase; opacity: .8; display: flex; justify-content: space-between; align-items: center; }
+.badge { font-size: .9vw; text-transform: none; letter-spacing: 0; background: #b3261e; color: #fff; padding: .15vw .6vw; border-radius: 1vw; }
+.big { font-size: 4.2vw; font-weight: 700; line-height: 1.1; margin: .4vw 0; font-variant-numeric: tabular-nums; }
+.sub { font-size: 1.4vw; opacity: .8; }
+.text { font-size: 2vw; text-align: center; text-shadow: 0 .2vw .6vw rgba(0,0,0,.6); }
+.row { display: flex; justify-content: space-between; font-size: 1.5vw; padding: .25vw 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+.row:last-child { border-bottom: 0; }
+.bar { height: .8vw; background: rgba(255,255,255,.15); border-radius: .4vw; overflow: hidden; margin: .3vw 0 .5vw; }
+.fill { height: 100%; background: linear-gradient(90deg, #35c46a, #8ee08a); transition: width 1s; }
+
+.msg { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; font-size: 2.5vw; text-align: center; padding: 4vw; }
+.tap { position: absolute; inset: 0; z-index: 10; display: grid; place-items: center; background: rgba(0,0,0,.75); font-size: 3vw; cursor: pointer; }
+.brand { position: absolute; right: 1vw; bottom: .6vw; z-index: 4; font-size: 1vw; opacity: .45; }
+.conn { position: absolute; left: 1vw; bottom: 1vw; z-index: 4; width: .7vw; height: .7vw; border-radius: 50%; background: #35c46a; opacity: .6; }
+.conn-connecting, .conn-reconnecting { background: #f2b21b; animation: blink 1s infinite; }
+.conn-offline { background: #b3261e; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .1; } }

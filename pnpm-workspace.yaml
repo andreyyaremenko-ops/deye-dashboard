@@ -7,3 +7,6 @@ allowBuilds:
   esbuild: set this to true or false
 onlyBuiltDependencies:
   - esbuild
+ignoredBuiltDependencies:
+  - "@prisma/client"
+  - better-sqlite3
