@@ -17,12 +17,20 @@ export function App() {
   useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
 
   const radioUrl = live?.screen?.config.radioUrl ?? null;
+  const radioVolume = live?.screen?.config.radioVolume ?? 0.6;
   useEffect(() => {
     const el = audio.current;
     if (!el || !radioUrl) { setNeedTap(false); return; }
-    el.src = radioUrl;
-    el.play().then(() => setNeedTap(false)).catch(() => setNeedTap(true));
+    el.volume = radioVolume;
+    let retry = 2000, timer: number | undefined;
+    const start = () => { el.src = radioUrl; el.load(); el.play().then(() => { setNeedTap(false); retry = 2000; }).catch(() => setNeedTap(true)); };
+    // обрив стріму: перезапуск із наростаючою паузою
+    const onFail = () => { clearTimeout(timer); timer = window.setTimeout(() => { retry = Math.min(retry * 2, 60_000); start(); }, retry); };
+    el.addEventListener("error", onFail); el.addEventListener("stalled", onFail); el.addEventListener("ended", onFail);
+    start();
+    return () => { clearTimeout(timer); el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail); el.pause(); el.removeAttribute("src"); };
   }, [radioUrl]);
+  useEffect(() => { if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
   const tap = () => { audio.current?.play().then(() => setNeedTap(false)).catch(() => {}); };
 
   if (!token) return <Msg>Немає токена екрана в адресі</Msg>;

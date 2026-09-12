@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { orgRoles } from "@deye/shared";
+import { orgRoles, RADIO_STATIONS } from "@deye/shared";
 import { requireUser } from "./auth/plugin.ts";
 import type { AppDeps } from "./app.ts";
 import * as orgs from "./orgs/service.ts";
@@ -17,6 +17,7 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   const { db, store } = deps;
 
   app.get("/api/health", async () => ({ ok: true, ts: new Date().toISOString() }));
+  app.get("/api/radio", async () => RADIO_STATIONS);
 
   app.get("/api/me", async (req) => {
     const u = requireUser(req);

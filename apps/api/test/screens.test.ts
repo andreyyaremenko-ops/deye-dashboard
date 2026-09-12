@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
+import { organizations } from "../src/db/schema.ts";
 
 let t: TestApp;
 beforeAll(async () => { t = await makeTestApp(); });
@@ -34,6 +36,17 @@ describe("екрани, тарифні ліміти, публічний токе
       name: "Чужий", config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [{ id: "w", type: "pv", x: 0, y: 0, w: 10, h: 10, deviceId, props: {} }] },
     });
     expect(foreign.statusCode).toBe(400);
+  });
+
+  it("pro дозволяє радіо зі списку станцій, гучність за замовчуванням 0.6", async () => {
+    await t.db.update(organizations).set({ planId: "pro" }).where(eq(organizations.id, orgId));
+    const radio = (await t.app.inject({ method: "GET", url: "/api/radio" })).json();
+    expect(radio.length).toBe(14);
+    const res = await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { config: { backgroundId: null, radioUrl: radio[0].url, theme: "dark", widgets: [] } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().config.radioVolume).toBe(0.6);
+    await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [{ id: "w1", type: "pv", x: 0, y: 0, w: 30, h: 20, deviceId, props: {} }] } });
+    await t.db.update(organizations).set({ planId: "free" }).where(eq(organizations.id, orgId));
   });
 
   it("публічний екран без логіну віддає конфіг і стан, але не організацію", async () => {

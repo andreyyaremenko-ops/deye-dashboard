@@ -53,6 +53,7 @@ export const screenConfigSchema = z.object({
   backgroundId: z.string().uuid().nullable(),
   widgets: z.array(widgetSchema),
   radioUrl: z.string().url().nullable(),
+  radioVolume: z.number().min(0).max(1).default(0.6),
   theme: z.enum(["dark", "light"]).default("dark"),
 });
 export type ScreenConfig = z.infer<typeof screenConfigSchema>;
@@ -65,3 +66,5 @@ export const planLimitsSchema = z.object({
   branding: z.boolean(),
 });
 export type PlanLimits = z.infer<typeof planLimitsSchema>;
+
+export * from "./radio.js";
