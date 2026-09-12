@@ -16,14 +16,9 @@ export const orgRole = pgEnum("org_role", ["owner", "admin", "staff"]);
 export const backgroundStatus = pgEnum("background_status", ["uploaded", "processing", "ready", "failed"]);
 export const jobStatus = pgEnum("job_status", ["queued", "running", "done", "failed"]);
 
-// Better Auth створить власну таблицю user; тут мінімальний контракт для FK.
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  email: text("email").notNull().unique(),
-  name: text("name"),
-  isSuperadmin: boolean("is_superadmin").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+// Таблиці Better Auth (згенеровано: pnpm exec better-auth generate)
+import { user, session, account, verification } from "./auth-schema.ts";
+export { user, session, account, verification };
 
 export const plans = pgTable("plans", {
   id: text("id").primaryKey(),
@@ -136,7 +131,7 @@ export const screens = pgTable("screens", {
 }, (t) => [uniqueIndex("screens_view_token_idx").on(t.viewToken), index("screens_org_idx").on(t.orgId)]);
 
 export const schema = {
-  user, plans, organizations, memberships, invites, inverterModels, devices,
+  user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens,
 };
 export { sql };

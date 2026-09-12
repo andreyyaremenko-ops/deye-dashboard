@@ -9,6 +9,13 @@ const schema = z.object({
   API_PORT: z.coerce.number().default(3000),
   PUBLIC_URL: z.string().default("http://localhost:5173"),
   BETTER_AUTH_SECRET: z.string().default("dev-secret-change-me-please-32-bytes"),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  MAIL_FROM: z.string().default("Deye Dashboard <no-reply@sun-hunter.men>"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

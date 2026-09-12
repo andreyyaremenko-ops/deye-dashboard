@@ -15,14 +15,22 @@
   "dependencies": {
     "@deye/register-maps": "workspace:*",
     "@deye/shared": "workspace:*",
+    "@fastify/websocket": "^11.3.0",
+    "better-auth": "^1.7.4",
     "drizzle-orm": "^0.45.0",
     "fastify": "^5.6.0",
+    "fastify-plugin": "^5.1.0",
+    "ioredis": "^5.11.1",
+    "mqtt": "^5.15.2",
+    "nodemailer": "^7.0.13",
     "postgres": "^3.4.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@better-auth/cli": "^1.4.21",
     "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^24.0.0",
+    "@types/nodemailer": "^8.0.1",
     "drizzle-kit": "^0.31.0",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
