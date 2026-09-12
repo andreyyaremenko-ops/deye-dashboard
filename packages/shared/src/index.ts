@@ -67,4 +67,4 @@ export const planLimitsSchema = z.object({
 });
 export type PlanLimits = z.infer<typeof planLimitsSchema>;
 
-export * from "./radio.js";
+export * from "./radio.ts";
