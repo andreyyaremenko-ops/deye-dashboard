@@ -8,7 +8,8 @@ export function LineChart({ rows, series, from, to, unit = "W", height = 260 }: 
   const W = 1000, H = height, L = 64, R = 12, T = 12, B = 34;
   const x = scaleLinear([from, to], [L, W - R]);
   const maxV = unit === "%" ? 100 : Math.max(100, ...rows.flatMap((r) => series.map((s) => Math.abs(Number(r[s.key] ?? 0)))));
-  const minV = unit === "%" ? 0 : Math.min(0, ...rows.flatMap((r) => series.map((s) => Number(r[s.key] ?? 0))));
+  const rawMin = unit === "%" ? 0 : Math.min(0, ...rows.flatMap((r) => series.map((s) => Number(r[s.key] ?? 0))));
+  const minV = -rawMin < maxV * 0.02 ? 0 : rawMin; // ледь відʼємні значення не розтягують вісь
   const ticks = unit === "%" ? [0, 25, 50, 75, 100] : niceTicks(maxV);
   const top = ticks[ticks.length - 1]!;
   const bottom = minV < 0 ? -niceTicks(-minV)[niceTicks(-minV).length - 1]! : 0;
