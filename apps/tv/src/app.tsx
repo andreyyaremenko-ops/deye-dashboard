@@ -3,6 +3,7 @@ import { startLive, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
 import { GradientBackground, VideoBackground } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
+import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -11,6 +12,12 @@ function tokenFromUrl(): string | null {
 
 export function App() {
   const token = useMemo(tokenFromUrl, []);
+  const isPairPage = /^\/tv\/?$/.test(location.pathname) || (location.pathname.startsWith("/s") && !token);
+  // /tv із збереженим токеном -> одразу на екран; /s/<token> -> запамʼятати
+  useEffect(() => {
+    if (isPairPage) { const t = savedToken(); if (t) location.replace(`/s/${t}`); }
+    else if (token) saveToken(token);
+  }, []);
   const [live, setLive] = useState<LiveStore | null>(null);
   const [needTap, setNeedTap] = useState(false);
   const audio = useRef<HTMLAudioElement>(null);
@@ -34,7 +41,8 @@ export function App() {
   useEffect(() => { if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
   const tap = () => { audio.current?.play().then(() => setNeedTap(false)).catch(() => {}); };
 
-  if (!token) return <Msg>Немає токена екрана в адресі</Msg>;
+  if (isPairPage || !token) return <Pair />;
+  if (live?.error && /не знайдено|перевипущене/.test(live.error)) { clearToken(); }
   if (!live?.screen) return <Msg>{live?.error ?? "Завантаження…"}</Msg>;
 
   const { screen } = live;

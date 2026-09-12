@@ -55,6 +55,14 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
     setScreen(await api.post<Screen>(`/api/orgs/${org.id}/screens/${screenId}/rotate-token`));
   });
   const selected = useMemo(() => cfg?.widgets.find((w) => w.id === sel) ?? null, [cfg, sel]);
+  const [pair, setPair] = useState<{ code: string; expiresAt: string } | null>(null);
+  const [left, setLeft] = useState(0);
+  useEffect(() => {
+    if (!pair) return;
+    const tick = () => setLeft(Math.max(0, Math.round((Date.parse(pair.expiresAt) - Date.now()) / 1000)));
+    tick(); const t = setInterval(tick, 1000); return () => clearInterval(t);
+  }, [pair]);
+  const issue = useAction(async () => { setPair(await api.post(`/api/orgs/${org.id}/screens/${screenId}/pair-code`)); });
 
   if (!screen || !cfg) return <p className="muted">Завантаження…</p>;
   const url = screenUrl(screen.viewToken);
@@ -102,7 +110,16 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
             </select></Field>
           {cfg.radioUrl && <Field label={`Гучність ${Math.round(cfg.radioVolume * 100)}%`}><input type="range" min={0} max={1} step={0.05} value={cfg.radioVolume} onChange={(e) => update({ radioVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
         </Card>
-        <Card title="Посилання для ТБ"><code className="small wrap">{url}</code><p className="muted small">Лише перегляд. Не дає доступу до кабінету.</p></Card>
+        <Card title="Підключити телевізор">
+          <p className="small">На телевізорі відкрийте <b>tv.sun-hunter.men/tv</b> і введіть код:</p>
+          {pair && left > 0
+            ? <div className="paircode"><b>{pair.code.slice(0, 3)} {pair.code.slice(3)}</b><span className="muted small">діє ще {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</span></div>
+            : <Btn kind="primary" onClick={() => issue.run(undefined)} disabled={!canEdit || issue.busy}>Код для ТБ</Btn>}
+          <ErrorBox err={issue.err} />
+          <p className="muted small">Після введення ТБ запамʼятає екран. Повне посилання, якщо зручніше:</p>
+          <code className="small wrap">{url}</code>
+          <p className="muted small">Лише перегляд. Не дає доступу до кабінету.</p>
+        </Card>
       </aside>
     </div>
   </div>;

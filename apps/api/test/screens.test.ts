@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { organizations } from "../src/db/schema.ts";
+import { organizations, screens } from "../src/db/schema.ts";
 
 let t: TestApp;
 beforeAll(async () => { t = await makeTestApp(); });
@@ -69,6 +69,26 @@ describe("екрани, тарифні ліміти, публічний токе
     expect((await t.app.inject({ method: "GET", url: `/api/public/screens/${token}` })).statusCode).toBe(404);
     expect((await t.app.inject({ method: "GET", url: `/api/public/screens/${fresh}` })).statusCode).toBe(200);
     token = fresh;
+  });
+
+  it("код для ТБ: 6 цифр, 15 хв, віддає токен; невірний/прострочений — 404; перевипуск токена скидає код", async () => {
+    const r = await owner.post(`/api/orgs/${orgId}/screens/${screenId}/pair-code`);
+    expect(r.statusCode).toBe(200);
+    const { code, expiresAt } = r.json();
+    expect(code).toMatch(/^\d{6}$/);
+    expect(Date.parse(expiresAt) - Date.now()).toBeGreaterThan(14 * 60_000);
+    const pair = await t.app.inject({ method: "POST", url: "/api/public/pair", payload: { code: code.slice(0, 3) + " " + code.slice(3) } });
+    expect(pair.statusCode).toBe(200);
+    expect(pair.json().token).toBe(token);
+    expect((await t.app.inject({ method: "POST", url: "/api/public/pair", payload: { code: "000000" === code ? "111111" : "000000" } })).statusCode).toBe(404);
+    // прострочення
+    await t.db.update(screens).set({ pairCodeExpiresAt: new Date(Date.now() - 1000) }).where(eq(screens.id, screenId));
+    expect((await t.app.inject({ method: "POST", url: "/api/public/pair", payload: { code } })).statusCode).toBe(404);
+    // новий код, потім перевипуск токена скидає його
+    const code2 = (await owner.post(`/api/orgs/${orgId}/screens/${screenId}/pair-code`)).json().code;
+    await owner.post(`/api/orgs/${orgId}/screens/${screenId}/rotate-token`);
+    expect((await t.app.inject({ method: "POST", url: "/api/public/pair", payload: { code: code2 } })).statusCode).toBe(404);
+    token = (await owner.get(`/api/orgs/${orgId}/screens`)).json().find((s: { id: string }) => s.id === screenId).viewToken;
   });
 
   it("після unclaim пристрій зникає з публічного екрана", async () => {

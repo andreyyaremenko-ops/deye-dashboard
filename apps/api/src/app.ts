@@ -1,5 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import multipart from "@fastify/multipart";
+import rateLimit from "@fastify/rate-limit";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { ZodError } from "zod";
 import type { Auth } from "./auth/create-auth.ts";
@@ -31,6 +32,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return reply.code(status).send({ error: status >= 500 ? "internal" : "error", message: status >= 500 ? "Internal error" : (err as Error).message });
   });
 
+  await app.register(rateLimit, { global: false });
   await app.register(multipart);
   await app.register(authPlugin, { auth: deps.auth });
   await registerWs(app, deps);

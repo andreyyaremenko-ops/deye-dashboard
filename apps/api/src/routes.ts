@@ -133,6 +133,10 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
     return scr.rotateToken(db, orgId, u.id, screenId);
   });
+  app.post("/api/orgs/:orgId/screens/:screenId/pair-code", async (req) => {
+    const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
+    return scr.issuePairCode(db, orgId, u.id, screenId);
+  });
   app.delete("/api/orgs/:orgId/screens/:screenId", async (req, reply) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
     await scr.deleteScreen(db, orgId, u.id, screenId);
@@ -170,6 +174,12 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     const s = await scr.publicScreen(db, token);
     const states = await store.getMany(s.deviceIds);
     return { ...s, states: states.map((x) => ({ ...x, stale: isStale(x) })) };
+  });
+
+  // ТБ вводить код: rate-limit проти перебору (6 цифр)
+  app.post("/api/public/pair", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req) => {
+    const { code } = z.object({ code: z.string().min(6).max(12) }).parse(req.body);
+    return scr.resolvePairCode(db, code);
   });
 
   // ---------------- internal: mosquitto-go-auth (тільки docker-мережа)

@@ -3,6 +3,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
 import { backgrounds, devices, organizations, plans, screens } from "../db/schema.ts";
 import { randomToken } from "../lib/crypto.ts";
+import { randomInt } from "node:crypto";
 import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
@@ -55,7 +56,7 @@ export async function updateScreen(db: Db, orgId: string, actorId: string, id: s
 
 export async function rotateToken(db: Db, orgId: string, actorId: string, id: string) {
   await requireRole(db, orgId, actorId, "admin");
-  const [s] = await db.update(screens).set({ viewToken: randomToken(32), updatedAt: new Date() })
+  const [s] = await db.update(screens).set({ viewToken: randomToken(32), pairCode: null, pairCodeExpiresAt: null, updatedAt: new Date() })
     .where(and(eq(screens.id, id), eq(screens.orgId, orgId))).returning();
   if (!s) throw notFound("Screen not found");
   return s;
@@ -95,4 +96,35 @@ export async function publicScreen(db: Db, token: string) {
     deviceIds: own.map((d) => d.id),
     branding: row.planLimits.branding,
   };
+}
+
+export const PAIR_CODE_TTL_MS = 15 * 60_000;
+
+/** 6-значний код для введення на ТБ. Діє 15 хв, один активний код на екран. */
+export async function issuePairCode(db: Db, orgId: string, actorId: string, id: string) {
+  await requireRole(db, orgId, actorId, "admin");
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
+    const expiresAt = new Date(Date.now() + PAIR_CODE_TTL_MS);
+    try {
+      const [s] = await db.update(screens).set({ pairCode: code, pairCodeExpiresAt: expiresAt })
+        .where(and(eq(screens.id, id), eq(screens.orgId, orgId))).returning({ id: screens.id });
+      if (!s) throw notFound("Screen not found");
+      return { code, expiresAt };
+    } catch (e) {
+      if (String(e).includes("screens_pair_code_idx")) continue; // колізія з чужим активним кодом
+      throw e;
+    }
+  }
+  throw conflict("Could not issue a code, try again", "retry");
+}
+
+/** ТБ вводить код -> отримує view-токен. Код лишається дійсним до закінчення TTL (кілька ТБ). */
+export async function resolvePairCode(db: Db, code: string) {
+  const clean = code.replace(/\D/g, "");
+  if (clean.length !== 6) throw notFound("Bad code");
+  const [s] = await db.select({ viewToken: screens.viewToken, expiresAt: screens.pairCodeExpiresAt, name: screens.name })
+    .from(screens).where(eq(screens.pairCode, clean));
+  if (!s || !s.expiresAt || s.expiresAt.getTime() < Date.now()) throw notFound("Code not found or expired");
+  return { token: s.viewToken, name: s.name };
 }

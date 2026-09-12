@@ -130,9 +130,11 @@ export const screens = pgTable("screens", {
   name: text("name").notNull(),
   config: jsonb("config").$type<ScreenConfig>().notNull(),
   viewToken: text("view_token").notNull(),
+  pairCode: text("pair_code"),                                       // 6 цифр для введення на ТБ
+  pairCodeExpiresAt: timestamp("pair_code_expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [uniqueIndex("screens_view_token_idx").on(t.viewToken), index("screens_org_idx").on(t.orgId)]);
+}, (t) => [uniqueIndex("screens_view_token_idx").on(t.viewToken), uniqueIndex("screens_pair_code_idx").on(t.pairCode), index("screens_org_idx").on(t.orgId)]);
 
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
