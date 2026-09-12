@@ -32,7 +32,7 @@ export async function series(db: Db, deviceId: string, metrics: string[], from: 
   const rows = await db.execute(sql`
     select date_bin(${interval}::interval, time, timestamp '2000-01-01') as bucket, metric, avg(value)::float as v
     from telemetry
-    where device_id = ${deviceId} and metric in (${sql.join(metrics.map((m) => sql`${m}`), sql`, `)}) and time >= ${from} and time < ${to}
+    where device_id = ${deviceId} and metric in (${sql.join(metrics.map((m) => sql`${m}`), sql`, `)}) and time >= ${from.toISOString()}::timestamptz and time < ${to.toISOString()}::timestamptz
     group by 1, 2 order by 1`);
   const byT = new Map<string, SeriesPoint>();
   for (const r of asRows<{ bucket: Date | string; metric: string; v: number }>(rows)) {
