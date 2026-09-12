@@ -50,6 +50,13 @@
       "when": 1789240572421,
       "tag": "0006_firmware_ota",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789243310133,
+      "tag": "0007_logger_frames",
+      "breakpoints": true
     }
   ]
 }

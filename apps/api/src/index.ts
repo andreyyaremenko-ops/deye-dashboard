@@ -5,6 +5,7 @@ import { config } from "./config.ts";
 import { db, sql } from "./db/client.ts";
 import { dispatch, type IngestDeps } from "./mqtt/ingest.ts";
 import { RedisStateStore } from "./state/store.ts";
+import { startLoggerServer } from "./solarman/server.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 const app = await buildApp({
@@ -35,7 +36,10 @@ client.on("connect", () => {
 client.on("error", (e) => app.log.warn({ err: e.message }, "mqtt error"));
 client.on("message", (topic, payload) => { void dispatch(ingest, topic, payload); });
 
-app.addHook("onClose", async () => { client.end(true); await store.close(); await sql.end(); });
+// Solarman-стіки в режимі push (Server B): TCP 10000
+const loggerServer = startLoggerServer({ db, log: app.log }, config.LOGGER_PORT);
+
+app.addHook("onClose", async () => { loggerServer.close(); client.end(true); await store.close(); await sql.end(); });
 
 try {
   await app.listen({ port: config.API_PORT, host: "0.0.0.0" });

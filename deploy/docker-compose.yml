@@ -58,6 +58,7 @@ services:
   api:
     build: { context: .., dockerfile: apps/api/Dockerfile }
     restart: unless-stopped
+    ports: ["10000:10000"]          # Solarman-стіки в режимі push (Server B), TCP
     env_file: .env
     environment:
       DATABASE_URL: postgres://deye:${POSTGRES_PASSWORD}@postgres:5432/deye

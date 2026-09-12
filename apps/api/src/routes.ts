@@ -137,6 +137,15 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     return reply.code(201).send(await fw.uploadFirmware(db, deps.mediaRoot, meta, file.file));
   });
 
+  app.get("/api/admin/logger-frames", async (req) => {
+    const u = requireUser(req); if (!u.isSuperadmin) throw forbidden();
+    const q = z.object({ serial: z.coerce.number().optional(), limit: z.coerce.number().min(1).max(500).default(50) }).parse(req.query);
+    const { loggerFrames } = await import("./db/schema.ts");
+    const { desc, eq } = await import("drizzle-orm");
+    const rows = await db.select().from(loggerFrames).where(q.serial ? eq(loggerFrames.serial, q.serial) : undefined).orderBy(desc(loggerFrames.receivedAt)).limit(q.limit);
+    return rows.map((r) => ({ ...r, frame: r.frame.toString("hex") }));
+  });
+
   // superadmin: реєстрація пристроїв (виробництво)
   app.post("/api/admin/devices", async (req, reply) => {
     const u = requireUser(req);

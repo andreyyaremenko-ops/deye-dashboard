@@ -8,6 +8,7 @@ const schema = z.object({
   MQTT_INTERNAL_PASS: z.string().default(""),
   API_PORT: z.coerce.number().default(3000),
   MEDIA_ROOT: z.string().default("/media"),
+  LOGGER_PORT: z.coerce.number().default(10000),
   PUBLIC_URL: z.string().default("http://localhost:5173"),
   BETTER_AUTH_SECRET: z.string().default("dev-secret-change-me-please-32-bytes"),
   GOOGLE_CLIENT_ID: z.string().optional(),

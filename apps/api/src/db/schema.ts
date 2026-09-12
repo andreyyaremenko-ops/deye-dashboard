@@ -150,8 +150,18 @@ export const screens = pgTable("screens", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("screens_view_token_idx").on(t.viewToken), uniqueIndex("screens_pair_code_idx").on(t.pairCode), index("screens_org_idx").on(t.orgId)]);
 
+// Сирі кадри від Solarman-стіків у режимі push (Server B). Для аналізу протоколу і перепарсингу.
+export const loggerFrames = pgTable("logger_frames", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  serial: bigint("serial", { mode: "number" }).notNull(),
+  control: integer("control").notNull(),        // 0x4110 hello, 0x4210 data, 0x4710 heartbeat...
+  frame: bytea("frame").notNull(),
+  remoteIp: text("remote_ip"),
+  receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("logger_frames_serial_time_idx").on(t.serial, t.receivedAt.desc())]);
+
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
-  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware,
+  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware, loggerFrames,
 };
 export { sql };
