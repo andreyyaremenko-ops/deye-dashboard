@@ -109,6 +109,9 @@ export const backgrounds = pgTable("backgrounds", {
   status: backgroundStatus("status").notNull().default("ready"),
   files: jsonb("files").$type<Record<"1080" | "720", string>>(),
   preview: text("preview"),
+  sourceFile: text("source_file"),          // оригінал у /media до транскодування
+  attribution: text("attribution"),         // автор (Pexels)
+  durationS: integer("duration_s"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("backgrounds_org_idx").on(t.orgId)]);
 

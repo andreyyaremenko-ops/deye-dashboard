@@ -35,6 +35,27 @@ export interface Device {
   state: Record<string, number | string | boolean> | null; stateUpdatedAt: string | null; stale: boolean;
 }
 export interface Screen { id: string; orgId: string; name: string; config: ScreenConfig; viewToken: string; createdAt: string; updatedAt: string }
+export interface Background {
+  id: string; orgId: string | null; name: string; category: string | null; status: "uploaded" | "processing" | "ready" | "failed";
+  files: Record<"1080" | "720", string> | null; preview: string | null; attribution: string | null; license: string | null; durationS: number | null; createdAt: string;
+}
 export type { RadioStation };
+
+/** Завантаження з прогресом (fetch не дає upload progress). */
+export function uploadBackground(orgId: string, file: File, onProgress: (pct: number) => void): Promise<Background> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `/api/orgs/${orgId}/backgrounds`);
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
+    xhr.onload = () => {
+      const data = (() => { try { return JSON.parse(xhr.responseText); } catch { return {}; } })();
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data as Background);
+      else reject(new ApiError(xhr.status, data.error ?? "error", data.message ?? xhr.statusText));
+    };
+    xhr.onerror = () => reject(new Error("Помилка мережі"));
+    const fd = new FormData(); fd.append("file", file);
+    xhr.send(fd);
+  });
+}
 
 export const screenUrl = (token: string) => `${location.origin}/s/${token}`;

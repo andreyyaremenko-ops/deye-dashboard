@@ -1,4 +1,5 @@
 import Fastify, { type FastifyInstance } from "fastify";
+import multipart from "@fastify/multipart";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { ZodError } from "zod";
 import type { Auth } from "./auth/create-auth.ts";
@@ -15,6 +16,7 @@ export interface AppDeps {
   publicUrl: string;
   mqttInternalUser: string;
   mqttInternalPass: string;
+  mediaRoot: string;
   logger?: boolean | object;
 }
 
@@ -29,6 +31,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     return reply.code(status).send({ error: status >= 500 ? "internal" : "error", message: status >= 500 ? "Internal error" : (err as Error).message });
   });
 
+  await app.register(multipart);
   await app.register(authPlugin, { auth: deps.auth });
   await registerWs(app, deps);
   await registerRoutes(app, deps);

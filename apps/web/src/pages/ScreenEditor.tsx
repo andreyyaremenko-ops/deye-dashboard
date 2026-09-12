@@ -4,6 +4,7 @@ import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
 import { api, screenUrl, type Device, type Org, type RadioStation, type Screen } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, useAction } from "../components/ui.tsx";
 import { Canvas } from "../editor/Canvas.tsx";
+import { BackgroundPicker } from "../editor/BackgroundPicker.tsx";
 
 type W = ScreenConfig["widgets"][number];
 const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: number }[] = [
@@ -93,7 +94,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
         </Card>}
         <Card title="Екран">
           <Field label="Тема"><select value={cfg.theme} onChange={(e) => update({ theme: e.currentTarget.value as "dark" | "light" })} disabled={!canEdit}><option value="dark">Темна</option><option value="light">Світла</option></select></Field>
-          <Field label="Фон"><select disabled><option>Бібліотека фонів — незабаром</option></select></Field>
+          <div className="field"><span>Фон</span><BackgroundPicker org={org} value={cfg.backgroundId} onChange={(id) => update({ backgroundId: id })} canEdit={canEdit} /></div>
           <Field label={`Радіо${radioAllowed ? "" : " (недоступно в тарифі)"}`}>
             <select value={cfg.radioUrl ?? ""} disabled={!canEdit || !radioAllowed} onChange={(e) => update({ radioUrl: e.currentTarget.value || null })}>
               <option value="">Вимкнено</option>

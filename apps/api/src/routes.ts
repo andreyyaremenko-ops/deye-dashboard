@@ -6,9 +6,10 @@ import type { AppDeps } from "./app.ts";
 import * as orgs from "./orgs/service.ts";
 import * as dev from "./devices/service.ts";
 import * as scr from "./screens/service.ts";
+import * as bgs from "./backgrounds/service.ts";
 import { ACC, mqttAclCheck, mqttAuth, mqttSuperuser } from "./mqtt/acl.ts";
 import { isStale } from "./state/store.ts";
-import { forbidden } from "./lib/errors.ts";
+import { badRequest, forbidden } from "./lib/errors.ts";
 
 const uuid = z.string().uuid();
 const orgParams = z.object({ orgId: uuid });
@@ -135,6 +136,31 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   app.delete("/api/orgs/:orgId/screens/:screenId", async (req, reply) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
     await scr.deleteScreen(db, orgId, u.id, screenId);
+    return reply.code(204).send();
+  });
+
+  // ---------------- backgrounds
+  app.get("/api/orgs/:orgId/backgrounds", async (req) => {
+    const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
+    await orgs.requireRole(db, orgId, u.id, "staff");
+    return bgs.listBackgrounds(db, orgId);
+  });
+  app.post("/api/orgs/:orgId/backgrounds", async (req, reply) => {
+    const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
+    const file = await req.file({ limits: { fileSize: bgs.MAX_UPLOAD_BYTES, files: 1 } });
+    if (!file) throw badRequest("No file", "no_file");
+    const bg = await bgs.startUpload(db, orgId, u.id, file.mimetype, file.filename, file.file, deps.mediaRoot);
+    if (file.file.truncated) { await bgs.deleteBackground(db, orgId, u.id, bg.id, deps.mediaRoot); throw badRequest("File too large (max 300 MB)", "too_large"); }
+    return reply.code(201).send(bg);
+  });
+  app.patch("/api/orgs/:orgId/backgrounds/:id", async (req) => {
+    const u = requireUser(req); const { orgId, id } = z.object({ orgId: uuid, id: uuid }).parse(req.params);
+    const { name } = z.object({ name: z.string().min(1).max(80) }).parse(req.body);
+    return bgs.renameBackground(db, orgId, u.id, id, name);
+  });
+  app.delete("/api/orgs/:orgId/backgrounds/:id", async (req, reply) => {
+    const u = requireUser(req); const { orgId, id } = z.object({ orgId: uuid, id: uuid }).parse(req.params);
+    await bgs.deleteBackground(db, orgId, u.id, id, deps.mediaRoot);
     return reply.code(204).send();
   });
 

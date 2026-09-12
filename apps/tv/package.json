@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "preact": "^10.27.0"
+    "preact": "^10.27.0",
+    "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {
     "@deye/shared": "workspace:*",

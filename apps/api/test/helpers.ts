@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
@@ -29,6 +30,7 @@ export async function makeTestApp() {
   const app = await buildApp({
     db, auth, store, publicUrl: "http://localhost:5173",
     mqttInternalUser: INTERNAL.user, mqttInternalPass: INTERNAL.pass,
+    mediaRoot: mkdtempSync(join(tmpdir(), "deye-media-")),
   });
   await app.ready();
   return { app, db, store, mails, pg, close: async () => { await app.close(); await pg.close(); } };

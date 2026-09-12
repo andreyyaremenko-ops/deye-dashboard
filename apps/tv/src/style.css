@@ -32,3 +32,8 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .conn-connecting, .conn-reconnecting { background: #f2b21b; animation: blink 1s infinite; }
 .conn-offline { background: #b3261e; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: .1; } }
+
+.plaque { position: absolute; right: 2vw; bottom: 3vw; z-index: 6; display: flex; gap: 1.2vw; align-items: center; padding: 1vw 1.4vw; border-radius: 1vw;
+  background: rgba(255,255,255,.92); color: #10203a; box-shadow: 0 .8vw 2.5vw rgba(0,0,0,.45); animation: plaque-in .5s ease-out; font-size: 1.5vw; }
+.plaque .sub { font-size: 1.1vw; opacity: .7; } .plaque-qr { width: 7vw; height: 7vw; } .plaque-qr svg { width: 100%; height: 100%; display: block; }
+@keyframes plaque-in { from { transform: translateY(2vw); opacity: 0; } to { transform: none; opacity: 1; } }

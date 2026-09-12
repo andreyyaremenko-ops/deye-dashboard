@@ -12,6 +12,7 @@ const app = await buildApp({
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
+  mediaRoot: config.MEDIA_ROOT,
   logger: { level: config.NODE_ENV === "production" ? "info" : "debug" },
 });
 

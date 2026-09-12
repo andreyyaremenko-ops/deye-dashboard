@@ -22,6 +22,10 @@ async function validateConfig(db: Db, orgId: string, input: unknown): Promise<Sc
   }
   const { plan } = await getOrgWithPlan(db, orgId);
   if (cfg.radioUrl && !plan.limits.radio) throw conflict("Radio is not included in the plan", "plan_limit");
+  if (cfg.backgroundId) {
+    const [bg] = await db.select({ orgId: backgrounds.orgId }).from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
+    if (!bg || (bg.orgId !== null && bg.orgId !== orgId)) throw badRequest("Background not available", "bad_background");
+  }
   return cfg;
 }
 
@@ -76,11 +80,12 @@ export async function publicScreen(db: Db, token: string) {
   const own = referenced.length
     ? await db.select({ id: devices.id }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
-  let background: { files: Record<string, string> | null; preview: string | null } | null = null;
+  let background: { files: Record<string, string> | null; preview: string | null; attribution: string | null } | null = null;
   if (cfg.backgroundId) {
-    const [bg] = await db.select({ files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status })
+    const [bg] = await db.select({ files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status, attribution: backgrounds.attribution, orgId: backgrounds.orgId })
       .from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
-    if (bg && bg.status === "ready") background = { files: bg.files, preview: bg.preview };
+    // стандартний або власний цієї організації
+    if (bg && bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) background = { files: bg.files, preview: bg.preview, attribution: bg.attribution };
   }
   return {
     id: row.screen.id,

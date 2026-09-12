@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { startLive, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
 import { GradientBackground, VideoBackground } from "./background.tsx";
+import { Plaque } from "./plaque.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -51,6 +52,7 @@ export function App() {
     {radioUrl && <audio ref={audio} preload="none" />}
     {needTap && <div class="tap" onClick={tap}><div>▶ Натисніть для старту</div></div>}
     {screen.branding && <div class="brand">powered by tv.sun-hunter.men</div>}
+    {screen.branding && <Plaque />}
     <div class={`conn conn-${live.status}`} title={live.status} />
   </div>;
 }
