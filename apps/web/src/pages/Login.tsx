@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { authClient } from "../auth.ts";
 import { Btn, ErrorBox, Field, onSubmit, useAction } from "../components/ui.tsx";
 
 export function Login({ mode }: { mode: "login" | "signup" }) {
-  const [, navigate] = useLocation();
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
   const [sent, setSent] = useState(false);
   const next = new URLSearchParams(location.search).get("next") ?? "/";
@@ -14,7 +13,7 @@ export function Login({ mode }: { mode: "login" | "signup" }) {
       ? await authClient.signIn.email({ email, password })
       : await authClient.signUp.email({ email, password, name: name || email.split("@")[0]! });
     if (r.error) throw new Error(r.error.message ?? "Помилка входу");
-    navigate(next);
+    location.assign(next); // повне перезавантаження: App перечитає /api/me
   });
   const magic = useAction(async () => {
     if (!email) throw new Error("Введіть email");
