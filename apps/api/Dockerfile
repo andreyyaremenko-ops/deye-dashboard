@@ -5,7 +5,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY apps/api/package.json apps/api/
 COPY packages/shared/package.json packages/shared/
 COPY packages/register-maps/package.json packages/register-maps/
-RUN pnpm install --frozen-lockfile --prod=false
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 COPY packages ./packages
 COPY apps/api ./apps/api
 WORKDIR /repo/apps/api
