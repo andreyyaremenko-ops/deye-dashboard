@@ -85,7 +85,8 @@ services:
 networks:
   app:
   aqua:
-    external: true   # мережа акваріума; його compose треба перевести з "80:8000" на цю мережу
+    external: true
+    name: paper-aquarium_default   # мережа акваріума; його compose треба зняти з "80:8000"
 
 volumes:
   caddy_data:
