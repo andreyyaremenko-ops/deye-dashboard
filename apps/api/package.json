@@ -1,0 +1,30 @@
+{
+  "name": "@deye/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "start": "node --experimental-strip-types src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --experimental-strip-types src/db/migrate.ts",
+    "db:seed": "node --experimental-strip-types src/db/seed.ts"
+  },
+  "dependencies": {
+    "@deye/register-maps": "workspace:*",
+    "@deye/shared": "workspace:*",
+    "drizzle-orm": "^0.45.0",
+    "fastify": "^5.6.0",
+    "postgres": "^3.4.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/node": "^24.0.0",
+    "drizzle-kit": "^0.31.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

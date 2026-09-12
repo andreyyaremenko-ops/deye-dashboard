@@ -1,0 +1,27 @@
+# Локальна розробка: тільки інфраструктура, API/web запускаються з хоста.
+services:
+  postgres:
+    image: timescale/timescaledb:2.21.0-pg17
+    environment:
+      POSTGRES_USER: deye
+      POSTGRES_PASSWORD: deye
+      POSTGRES_DB: deye
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deye"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports: ["1883:1883"]
+    volumes:
+      - ./deploy/mosquitto/mosquitto.dev.conf:/mosquitto/config/mosquitto.conf:ro
+
+volumes:
+  pgdata:

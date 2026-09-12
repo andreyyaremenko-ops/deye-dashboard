@@ -1,0 +1,18 @@
+{
+  "name": "deye-dashboard",
+  "private": true,
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "dev:api": "pnpm --filter @deye/api dev",
+    "db:generate": "pnpm --filter @deye/api db:generate",
+    "db:migrate": "pnpm --filter @deye/api db:migrate",
+    "db:seed": "pnpm --filter @deye/api db:seed"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  }
+}

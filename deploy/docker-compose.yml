@@ -1,0 +1,98 @@
+# Продакшн на 193.242.161.21. Запуск: docker compose --env-file .env up -d
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - web_dist:/srv/web:ro
+      - tv_dist:/srv/tv:ro
+      - media:/media:ro
+    networks: [app, aqua]
+
+  # копіює серти Caddy для Mosquitto (раз на годину)
+  certsync:
+    image: alpine:3
+    restart: unless-stopped
+    command: sh -c 'while true; do cp /data/caddy/certificates/*/tv.sun-hunter.men/tv.sun-hunter.men.* /certs/ 2>/dev/null; sleep 3600; done'
+    volumes:
+      - caddy_data:/data:ro
+      - certs:/certs
+    networks: [app]
+
+  postgres:
+    image: timescale/timescaledb:2.21.0-pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: deye
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: deye
+    command: postgres -c shared_buffers=128MB -c max_connections=40
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deye"]
+      interval: 10s
+      retries: 10
+    networks: [app]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 32mb --maxmemory-policy allkeys-lru
+    networks: [app]
+
+  mosquitto:
+    image: iegomez/mosquitto-go-auth:latest
+    restart: unless-stopped
+    ports: ["8883:8883"]
+    volumes:
+      - ./mosquitto/mosquitto.conf:/etc/mosquitto/mosquitto.conf:ro
+      - certs:/certs:ro
+      - mosq_data:/mosquitto/data
+    depends_on: [api]
+    networks: [app]
+
+  api:
+    build: { context: .., dockerfile: apps/api/Dockerfile }
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://deye:${POSTGRES_PASSWORD}@postgres:5432/deye
+      REDIS_URL: redis://redis:6379
+      MQTT_URL: mqtt://mosquitto:1883
+      NODE_ENV: production
+    volumes: [media:/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 256M } } }
+    networks: [app]
+
+  worker:
+    build: { context: .., dockerfile: apps/worker/Dockerfile }
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://deye:${POSTGRES_PASSWORD}@postgres:5432/deye
+    volumes: [media:/media]
+    depends_on:
+      postgres: { condition: service_healthy }
+    deploy: { resources: { limits: { memory: 512M } } }
+    networks: [app]
+
+networks:
+  app:
+  aqua:
+    external: true   # мережа акваріума; його compose треба перевести з "80:8000" на цю мережу
+
+volumes:
+  caddy_data:
+  caddy_config:
+  certs:
+  pgdata:
+  mosq_data:
+  media:
+  web_dist:
+  tv_dist:
