@@ -17,7 +17,12 @@ const sql = postgres(process.env.DATABASE_URL ?? "postgres://deye:deye@localhost
 
 // категорія -> запити; беремо по `take` відео на запит
 const PLAN: { category: string; query: string; take: number }[] = [
-  { category: "Вогонь", query: "fireplace", take: 3 },
+  { category: "Вогонь", query: "fireplace burning logs close up", take: 3 },
+  { category: "Вогонь", query: "campfire night", take: 2 },
+  { category: "Затишок", query: "candles flame dark", take: 2 },
+  { category: "Затишок", query: "coffee steam cup", take: 2 },
+  { category: "Зима", query: "snow falling trees", take: 2 },
+  { category: "Місто", query: "city night lights bokeh", take: 2 },
   { category: "Вода", query: "waterfall", take: 3 },
   { category: "Вода", query: "ocean waves beach", take: 2 },
   { category: "Акваріум", query: "aquarium fish", take: 3 },
@@ -28,6 +33,8 @@ const PLAN: { category: string; query: string; take: number }[] = [
   { category: "Абстракція", query: "abstract particles background", take: 2 },
 ];
 const MIN_S = 10, MAX_S = 60;
+// відбраковані вручну (дублікати, чорні кадри) — не імпортувати знову
+const SKIP = new Set((await import("./pexels-skip.json", { with: { type: "json" } })).default as string[]);
 
 interface PexelsVideo { id: number; width: number; height: number; duration: number; url: string; user: { name: string; url: string }; video_files: { file_type: string; width: number; height: number; fps: number; link: string }[] }
 
@@ -51,6 +58,7 @@ for (const p of PLAN) {
   for (const v of await search(p.query)) {
     if (taken >= p.take) break;
     if (existing.has(v.url) || v.duration < MIN_S || v.duration > MAX_S || v.width < v.height) continue;
+    if (SKIP.has(v.url)) continue;
     const f = bestFile(v);
     if (!f || f.height < 720) continue;
     const srcRel = `src/pexels-${v.id}.mp4`;
