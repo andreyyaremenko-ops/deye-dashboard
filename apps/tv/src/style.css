@@ -66,3 +66,12 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .menu-small .menu-line, .menu-small .menu-row { font-size: 1.3vw; } .menu-small .menu-title { font-size: 1.8vw; }
 .menu-large .menu-line, .menu-large .menu-row { font-size: 2.2vw; } .menu-large .menu-title { font-size: 2.8vw; }
 .menu-center { text-align: center; } .menu-center .menu-row { justify-content: center; } .menu-center .menu-dots { display: none; } .menu-center .menu-price::before { content: "· "; font-weight: 400; }
+
+/* графік доби */
+.w-chart { justify-content: flex-start; } .w-chart .title { margin-bottom: .4vw; }
+.legend { font-size: 1vw; text-transform: none; letter-spacing: 0; display: flex; gap: .8vw; align-items: center; opacity: .9; }
+.sw { display: inline-block; width: 1.4vw; height: .35vw; border-radius: .2vw; margin-right: .3vw; } .sw-pv { background: #f2b21b; } .sw-load { background: #4f8cff; }
+.chart { width: 100%; flex: 1; min-height: 0; } .chart .grid { stroke: rgba(255,255,255,.12); stroke-width: 1; }
+.chart .lbl { fill: rgba(255,255,255,.7); font-size: 20px; } .theme-light .chart .lbl { fill: rgba(0,0,0,.6); } .theme-light .chart .grid { stroke: rgba(0,0,0,.12); }
+.chart .line-pv { fill: none; stroke: #f2b21b; stroke-width: 3; stroke-linejoin: round; } .chart .area-pv { fill: rgba(242,178,27,.18); }
+.chart .line-load { fill: none; stroke: #4f8cff; stroke-width: 3; stroke-linejoin: round; }

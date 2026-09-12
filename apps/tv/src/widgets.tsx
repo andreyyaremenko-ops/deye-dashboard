@@ -17,9 +17,11 @@ function isNight(m: M | undefined): boolean {
   return state === "standby" || (state !== "normal" && (num(m, "pv_w") ?? 0) === 0);
 }
 
-interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown> }
+import { ChartWidget } from "./chart.tsx";
 
-export function Widget({ type, state, props }: Props) {
+interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string }
+
+export function Widget({ type, state, props, token, deviceId }: Props) {
   const m = state?.metrics;
   const stale = !state || state.stale;
   const cls = `w w-${type}${stale ? " stale" : ""}`;
@@ -65,6 +67,8 @@ export function Widget({ type, state, props }: Props) {
       return <Clock cls={cls} />;
     case "text":
       return <MenuText cls={cls} props={props} />;
+    case "chart":
+      return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:
       return <div class={cls}><div class="text">?{type}</div></div>;
   }

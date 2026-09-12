@@ -62,3 +62,9 @@ nav { display: flex; gap: .2rem; } .tab { padding: .45rem .8rem; border-radius: 
 
 textarea { background: #0f141c; color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: .5rem .7rem; font: inherit; font-size: .9rem; width: 100%; resize: vertical; }
 textarea:focus { outline: 2px solid var(--accent); }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem; }
+.kpi { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .6rem .8rem; display: flex; flex-direction: column; } .kpi b { font-size: 1.3rem; }
+.lc { width: 100%; height: auto; display: block; } .lc-grid { stroke: var(--line); } .lc-zero { stroke: var(--muted); } .lc-lbl { fill: var(--muted); font-size: 13px; }
+.legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; } .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; } .seg button { background: transparent; color: var(--fg); border: 0; padding: .35rem .8rem; font: inherit; cursor: pointer; } .seg button.on { background: #23304a; }

@@ -36,6 +36,10 @@ client.on("connect", () => {
 client.on("error", (e) => app.log.warn({ err: e.message }, "mqtt error"));
 client.on("message", (topic, payload) => { void dispatch(ingest, topic, payload); });
 
+// ретенція за тарифом: раз на добу (перший запуск через 5 хв після старту)
+import { runRetention } from "./history/service.ts";
+setTimeout(() => { const run = () => runRetention(db).then((n) => app.log.info({ deleted: n }, "retention")).catch((e) => app.log.warn({ err: String(e) }, "retention failed")); run(); setInterval(run, 24 * 3600_000); }, 5 * 60_000);
+
 // Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
 const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGER_PORT);
 

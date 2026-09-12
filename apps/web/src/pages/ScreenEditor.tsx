@@ -13,6 +13,7 @@ const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: 
   { t: "grid", label: "Мережа", needsDevice: true, w: 22, h: 18 },
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
+  { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
   { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },
   { t: "text", label: "Меню / текст", needsDevice: false, w: 28, h: 50 },
 ];
@@ -92,6 +93,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
             <select value={selected.deviceId ?? ""} onChange={(e) => updateWidget({ ...selected, deviceId: e.currentTarget.value })}>
               {devices.map((d) => <option key={d.id} value={d.id}>{d.name ?? d.id}</option>)}
             </select></Field>}
+          {selected.type === "chart" && <Field label="Період"><select value={String(selected.props?.hours ?? 24)} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, hours: Number(e.currentTarget.value) } })}><option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>}
           {selected.type === "text" && <>
             <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, title: e.currentTarget.value } })} placeholder="Меню" /></Field>
             <Field label="Рядки (назва — ціна; рядок з # це підзаголовок)">

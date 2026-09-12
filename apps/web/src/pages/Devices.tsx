@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "wouter";
 import { api, type Device, type Org } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, ago, onSubmit, useAction } from "../components/ui.tsx";
 
@@ -37,7 +38,7 @@ export function Devices({ org }: { org: Org }) {
       {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <p className="muted">Ще немає пристроїв. Введіть код із корпусу вище.</p> :
       <table className="tbl"><thead><tr><th>Назва</th><th>Стан</th><th>Сонце</th><th>Батарея</th><th>Мережа</th><th>Споживання</th><th>Інвертор</th><th></th></tr></thead>
         <tbody>{list.map((d) => <tr key={d.id}>
-          <td><b>{d.name ?? d.id}</b><div className="muted small">{d.id} · {d.hw ?? "?"} {d.fw ?? ""}</div></td>
+          <td><Link href={`/o/${org.id}/devices/${d.id}`}><b>{d.name ?? d.id}</b></Link><div className="muted small">{d.id} · {d.hw ?? "?"} {d.fw ?? ""}</div></td>
           <td><span className={`dot ${d.online && !d.stale ? "on" : d.online ? "warn" : "off"}`} /> {d.online ? (d.stale ? "дані застарілі" : "онлайн") : "офлайн"}<div className="muted small">{ago(d.stateUpdatedAt ?? d.lastSeenAt)}</div></td>
           <td>{fmtW(d.state?.pv_w)}</td>
           <td>{typeof d.state?.bat_soc === "number" ? `${d.state.bat_soc}%` : "—"}</td>
