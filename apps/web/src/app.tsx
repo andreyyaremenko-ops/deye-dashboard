@@ -1,5 +1,58 @@
+import { useCallback, useEffect, useState } from "react";
+import { Redirect, Route, Switch, useLocation, useParams } from "wouter";
+import { api, ApiError, type Me, type Org } from "./api.ts";
+import { Layout } from "./components/Layout.tsx";
+import { Login } from "./pages/Login.tsx";
+import { Invite, NewOrg } from "./pages/Orgs.tsx";
+import { Devices } from "./pages/Devices.tsx";
+import { Screens } from "./pages/Screens.tsx";
+import { ScreenEditor } from "./pages/ScreenEditor.tsx";
+import { Members, Settings } from "./pages/Members.tsx";
+
+const LAST_ORG = "deye.lastOrg";
+
 export function App() {
-  return <div style={{ fontFamily: "system-ui", background: "#111", color: "#eee", minHeight: "100vh", display: "grid", placeItems: "center", margin: 0 }}>
-    <div><h1>Deye Dashboard</h1><p>Кабінет у розробці. API: <a style={{ color: "#8cf" }} href="/api/health">/api/health</a></p></div>
-  </div>;
+  const [me, setMe] = useState<Me | null | undefined>(undefined); // undefined = ще не знаємо
+  const [loc, navigate] = useLocation();
+  const reload = useCallback(async () => {
+    try { setMe(await api.get<Me>("/api/me")); }
+    catch (e) { if (e instanceof ApiError && e.status === 401) setMe(null); else throw e; }
+  }, []);
+  useEffect(() => { void reload(); }, [reload]);
+
+  if (me === undefined) return <div className="auth"><p className="muted">Завантаження…</p></div>;
+  const isAuthPage = loc.startsWith("/login") || loc.startsWith("/signup");
+  if (!me) {
+    if (isAuthPage) return <Switch><Route path="/login"><Login mode="login" /></Route><Route path="/signup"><Login mode="signup" /></Route></Switch>;
+    return <Redirect to={`/login?next=${encodeURIComponent(loc)}`} />;
+  }
+  if (isAuthPage) return <Redirect to="/" />;
+
+  return <Switch>
+    <Route path="/invite/:token">{(p) => <Invite token={p.token!} onAccepted={reload} />}</Route>
+    <Route path="/new-org"><NewOrg me={me} onCreated={reload} /></Route>
+    <Route path="/o/:orgId/*?">{(p) => <OrgArea me={me} orgId={p.orgId!} />}</Route>
+    <Route>{() => {
+      const last = localStorage.getItem(LAST_ORG);
+      const org = me.orgs.find((o) => o.id === last) ?? me.orgs[0];
+      return org ? <Redirect to={`/o/${org.id}/devices`} /> : <NewOrg me={me} onCreated={reload} />;
+    }}</Route>
+  </Switch>;
 }
+
+function OrgArea({ me, orgId }: { me: Me; orgId: string }) {
+  const [org, setOrg] = useState<Org | null>(null);
+  useEffect(() => { localStorage.setItem(LAST_ORG, orgId); void api.get<Org>(`/api/orgs/${orgId}`).then(setOrg).catch(() => setOrg(null)); }, [orgId]);
+  if (!me.orgs.some((o) => o.id === orgId)) return <Redirect to="/" />;
+  return <Layout me={me} orgId={orgId}>
+    {!org ? <p className="muted">Завантаження…</p> : <Switch>
+      <Route path="/o/:orgId/devices"><Devices org={org} /></Route>
+      <Route path="/o/:orgId/screens"><Screens org={org} /></Route>
+      <Route path="/o/:orgId/screens/:screenId">{(p) => <ScreenEditor org={org} screenId={p.screenId!} />}</Route>
+      <Route path="/o/:orgId/members"><Members org={org} meId={me.user.id} /></Route>
+      <Route path="/o/:orgId/settings"><Settings org={org} /></Route>
+      <Route><Redirect to={`/o/${orgId}/devices`} /></Route>
+    </Switch>}
+  </Layout>;
+}
+void useParams;

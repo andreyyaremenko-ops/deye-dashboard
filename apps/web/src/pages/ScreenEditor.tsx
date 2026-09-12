@@ -1,0 +1,108 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
+import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
+import { api, screenUrl, type Device, type Org, type RadioStation, type Screen } from "../api.ts";
+import { Btn, Card, ErrorBox, Field, useAction } from "../components/ui.tsx";
+import { Canvas } from "../editor/Canvas.tsx";
+
+type W = ScreenConfig["widgets"][number];
+const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: number }[] = [
+  { t: "pv", label: "Сонце", needsDevice: true, w: 22, h: 18 },
+  { t: "battery", label: "Батарея", needsDevice: true, w: 22, h: 20 },
+  { t: "grid", label: "Мережа", needsDevice: true, w: 22, h: 18 },
+  { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
+  { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
+  { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },
+  { t: "text", label: "Текст", needsDevice: false, w: 30, h: 10 },
+];
+
+export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) {
+  const [screen, setScreen] = useState<Screen | null>(null);
+  const [cfg, setCfg] = useState<ScreenConfig | null>(null);
+  const [name, setName] = useState("");
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [radio, setRadio] = useState<RadioStation[]>([]);
+  const [sel, setSel] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const canEdit = org.role !== "staff";
+
+  useEffect(() => {
+    void (async () => {
+      const [list, devs, st] = await Promise.all([api.get<Screen[]>(`/api/orgs/${org.id}/screens`), api.get<Device[]>(`/api/orgs/${org.id}/devices`), api.get<RadioStation[]>("/api/radio")]);
+      const s = list.find((x) => x.id === screenId) ?? null;
+      setScreen(s); setCfg(s ? screenConfigSchema.parse(s.config) : null); setName(s?.name ?? ""); setDevices(devs); setRadio(st);
+    })();
+  }, [org.id, screenId]);
+
+  const update = (patch: Partial<ScreenConfig>) => { setCfg((c) => (c ? { ...c, ...patch } : c)); setDirty(true); };
+  const updateWidget = (w: W) => update({ widgets: cfg!.widgets.map((x) => (x.id === w.id ? w : x)) });
+  const addWidget = (t: typeof TYPES[number]) => {
+    const id = `${t.t}-${Math.random().toString(36).slice(2, 7)}`;
+    const dev = devices[0]?.id;
+    const n = cfg!.widgets.length;
+    update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props: t.t === "text" ? { text: "Текст" } : {} }] });
+    setSel(id);
+  };
+  const removeWidget = (id: string) => { update({ widgets: cfg!.widgets.filter((w) => w.id !== id) }); setSel(null); };
+
+  const save = useAction(async () => {
+    const s = await api.patch<Screen>(`/api/orgs/${org.id}/screens/${screenId}`, { name, config: cfg });
+    setScreen(s); setCfg(screenConfigSchema.parse(s.config)); setDirty(false);
+  });
+  const rotate = useAction(async () => {
+    if (!confirm("Перевипустити посилання? Старе перестане працювати на всіх телевізорах.")) return;
+    setScreen(await api.post<Screen>(`/api/orgs/${org.id}/screens/${screenId}/rotate-token`));
+  });
+  const selected = useMemo(() => cfg?.widgets.find((w) => w.id === sel) ?? null, [cfg, sel]);
+
+  if (!screen || !cfg) return <p className="muted">Завантаження…</p>;
+  const url = screenUrl(screen.viewToken);
+  const radioAllowed = org.plan.limits.radio;
+
+  return <div className="editor">
+    <div className="editor-top">
+      <Link href={`/o/${org.id}/screens`} className="btn btn-ghost">← Екрани</Link>
+      <input className="name" value={name} onChange={(e) => { setName(e.currentTarget.value); setDirty(true); }} disabled={!canEdit} />
+      <div className="grow" />
+      <a href={url} target="_blank" rel="noreferrer" className="btn">Відкрити на ТБ ↗</a>
+      <Btn onClick={() => navigator.clipboard?.writeText(url)}>Копіювати посилання</Btn>
+      {canEdit && <Btn kind="ghost" onClick={() => rotate.run(undefined)} title="Перевипустити посилання">Перевипустити</Btn>}
+      {canEdit && <Btn kind="primary" onClick={() => save.run(undefined)} disabled={!dirty || save.busy}>{save.busy ? "Зберігаю…" : dirty ? "Зберегти" : "Збережено"}</Btn>}
+    </div>
+    <ErrorBox err={save.err ?? rotate.err} />
+    <div className="editor-body">
+      <Canvas widgets={cfg.widgets} selected={sel} onSelect={setSel} onChange={updateWidget} theme={cfg.theme} />
+      <aside className="side">
+        <Card title="Додати віджет">
+          <div className="chips">{TYPES.map((t) => <button key={t.t} className="chip" disabled={!canEdit || (t.needsDevice && devices.length === 0)} onClick={() => addWidget(t)}>{t.label}</button>)}</div>
+          {devices.length === 0 && <p className="muted small">Спершу привʼяжіть пристрій.</p>}
+        </Card>
+        {selected && <Card title={`Віджет: ${TYPES.find((t) => t.t === selected.type)?.label ?? selected.type}`}
+          actions={canEdit && <Btn kind="danger" onClick={() => removeWidget(selected.id)}>Видалити</Btn>}>
+          {TYPES.find((t) => t.t === selected.type)?.needsDevice && <Field label="Пристрій">
+            <select value={selected.deviceId ?? ""} onChange={(e) => updateWidget({ ...selected, deviceId: e.currentTarget.value })}>
+              {devices.map((d) => <option key={d.id} value={d.id}>{d.name ?? d.id}</option>)}
+            </select></Field>}
+          {selected.type === "text" && <Field label="Текст"><input value={String(selected.props?.text ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, text: e.currentTarget.value } })} /></Field>}
+          <div className="row small">
+            <Field label="X %"><input type="number" value={selected.x} onChange={(e) => updateWidget({ ...selected, x: +e.currentTarget.value })} /></Field>
+            <Field label="Y %"><input type="number" value={selected.y} onChange={(e) => updateWidget({ ...selected, y: +e.currentTarget.value })} /></Field>
+            <Field label="Ш %"><input type="number" value={selected.w} onChange={(e) => updateWidget({ ...selected, w: +e.currentTarget.value })} /></Field>
+            <Field label="В %"><input type="number" value={selected.h} onChange={(e) => updateWidget({ ...selected, h: +e.currentTarget.value })} /></Field>
+          </div>
+        </Card>}
+        <Card title="Екран">
+          <Field label="Тема"><select value={cfg.theme} onChange={(e) => update({ theme: e.currentTarget.value as "dark" | "light" })} disabled={!canEdit}><option value="dark">Темна</option><option value="light">Світла</option></select></Field>
+          <Field label="Фон"><select disabled><option>Бібліотека фонів — незабаром</option></select></Field>
+          <Field label={`Радіо${radioAllowed ? "" : " (недоступно в тарифі)"}`}>
+            <select value={cfg.radioUrl ?? ""} disabled={!canEdit || !radioAllowed} onChange={(e) => update({ radioUrl: e.currentTarget.value || null })}>
+              <option value="">Вимкнено</option>
+              {radio.map((r) => <option key={r.id} value={r.url}>{r.title}</option>)}
+            </select></Field>
+          {cfg.radioUrl && <Field label={`Гучність ${Math.round(cfg.radioVolume * 100)}%`}><input type="range" min={0} max={1} step={0.05} value={cfg.radioVolume} onChange={(e) => update({ radioVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
+        </Card>
+        <Card title="Посилання для ТБ"><code className="small wrap">{url}</code><p className="muted small">Лише перегляд. Не дає доступу до кабінету.</p></Card>
+      </aside>
+    </div>
+  </div>;
+}
