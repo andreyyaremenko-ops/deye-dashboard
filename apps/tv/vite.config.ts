@@ -6,7 +6,7 @@ export default defineConfig({
   base: "/s/",
   plugins: [preact()],
   build: {
-    target: "es2018",          // старі ТБ-браузери (Tizen/webOS 2019+)
+    target: "es2015",          // старі ТБ-браузери (Chromium 38–55 у Tizen/webOS 2015–2018)
     outDir: "dist",
     sourcemap: false,
     cssCodeSplit: false,

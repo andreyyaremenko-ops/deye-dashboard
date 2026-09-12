@@ -1,4 +1,35 @@
-tv.sun-hunter.men {
+# Старі ТБ без кореневого сертифіката Let's Encrypt: сторінка екрана доступна і по HTTP.
+http://tv.sun-hunter.men {
+    @tv path /s/* /tv /api/public/* /ws /media/*
+    handle @tv {
+        handle /api/public/* {
+            reverse_proxy api:3000
+        }
+        handle /ws* {
+            reverse_proxy api:3000
+        }
+        handle_path /media/* {
+            root * /media
+            header Cache-Control "public, max-age=31536000, immutable"
+            file_server
+        }
+        handle /tv {
+            root * /srv/tv
+            rewrite * /index.html
+            file_server
+        }
+        handle_path /s/* {
+            root * /srv/tv
+            try_files {path} /index.html
+            file_server
+        }
+    }
+    handle {
+        redir https://tv.sun-hunter.men{uri} permanent
+    }
+}
+
+https://tv.sun-hunter.men {
     encode zstd gzip
 
     handle /api/* {

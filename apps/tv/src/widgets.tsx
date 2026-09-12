@@ -64,7 +64,7 @@ export function Widget({ type, state, props }: Props) {
     case "clock":
       return <Clock cls={cls} />;
     case "text":
-      return <div class={cls}><div class="text">{String(props.text ?? "")}</div></div>;
+      return <MenuText cls={cls} props={props} />;
     default:
       return <div class={cls}><div class="text">?{type}</div></div>;
   }
@@ -88,5 +88,25 @@ function Clock({ cls }: { cls: string }) {
   return <div class={cls}>
     <div class="big">{hh}:{mm}</div>
     <div class="sub">{now.toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long" })}</div>
+  </div>;
+}
+
+/** Текст/меню: багато рядків; рядок "Назва — 65" або "Назва ... 65" ділиться на дві колонки. */
+function MenuText({ cls, props }: { cls: string; props: Record<string, unknown> }) {
+  const title = String(props.title ?? "").trim();
+  const size = String(props.size ?? "medium");
+  const align = String(props.align ?? "left");
+  const plain = props.card === false;
+  const lines = String(props.text ?? "").split(/\r?\n/);
+  return <div class={`${cls} menu menu-${size} menu-${align}${plain ? " menu-plain" : ""}`}>
+    {title && <div class="menu-title">{title}</div>}
+    {lines.map((raw, i) => {
+      const line = raw.trim();
+      if (!line) return <div key={i} class="menu-gap" />;
+      if (/^#\s*/.test(line)) return <div key={i} class="menu-sub">{line.replace(/^#\s*/, "")}</div>;
+      const m = /^(.*?)\s*(?:[-–—]|\.{2,}|\t)\s*([^\s].{0,12})$/.exec(line);
+      if (m && /\d/.test(m[2]!)) return <div key={i} class="menu-row"><span class="menu-name">{m[1]}</span><span class="menu-dots" /><span class="menu-price">{m[2]}</span></div>;
+      return <div key={i} class="menu-line">{line}</div>;
+    })}
   </div>;
 }

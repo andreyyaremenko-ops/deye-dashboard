@@ -38,7 +38,7 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
       <div className="cw-t">{LABEL[w.type] ?? w.type}</div>
-      {w.type === "text" && <div className="cw-b">{String(w.props?.text ?? "")}</div>}
+      {w.type === "text" && <div className="cw-b">{String(w.props?.title ?? "")}{w.props?.title ? ": " : ""}{String(w.props?.text ?? "").split(/\r?\n/).slice(0, 3).join(" · ")}</div>}
       <div className="cw-r" onPointerDown={(e) => down(e, w, "resize")} />
     </div>)}
     {widgets.length === 0 && <div className="canvas-empty">Додайте віджети праворуч</div>}

@@ -14,7 +14,7 @@ const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: 
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
   { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },
-  { t: "text", label: "Текст", needsDevice: false, w: 30, h: 10 },
+  { t: "text", label: "Меню / текст", needsDevice: false, w: 28, h: 50 },
 ];
 
 export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) {
@@ -41,7 +41,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
     const id = `${t.t}-${Math.random().toString(36).slice(2, 7)}`;
     const dev = devices[0]?.id;
     const n = cfg!.widgets.length;
-    update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props: t.t === "text" ? { text: "Текст" } : {} }] });
+    update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props: t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : {} }] });
     setSel(id);
   };
   const removeWidget = (id: string) => { update({ widgets: cfg!.widgets.filter((w) => w.id !== id) }); setSel(null); };
@@ -92,7 +92,17 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
             <select value={selected.deviceId ?? ""} onChange={(e) => updateWidget({ ...selected, deviceId: e.currentTarget.value })}>
               {devices.map((d) => <option key={d.id} value={d.id}>{d.name ?? d.id}</option>)}
             </select></Field>}
-          {selected.type === "text" && <Field label="Текст"><input value={String(selected.props?.text ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, text: e.currentTarget.value } })} /></Field>}
+          {selected.type === "text" && <>
+            <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, title: e.currentTarget.value } })} placeholder="Меню" /></Field>
+            <Field label="Рядки (назва — ціна; рядок з # це підзаголовок)">
+              <textarea rows={10} value={String(selected.props?.text ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, text: e.currentTarget.value } })} />
+            </Field>
+            <div className="row small">
+              <Field label="Розмір"><select value={String(selected.props?.size ?? "medium")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, size: e.currentTarget.value } })}><option value="small">малий</option><option value="medium">середній</option><option value="large">великий</option></select></Field>
+              <Field label="Вирівнювання"><select value={String(selected.props?.align ?? "left")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, align: e.currentTarget.value } })}><option value="left">ліворуч</option><option value="center">по центру</option></select></Field>
+              <Field label="Картка"><select value={selected.props?.card === false ? "0" : "1"} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, card: e.currentTarget.value === "1" } })}><option value="1">з фоном</option><option value="0">без фону</option></select></Field>
+            </div>
+          </>}
           <div className="row small">
             <Field label="X %"><input type="number" value={selected.x} onChange={(e) => updateWidget({ ...selected, x: +e.currentTarget.value })} /></Field>
             <Field label="Y %"><input type="number" value={selected.y} onChange={(e) => updateWidget({ ...selected, y: +e.currentTarget.value })} /></Field>
