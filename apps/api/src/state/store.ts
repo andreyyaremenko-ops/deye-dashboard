@@ -16,6 +16,9 @@ export interface StateStore {
   get(deviceId: string): Promise<DeviceStateSnapshot | null>;
   getMany(ids: string[]): Promise<DeviceStateSnapshot[]>;
   subscribe(handler: (s: DeviceStateSnapshot) => void): () => void;
+  /** Екран змінено в кабінеті -> усі WS-клієнти цього екрана перечитують конфіг. */
+  notifyScreen(screenId: string): Promise<void>;
+  subscribeScreens(handler: (screenId: string) => void): () => void;
   close(): Promise<void>;
 }
 
@@ -26,10 +29,14 @@ export class MemoryStateStore implements StateStore {
   async get(id: string) { return this.map.get(id) ?? null; }
   async getMany(ids: string[]) { return ids.map((i) => this.map.get(i)).filter((x): x is DeviceStateSnapshot => !!x); }
   subscribe(h: (s: DeviceStateSnapshot) => void) { this.ee.on("state", h); return () => this.ee.off("state", h); }
+  notified: string[] = [];
+  async notifyScreen(id: string) { this.notified.push(id); this.ee.emit("screen", id); }
+  subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
   async close() {}
 }
 
 const CHANNEL = "device_state";
+const SCREEN_CHANNEL = "screen_update";
 
 export class RedisStateStore implements StateStore {
   private pub: Redis;
@@ -38,8 +45,9 @@ export class RedisStateStore implements StateStore {
   constructor(url: string) {
     this.pub = new Redis(url, { lazyConnect: false, maxRetriesPerRequest: 2 });
     this.sub = new Redis(url);
-    this.sub.subscribe(CHANNEL);
-    this.sub.on("message", (_ch: string, msg: string) => {
+    this.sub.subscribe(CHANNEL, SCREEN_CHANNEL);
+    this.sub.on("message", (ch: string, msg: string) => {
+      if (ch === SCREEN_CHANNEL) { this.ee.emit("screen", msg); return; }
       try { this.ee.emit("state", JSON.parse(msg)); } catch { /* ignore */ }
     });
   }
@@ -57,6 +65,8 @@ export class RedisStateStore implements StateStore {
     return vals.filter((v): v is string => !!v).map((v) => JSON.parse(v) as DeviceStateSnapshot);
   }
   subscribe(h: (s: DeviceStateSnapshot) => void) { this.ee.on("state", h); return () => this.ee.off("state", h); }
+  async notifyScreen(id: string) { await this.pub.publish(SCREEN_CHANNEL, id); }
+  subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
   async close() { await this.pub.quit(); await this.sub.quit(); }
 }
 

@@ -75,3 +75,7 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .chart .lbl { fill: rgba(255,255,255,.7); font-size: 20px; } .theme-light .chart .lbl { fill: rgba(0,0,0,.6); } .theme-light .chart .grid { stroke: rgba(0,0,0,.12); }
 .chart .line-pv { fill: none; stroke: #f2b21b; stroke-width: 3; stroke-linejoin: round; } .chart .area-pv { fill: rgba(242,178,27,.18); }
 .chart .line-load { fill: none; stroke: #4f8cff; stroke-width: 3; stroke-linejoin: round; }
+
+/* радіо заблоковане автозапуском: ненавʼязлива підказка знизу замість повноекранної заставки */
+.unmute { position: absolute; left: 50%; bottom: 1.2vw; transform: translateX(-50%); z-index: 10; padding: .6vw 1.4vw; border-radius: 2vw; font-size: 1.3vw;
+  background: rgba(10,16,28,.8); border: 1px solid rgba(255,255,255,.25); color: #fff; cursor: pointer; animation: blink 2s infinite; }

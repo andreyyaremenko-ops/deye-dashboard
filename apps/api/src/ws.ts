@@ -17,15 +17,27 @@ export async function registerWs(app: FastifyInstance, deps: AppDeps) {
     let screen;
     try { screen = await publicScreen(deps.db, token); }
     catch { socket.close(1008, "unknown screen"); return; }
-    const ids = new Set(screen.deviceIds);
+    let ids = new Set(screen.deviceIds);
+    const screenId = screen.id;
 
     const send = (o: unknown) => { if (socket.readyState === socket.OPEN) socket.send(JSON.stringify(o)); };
     const states = await deps.store.getMany([...ids]);
-    send({ type: "hello", screenId: screen.id, states: states.map((s) => ({ ...s, stale: isStale(s) })) });
+    send({ type: "hello", screenId, states: states.map((s) => ({ ...s, stale: isStale(s) })) });
 
     const unsub = deps.store.subscribe((s) => { if (ids.has(s.deviceId)) send({ type: "state", ...s, stale: false }); });
+    // екран змінили в кабінеті: шлемо новий конфіг (або закриваємо, якщо токен перевипущено)
+    const unsubScreen = deps.store.subscribeScreens(async (id) => {
+      if (id !== screenId) return;
+      try {
+        const fresh = await publicScreen(deps.db, token);
+        ids = new Set(fresh.deviceIds);
+        const st = await deps.store.getMany([...ids]);
+        send({ type: "config", screen: { ...fresh, states: st.map((s) => ({ ...s, stale: isStale(s) })) } });
+      } catch { socket.close(1008, "screen gone"); }
+    });
     const ping = setInterval(() => { if (socket.readyState === socket.OPEN) socket.ping(); }, 25_000);
-    socket.on("close", () => { unsub(); clearInterval(ping); });
-    socket.on("error", () => { unsub(); clearInterval(ping); });
+    const cleanup = () => { unsub(); unsubScreen(); clearInterval(ping); };
+    socket.on("close", cleanup);
+    socket.on("error", cleanup);
   });
 }

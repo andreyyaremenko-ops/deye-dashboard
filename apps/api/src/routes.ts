@@ -205,11 +205,15 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   app.patch("/api/orgs/:orgId/screens/:screenId", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
     const patch = z.object({ name: z.string().min(1).max(100).optional(), config: z.unknown().optional() }).parse(req.body);
-    return scr.updateScreen(db, orgId, u.id, screenId, patch);
+    const s = await scr.updateScreen(db, orgId, u.id, screenId, patch);
+    await store.notifyScreen(screenId);
+    return s;
   });
   app.post("/api/orgs/:orgId/screens/:screenId/rotate-token", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
-    return scr.rotateToken(db, orgId, u.id, screenId);
+    const s = await scr.rotateToken(db, orgId, u.id, screenId);
+    await store.notifyScreen(screenId);
+    return s;
   });
   app.post("/api/orgs/:orgId/screens/:screenId/pair-code", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);

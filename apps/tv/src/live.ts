@@ -52,6 +52,10 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === "hello") {
         for (const st of msg.states as DeviceState[]) store.states.set(st.deviceId, st);
+      } else if (msg.type === "config") {
+        // екран змінили в кабінеті: новий конфіг без перезавантаження
+        store.screen = msg.screen as PublicScreen;
+        for (const st of (msg.screen as PublicScreen).states) store.states.set(st.deviceId, st);
       } else if (msg.type === "state") {
         store.states.set(msg.deviceId, { deviceId: msg.deviceId, updatedAt: msg.updatedAt, metrics: msg.metrics, stale: false });
       }

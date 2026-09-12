@@ -30,16 +30,23 @@ export function App() {
     const el = audio.current;
     if (!el || !radioUrl) { setNeedTap(false); return; }
     el.volume = radioVolume;
-    let retry = 2000, timer: number | undefined;
-    const start = () => { el.src = radioUrl; el.load(); el.play().then(() => { setNeedTap(false); retry = 2000; }).catch(() => setNeedTap(true)); };
+    let retry = 2000, timer: number | undefined, blocked = false;
+    const start = () => { if (el.src !== radioUrl) { el.src = radioUrl; el.load(); } el.play().then(() => { blocked = false; setNeedTap(false); retry = 2000; }).catch(() => { blocked = true; setNeedTap(true); }); };
+    // Автозапуск зі звуком заборонено: будь-яка кнопка пульта / дотик вмикає (як в акваріумі)
+    const kick = () => { if (blocked) start(); };
+    for (const ev of ["pointerdown", "touchstart", "keydown"]) addEventListener(ev, kick, true);
     // обрив стріму: перезапуск із наростаючою паузою
-    const onFail = () => { clearTimeout(timer); timer = window.setTimeout(() => { retry = Math.min(retry * 2, 60_000); start(); }, retry); };
+    const onFail = () => { if (blocked) return; clearTimeout(timer); timer = window.setTimeout(() => { retry = Math.min(retry * 2, 60_000); start(); }, retry); };
     el.addEventListener("error", onFail); el.addEventListener("stalled", onFail); el.addEventListener("ended", onFail);
     start();
-    return () => { clearTimeout(timer); el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail); el.pause(); el.removeAttribute("src"); };
+    return () => {
+      clearTimeout(timer);
+      for (const ev of ["pointerdown", "touchstart", "keydown"]) removeEventListener(ev, kick, true);
+      el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail);
+      el.pause(); el.removeAttribute("src"); el.load();
+    };
   }, [radioUrl]);
   useEffect(() => { if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
-  const tap = () => { audio.current?.play().then(() => setNeedTap(false)).catch(() => {}); };
 
   if (isPairPage || !token) return <Pair />;
   if (live?.error && /не знайдено|перевипущене/.test(live.error)) { clearToken(); }
@@ -58,7 +65,7 @@ export function App() {
       </div>
     ))}
     {radioUrl && <audio ref={audio} preload="none" />}
-    {needTap && <div class="tap" onClick={tap}><div>▶ Натисніть для старту</div></div>}
+    {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
     {screen.branding && <div class="brand">powered by tv.sun-hunter.men</div>}
     {screen.branding && <Plaque />}
     <div class={`conn conn-${live.status}`} title={live.status} />

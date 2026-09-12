@@ -61,6 +61,12 @@ describe("екрани, тарифні ліміти, публічний токе
     expect((await t.app.inject({ method: "GET", url: `/api/public/screens/${"x".repeat(43)}` })).statusCode).toBe(404);
   });
 
+  it("зміна екрана в кабінеті сповіщає WS-клієнтів (store.notifyScreen)", async () => {
+    const before = (t.store as any).notified.length;
+    await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { name: "Зал 2" });
+    expect((t.store as any).notified.slice(before)).toEqual([screenId]);
+  });
+
   it("перевипуск токена інвалідує старий", async () => {
     const res = await owner.post(`/api/orgs/${orgId}/screens/${screenId}/rotate-token`);
     expect(res.statusCode).toBe(200);
