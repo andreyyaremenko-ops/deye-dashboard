@@ -18,6 +18,7 @@ function isNight(m: M | undefined): boolean {
 }
 
 import { ChartWidget } from "./chart.tsx";
+import { QrWidget } from "./qr.tsx";
 
 interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string }
 
@@ -67,6 +68,8 @@ export function Widget({ type, state, props, token, deviceId }: Props) {
       return <Clock cls={cls} />;
     case "text":
       return <MenuText cls={cls} props={props} />;
+    case "qr":
+      return <QrWidget cls={cls} props={props} />;
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

@@ -68,3 +68,19 @@ textarea:focus { outline: 2px solid var(--accent); }
 .lc { width: 100%; height: auto; display: block; } .lc-grid { stroke: var(--line); } .lc-zero { stroke: var(--muted); } .lc-lbl { fill: var(--muted); font-size: 13px; }
 .legend { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-bottom: .4rem; } .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: .35rem; vertical-align: middle; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; } .seg button { background: transparent; color: var(--fg); border: 0; padding: .35rem .8rem; font: inherit; cursor: pointer; } .seg button.on { background: #23304a; }
+
+/* landing */
+.land { max-width: 1120px; margin: 0 auto; padding: 0 1.2rem 3rem; }
+.land-top { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; gap: 1rem; flex-wrap: wrap; }
+.land-top nav { display: flex; gap: .4rem 1.1rem; align-items: center; flex-wrap: wrap; } .land-top nav a:not(.btn) { color: var(--fg); }
+.hero { display: grid; grid-template-columns: 1.05fr 1fr; gap: 2.5rem; align-items: center; padding: 3rem 0 2rem; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } }
+.hero h1 { font-size: 2.4rem; line-height: 1.15; margin: 0 0 1rem; } .hero p { font-size: 1.05rem; color: #c9d2de; }
+.hero-cta { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1.4rem 0 .6rem; } .btn.big { padding: .8rem 1.4rem; font-size: 1.05rem; }
+.hero-shot img { width: 100%; border-radius: 14px; border: 1px solid var(--line); box-shadow: 0 30px 60px rgba(0,0,0,.5); }
+.land-sec { padding: 2.5rem 0; border-top: 1px solid var(--line); } .land-sec h2 { font-size: 1.6rem; margin: 0 0 1.2rem; }
+.steps, .feats, .plans { display: grid; gap: 1rem; } .steps { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); } .feats { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); } .plans { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); max-width: 720px; }
+.step, .feat, .plan { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 1.2rem; } .step h3, .feat h3, .plan h3 { margin: .4rem 0 .4rem; font-size: 1.1rem; } .step p, .feat p { color: var(--muted); margin: 0; }
+.step .n { display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; } .feat .ico { font-size: 1.6rem; }
+.plan .price { font-size: 1.8rem; font-weight: 700; margin: .2rem 0 .6rem; } .plan ul { margin: 0 0 1rem 1.1rem; padding: 0; color: #c9d2de; } .plan.pro { border-color: var(--accent); }
+.land-foot { display: flex; justify-content: space-between; gap: 1rem; padding-top: 2rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; flex-wrap: wrap; }

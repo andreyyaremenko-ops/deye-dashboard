@@ -14,6 +14,7 @@ const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: 
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
+  { t: "qr", label: "QR-код", needsDevice: false, w: 14, h: 30 },
   { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },
   { t: "text", label: "Меню / текст", needsDevice: false, w: 28, h: 50 },
 ];
@@ -42,7 +43,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
     const id = `${t.t}-${Math.random().toString(36).slice(2, 7)}`;
     const dev = devices[0]?.id;
     const n = cfg!.widgets.length;
-    update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props: t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : {} }] });
+    update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props: t.t === "qr" ? { url: "https://instagram.com/", caption: "Ми в Instagram", card: true } : t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : {} }] });
     setSel(id);
   };
   const removeWidget = (id: string) => { update({ widgets: cfg!.widgets.filter((w) => w.id !== id) }); setSel(null); };
@@ -93,6 +94,11 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
             <select value={selected.deviceId ?? ""} onChange={(e) => updateWidget({ ...selected, deviceId: e.currentTarget.value })}>
               {devices.map((d) => <option key={d.id} value={d.id}>{d.name ?? d.id}</option>)}
             </select></Field>}
+          {selected.type === "qr" && <>
+            <Field label="Посилання (URL, WIFI:T:WPA;S:назва;P:пароль;; тощо)"><input value={String(selected.props?.url ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, url: e.currentTarget.value } })} /></Field>
+            <Field label="Підпис"><input value={String(selected.props?.caption ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, caption: e.currentTarget.value } })} /></Field>
+            <Field label="Картка"><select value={selected.props?.card === false ? "0" : "1"} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, card: e.currentTarget.value === "1" } })}><option value="1">з фоном</option><option value="0">без фону</option></select></Field>
+          </>}
           {selected.type === "chart" && <Field label="Період"><select value={String(selected.props?.hours ?? 24)} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, hours: Number(e.currentTarget.value) } })}><option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>}
           {selected.type === "text" && <>
             <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, title: e.currentTarget.value } })} placeholder="Меню" /></Field>

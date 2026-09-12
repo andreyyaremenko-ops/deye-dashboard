@@ -79,3 +79,9 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 /* радіо заблоковане автозапуском: ненавʼязлива підказка знизу замість повноекранної заставки */
 .unmute { position: absolute; left: 50%; bottom: 1.2vw; transform: translateX(-50%); z-index: 10; padding: .6vw 1.4vw; border-radius: 2vw; font-size: 1.3vw;
   background: rgba(10,16,28,.8); border: 1px solid rgba(255,255,255,.25); color: #fff; cursor: pointer; animation: blink 2s infinite; }
+
+/* QR-віджет */
+.w-qr { align-items: center; justify-content: center; gap: .8vw; }
+.qr-box { background: #fff; padding: .8vw; border-radius: .8vw; width: min(100%, 100% * 1); aspect-ratio: 1; max-height: 78%; display: flex; }
+.qr-box svg { width: 100%; height: 100%; display: block; }
+.qr-cap { font-size: 1.4vw; text-align: center; font-weight: 600; }

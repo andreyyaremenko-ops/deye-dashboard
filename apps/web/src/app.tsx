@@ -9,6 +9,7 @@ import { DeviceDetail } from "./pages/DeviceDetail.tsx";
 import { Screens } from "./pages/Screens.tsx";
 import { ScreenEditor } from "./pages/ScreenEditor.tsx";
 import { Members, Settings } from "./pages/Members.tsx";
+import { Landing } from "./pages/Landing.tsx";
 
 const LAST_ORG = "deye.lastOrg";
 
@@ -23,17 +24,18 @@ export function App() {
 
   if (me === undefined) return <div className="auth"><p className="muted">Завантаження…</p></div>;
   const isAuthPage = loc.startsWith("/login") || loc.startsWith("/signup");
+  if (loc === "/" || loc === "/landing") return <Landing me={me} />;
   if (!me) {
     if (isAuthPage) return <Switch><Route path="/login"><Login mode="login" /></Route><Route path="/signup"><Login mode="signup" /></Route></Switch>;
     return <Redirect to={`/login?next=${encodeURIComponent(loc)}`} />;
   }
-  if (isAuthPage) return <Redirect to="/" />;
+  if (isAuthPage) return <Redirect to="/app" />;
 
   return <Switch>
     <Route path="/invite/:token">{(p) => <Invite token={p.token!} onAccepted={reload} />}</Route>
     <Route path="/new-org"><NewOrg me={me} onCreated={reload} /></Route>
     <Route path="/o/:orgId/*?">{(p) => <OrgArea me={me} orgId={p.orgId!} />}</Route>
-    <Route>{() => {
+    <Route path="/app">{() => {
       const last = localStorage.getItem(LAST_ORG);
       const org = me.orgs.find((o) => o.id === last) ?? me.orgs[0];
       return org ? <Redirect to={`/o/${org.id}/devices`} /> : <NewOrg me={me} onCreated={reload} />;

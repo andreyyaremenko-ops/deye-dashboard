@@ -6,7 +6,7 @@ import { Btn, ErrorBox, Field, onSubmit, useAction } from "../components/ui.tsx"
 export function Login({ mode }: { mode: "login" | "signup" }) {
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
   const [sent, setSent] = useState(false);
-  const next = new URLSearchParams(location.search).get("next") ?? "/";
+  const next = new URLSearchParams(location.search).get("next") ?? "/app";
 
   const pw = useAction(async () => {
     const r = mode === "login"
