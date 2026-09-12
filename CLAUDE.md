@@ -3,7 +3,8 @@
 SaaS: пристрій на ESP читає інвертор Deye через Solarman-стік і шле сирі регістри
 в MQTT; сервер парсить, зберігає в Timescale і рендерить екран для смарт-ТБ
 (відеофон + віджети). Повна специфікація: `docs/SPEC.md`. План етапу 1 і
-схема БД: `docs/STAGE1.md`.
+схема БД: `docs/STAGE1.md`. Відкритий протокол (стік напряму, MQTT-контракт, OTA,
+карти): `docs/PROTOCOL.md`.
 
 ## Прийняті рішення по стеку (2026-09-12)
 
@@ -15,6 +16,8 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
 - API: Fastify 5, Drizzle ORM, postgres-js, zod 4. Node 24+, TS без збірки
   (`--experimental-strip-types`, тому в TS тільки erasable-синтаксис, імпорти з `.ts`).
 - Прошивка: PlatformIO, env `d1_mini` (ESP8266, перевірено) і `esp32dev`.
+- Основний шлях даних: стік у режимі TCP-Client → `apps/api/src/solarman/` (порт 10000);
+  плата — запасний шлях.
 
 ## Структура
 

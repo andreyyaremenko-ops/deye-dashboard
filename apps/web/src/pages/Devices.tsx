@@ -23,6 +23,14 @@ export function Devices({ org }: { org: Org }) {
         <Btn type="submit" kind="primary" disabled={claim.busy}>Привʼязати</Btn>
       </form>
       <ErrorBox err={claim.err} />
+      <details className="hint"><summary>Без плати: підключити Solarman-стік напряму</summary>
+        <ol className="small">
+          <li>У браузері відкрийте <code>http://&lt;IP стіка&gt;/config_hide.html</code> (логін і пароль зазвичай admin / admin).</li>
+          <li>Розділ «Internal server parameters setting»: Protocol <b>TCP-Client</b>, Port <b>10000</b>, Server address <b>193.242.161.21</b>, TCP time out <b>300</b>. Save.</li>
+          <li>Меню Restart. За хвилину стік зʼявиться тут після привʼязки: код = серійник стіка (10 цифр з наліпки або зі сторінки Status).</li>
+        </ol>
+        <p className="muted small">Застосунок Solarman продовжує працювати. Локальний порт 8899 у цьому режимі стік не обслуговує.</p>
+      </details>
     </Card>}
     <Card title="Пристрої">
       <ErrorBox err={unclaim.err ?? rename.err} />
