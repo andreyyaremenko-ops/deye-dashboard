@@ -16,21 +16,22 @@ const MEDIA_ROOT = process.env.MEDIA_ROOT ?? "/media";
 const sql = postgres(process.env.DATABASE_URL ?? "postgres://deye:deye@localhost:5432/deye", { max: 2, onnotice: () => {} });
 
 // категорія -> запити; беремо по `take` відео на запит
-const PLAN: { category: string; query: string; take: number }[] = [
-  { category: "Вогонь", query: "fireplace burning logs close up", take: 3 },
-  { category: "Вогонь", query: "campfire night", take: 2 },
-  { category: "Затишок", query: "candles flame dark", take: 2 },
-  { category: "Затишок", query: "coffee steam cup", take: 2 },
-  { category: "Зима", query: "snow falling trees", take: 2 },
-  { category: "Місто", query: "city night lights bokeh", take: 2 },
-  { category: "Вода", query: "waterfall", take: 3 },
-  { category: "Вода", query: "ocean waves beach", take: 2 },
-  { category: "Акваріум", query: "aquarium fish", take: 3 },
-  { category: "Природа", query: "forest sunlight", take: 2 },
-  { category: "Природа", query: "rain on window", take: 2 },
-  { category: "Небо", query: "clouds timelapse", take: 2 },
-  { category: "Небо", query: "night sky stars", take: 2 },
-  { category: "Абстракція", query: "abstract particles background", take: 2 },
+// title — людська назва в бібліотеці ("Камін 1", "Камін 2"...)
+const PLAN: { category: string; query: string; title: string; take: number }[] = [
+  { category: "Вогонь", query: "fireplace burning logs close up", title: "Камін", take: 3 },
+  { category: "Вогонь", query: "campfire night", title: "Багаття", take: 2 },
+  { category: "Затишок", query: "candles flame dark", title: "Свічки", take: 2 },
+  { category: "Затишок", query: "coffee steam cup", title: "Кава", take: 2 },
+  { category: "Зима", query: "snow falling trees", title: "Сніг", take: 2 },
+  { category: "Місто", query: "city night lights bokeh", title: "Нічне місто", take: 2 },
+  { category: "Вода", query: "waterfall", title: "Водоспад", take: 3 },
+  { category: "Вода", query: "ocean waves beach", title: "Море", take: 2 },
+  { category: "Акваріум", query: "aquarium fish", title: "Акваріум", take: 3 },
+  { category: "Природа", query: "forest sunlight", title: "Ліс", take: 2 },
+  { category: "Природа", query: "rain on window", title: "Дощ за вікном", take: 2 },
+  { category: "Небо", query: "clouds timelapse", title: "Хмари", take: 2 },
+  { category: "Небо", query: "night sky stars", title: "Зоряне небо", take: 1 },
+  { category: "Абстракція", query: "abstract particles background", title: "Частинки", take: 2 },
 ];
 const MIN_S = 10, MAX_S = 60;
 // відбраковані вручну (дублікати, чорні кадри) — не імпортувати знову
@@ -53,11 +54,11 @@ function bestFile(v: PexelsVideo) {
 const rows = await sql`select source, name from backgrounds where org_id is null`;
 const existing = new Set(rows.map((r) => r.source as string));
 // скільки вже є на цей запит (імʼя = "Категорія: запит #n"), щоб не набирати повторно
-const countFor = (category: string, query: string) => rows.filter((r) => String(r.name).startsWith(`${category}: ${query} #`)).length;
+const countFor = (title: string) => rows.filter((r) => /^(.+) \d+$/.exec(String(r.name))?.[1] === title).length;
 await mkdir(join(MEDIA_ROOT, "src"), { recursive: true });
 let added = 0;
 for (const p of PLAN) {
-  let taken = countFor(p.category, p.query);
+  let taken = countFor(p.title);
   if (taken >= p.take) continue;
   for (const v of await search(p.query)) {
     if (taken >= p.take) break;
@@ -69,7 +70,7 @@ for (const p of PLAN) {
     const r = await fetch(f.link, { headers: { "User-Agent": "Mozilla/5.0 deye-dashboard" } });
     if (!r.ok || !r.body) { console.log("download failed", v.id, r.status); continue; }
     await pipeline(Readable.fromWeb(r.body as never), createWriteStream(join(MEDIA_ROOT, srcRel)));
-    const name = `${p.category}: ${p.query} #${taken + 1}`;
+    const name = `${p.title} ${taken + 1}`;
     await sql.begin(async (tx) => {
       const [bg] = await tx`insert into backgrounds (org_id, name, category, license, source, attribution, status, source_file)
         values (null, ${name}, ${p.category}, 'Pexels License', ${v.url}, ${`${v.user.name} / Pexels`}, 'uploaded', ${srcRel}) returning id`;
