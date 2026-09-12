@@ -20,6 +20,7 @@ export function startLoggerServer(deps: LoggerServerDeps, port: number, host = "
     sock.setTimeout(10 * 60_000);
     deps.log.info({ ip }, "logger: connection");
     sock.on("data", async (chunk) => {
+      deps.log.info({ ip, bytes: chunk.length, hex: chunk.subarray(0, 96).toString("hex") }, "logger: raw");
       buf = Buffer.concat([buf, chunk]);
       const { frames, rest } = splitFrames(buf);
       buf = rest as Buffer;
