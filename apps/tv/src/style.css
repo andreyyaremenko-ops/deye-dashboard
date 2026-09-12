@@ -37,3 +37,6 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
   background: rgba(255,255,255,.92); color: #10203a; box-shadow: 0 .8vw 2.5vw rgba(0,0,0,.45); animation: plaque-in .5s ease-out; font-size: 1.5vw; }
 .plaque .sub { font-size: 1.1vw; opacity: .7; } .plaque-qr { width: 7vw; height: 7vw; } .plaque-qr svg { width: 100%; height: 100%; display: block; }
 @keyframes plaque-in { from { transform: translateY(2vw); opacity: 0; } to { transform: none; opacity: 1; } }
+/* текстовий віджет: без картки, по центру, великий */
+.w-text { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; justify-content: center; align-items: center; }
+.w-text .text { font-size: 3vw; font-weight: 600; letter-spacing: .02em; }
