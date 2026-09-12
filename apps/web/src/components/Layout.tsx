@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import type { ReactNode } from "react";
 import type { Me } from "../api.ts";
 import { authClient } from "../auth.ts";
+import { PRODUCT_NAME } from "@deye/shared";
 
 export function Layout({ me, orgId, children }: { me: Me; orgId: string; children: ReactNode }) {
   const [loc, navigate] = useLocation();
@@ -12,7 +13,7 @@ export function Layout({ me, orgId, children }: { me: Me; orgId: string; childre
   };
   return <div className="layout">
     <header className="top">
-      <div className="brand">☀ Deye Dashboard</div>
+      <div className="brand">☀ {PRODUCT_NAME}</div>
       <select className="orgsel" value={orgId} onChange={(e) => { const v = e.currentTarget.value; navigate(v === "__new" ? "/new-org" : `/o/${v}/devices`); }}>
         {me.orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
         <option value="__new">+ Нова організація…</option>

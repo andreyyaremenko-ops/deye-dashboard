@@ -78,6 +78,15 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       return <Clock cls={cls} />;
     case "text":
       return <MenuText cls={cls} props={props} />;
+    case "runtime": {
+      const soc = num(m, "bat_soc");
+      const est = m ? estimateRuntime(m, { capacityKwh: device?.batteryKwh, minSoc: device?.minSoc ?? 20, socHistory, assumeLoad: true }) : null;
+      const noCap = !device?.batteryKwh;
+      return <Card cls={cls + (soc !== null && soc <= (device?.minSoc ?? 20) + 10 ? " crit" : "")} title={outage ? "Автономія" : "Якщо зникне світло"} stale={stale}>
+        <Big>{est ? `≈ ${fmtHours(est.hours)}` : noCap ? "—" : "…"}</Big>
+        <Sub>{noCap ? "вкажіть ємність батареї в кабінеті" : outage ? "при поточному споживанні" : `батарея ${soc ?? "—"}% · споживання ${fmtW(num(m, "load_w"))}`}</Sub>
+      </Card>;
+    }
     case "qr":
       return <QrWidget cls={cls} props={props} />;
     case "chart":

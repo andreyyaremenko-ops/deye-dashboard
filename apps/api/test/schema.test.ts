@@ -28,7 +28,7 @@ beforeAll(async () => {
 describe("схема + seed", () => {
   it("тарифи і моделі засіяні, seed ідемпотентний", async () => {
     await seed(db);
-    expect((await db.select().from(plans)).map((p) => p.id).sort()).toEqual(["free", "pro"]);
+    expect((await db.select().from(plans)).map((p) => p.id).sort()).toEqual(["free", "max", "pro"]);
     const models = await db.select().from(inverterModels);
     expect(models.map((m) => m.id)).toEqual(["deye-hp3"]);
     expect(models[0]!.registerMap.length).toBeGreaterThan(50);

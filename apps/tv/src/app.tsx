@@ -67,7 +67,7 @@ export function App() {
     ))}
     {radioUrl && <audio ref={audio} preload="none" />}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
-    {screen.branding && <div class="brand">powered by tv.sun-hunter.men</div>}
+    {screen.branding && <div class="brand">SunHunter TV · tv.sun-hunter.men</div>}
     {screen.branding && <Plaque />}
     <div class={`conn conn-${live.status}`} title={live.status} />
   </div>;

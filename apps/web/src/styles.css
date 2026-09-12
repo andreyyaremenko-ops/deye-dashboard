@@ -87,3 +87,5 @@ textarea:focus { outline: 2px solid var(--accent); }
 
 .outage-sec { background: linear-gradient(180deg, rgba(229,72,77,.08), transparent); border-radius: 14px; padding: 2rem 1.2rem; }
 .outage-sec .lead { font-size: 1.1rem; color: #e8edf4; margin: -.4rem 0 1.2rem; }
+
+.plans-3 { max-width: none; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .price .per { font-size: 1rem; font-weight: 400; color: var(--muted); }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { authClient } from "../auth.ts";
 import { Btn, ErrorBox, Field, onSubmit, useAction } from "../components/ui.tsx";
+import { PRODUCT_NAME } from "@deye/shared";
 
 export function Login({ mode }: { mode: "login" | "signup" }) {
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
@@ -25,7 +26,7 @@ export function Login({ mode }: { mode: "login" | "signup" }) {
 
   return <div className="auth">
     <div className="auth-box">
-      <h1>☀ Deye Dashboard</h1>
+      <h1>☀ {PRODUCT_NAME}</h1>
       <p className="muted">{mode === "login" ? "Вхід у кабінет" : "Реєстрація"}</p>
       <form onSubmit={onSubmit(() => pw.run(undefined))}>
         {mode === "signup" && <Field label="Імʼя"><input value={name} onChange={(e) => setName(e.currentTarget.value)} /></Field>}

@@ -32,7 +32,7 @@ export function createAuth(db: PgDatabase<any, any, any>, mailer: Mailer) {
         sendMagicLink: async ({ email, url }) => {
           await mailer({
             to: email,
-            subject: "Вхід у Deye Dashboard",
+            subject: "Вхід у SunHunter TV",
             text: `Посилання для входу (діє 15 хвилин): ${url}`,
             html: `<p>Посилання для входу (діє 15 хвилин):</p><p><a href="${url}">${url}</a></p>`,
           });

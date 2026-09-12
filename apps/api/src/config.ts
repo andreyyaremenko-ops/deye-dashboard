@@ -17,7 +17,7 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
-  MAIL_FROM: z.string().default("Deye Dashboard <no-reply@sun-hunter.men>"),
+  MAIL_FROM: z.string().default("SunHunter TV <no-reply@sun-hunter.men>"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
 

@@ -10,7 +10,7 @@ export function gridDown(m: Metrics): boolean {
   return Math.max(...volts) < 100;
 }
 
-export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" }
+export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" | "load" }
 
 /**
  * Скільки годин протримається батарея при поточному споживанні.
@@ -18,13 +18,18 @@ export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" }
  * Інакше — за швидкістю падіння SOC (socHistory: [epochMs, soc], не менше 5 хв).
  * null, якщо батарея не розряджається або даних замало.
  */
-export function estimateRuntime(m: Metrics, opts: { capacityKwh?: number | null; minSoc?: number; socHistory?: [number, number][] } = {}): RuntimeEstimate | null {
-  const soc = num(m, "bat_soc"), batW = num(m, "bat_w");
+export function estimateRuntime(m: Metrics, opts: { capacityKwh?: number | null; minSoc?: number; socHistory?: [number, number][]; assumeLoad?: boolean } = {}): RuntimeEstimate | null {
+  const soc = num(m, "bat_soc"), batW = num(m, "bat_w"), loadW = num(m, "load_w");
   const minSoc = opts.minSoc ?? 20;
   if (soc === null) return null;
   const usablePct = Math.max(0, soc - minSoc);
-  if (opts.capacityKwh && opts.capacityKwh > 0 && batW !== null && batW > 50) {
-    return { hours: (usablePct / 100) * opts.capacityKwh * 1000 / batW, method: "capacity" };
+  const cap = opts.capacityKwh && opts.capacityKwh > 0 ? opts.capacityKwh : null;
+  if (cap && batW !== null && batW > 50) {
+    return { hours: (usablePct / 100) * cap * 1000 / batW, method: "capacity" };
+  }
+  // мережа є: "якщо зараз зникне світло" — за поточним споживанням
+  if (cap && opts.assumeLoad && loadW !== null && loadW > 50) {
+    return { hours: (usablePct / 100) * cap * 1000 / loadW, method: "load" };
   }
   const h = opts.socHistory ?? [];
   if (h.length >= 2) {

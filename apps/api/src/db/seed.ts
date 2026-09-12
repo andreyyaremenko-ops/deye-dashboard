@@ -8,6 +8,7 @@ export async function seed(db: PgDatabase<any, any, any>) {
 await db.insert(plans).values([
   { id: "free", name: "Free", limits: { screens: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } },
   { id: "pro", name: "Pro", limits: { screens: 5, custom_backgrounds: true, history_days: 365, radio: true, branding: false } },
+  { id: "max", name: "Max", limits: { screens: 50, custom_backgrounds: true, history_days: 730, radio: true, branding: false } },
 ]).onConflictDoUpdate({ target: plans.id, set: { name: raw.raw("excluded.name"), limits: raw.raw("excluded.limits") } });
 
 for (const m of Object.values(maps)) {

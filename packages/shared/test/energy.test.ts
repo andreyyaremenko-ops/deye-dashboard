@@ -17,6 +17,11 @@ describe("режим відключення", () => {
     const r = estimateRuntime({ bat_soc: 70, bat_w: 1500 }, { minSoc: 20, socHistory: [[t - 30 * 60_000, 80], [t, 70]] });
     expect(r?.method).toBe("slope"); expect(r?.hours).toBeCloseTo(2.5, 5);
   });
+  it("якщо зникне світло: за споживанням, коли мережа є", () => {
+    const r = estimateRuntime({ bat_soc: 100, bat_w: 0, load_w: 4000 }, { capacityKwh: 10, minSoc: 20, assumeLoad: true });
+    expect(r?.method).toBe("load"); expect(r?.hours).toBeCloseTo(2, 5);
+    expect(estimateRuntime({ bat_soc: 100, bat_w: 0, load_w: 4000 }, { capacityKwh: 10, minSoc: 20 })).toBeNull();
+  });
   it("не рахує, коли заряджається або історія коротка", () => {
     expect(estimateRuntime({ bat_soc: 60, bat_w: -800 }, { capacityKwh: 10 })).toBeNull();
     expect(estimateRuntime({ bat_soc: 60, bat_w: 800 }, { socHistory: [[Date.now() - 60_000, 61], [Date.now(), 60]] })).toBeNull();

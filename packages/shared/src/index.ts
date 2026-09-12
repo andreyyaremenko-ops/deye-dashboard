@@ -42,7 +42,7 @@ export type OrgRole = (typeof orgRoles)[number];
 /** Конфіг екрана для ТБ */
 export const widgetSchema = z.object({
   id: z.string(),
-  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr"]),
+  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr", "runtime"]),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
   w: z.number().min(1).max(100),
@@ -71,3 +71,4 @@ export type PlanLimits = z.infer<typeof planLimitsSchema>;
 export * from "./radio.ts";
 export * from "./chart.ts";
 export * from "./energy.ts";
+export * from "./brand.ts";

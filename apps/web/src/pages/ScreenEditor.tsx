@@ -13,6 +13,7 @@ const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: 
   { t: "grid", label: "Мережа", needsDevice: true, w: 22, h: 18 },
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
+  { t: "runtime", label: "Автономія", needsDevice: true, w: 22, h: 18 },
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
   { t: "qr", label: "QR-код", needsDevice: false, w: 14, h: 30 },
   { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },

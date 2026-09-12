@@ -1,12 +1,13 @@
 import { Link } from "wouter";
 import type { Me } from "../api.ts";
+import { PRODUCT_NAME } from "@deye/shared";
 
 const CONTACT = "mailto:onkofe227@gmail.com";
 
 export function Landing({ me }: { me: Me | null }) {
   return <div className="land">
     <header className="land-top">
-      <div className="brand">☀ Deye Dashboard</div>
+      <div className="brand">☀ {PRODUCT_NAME}</div>
       <nav>
         <a href="#outage">Відключення</a><a href="#how">Як це працює</a><a href="#features">Можливості</a><a href="#pricing">Тарифи</a>
         {me ? <Link href="/app" className="btn btn-primary">Кабінет</Link> : <><Link href="/login" className="btn btn-ghost">Увійти</Link><Link href="/signup" className="btn btn-primary">Спробувати безкоштовно</Link></>}
@@ -16,7 +17,7 @@ export function Landing({ me }: { me: Me | null }) {
     <section className="hero">
       <div className="hero-text">
         <h1>Ваша сонячна станція наживо на телевізорі в залі</h1>
-        <p>Один екран у залі замість дзвінків власнику: під час відключень персонал сам бачить залишок батареї і скільки годин заклад протримається. Гості бачать, що кава зварена на сонці. Плюс меню, радіо і QR-коди. Працює з інверторами Deye через Solarman-стік, без додаткового обладнання.</p>
+        <p>Один екран у залі замість дзвінків власнику: під час відключень персонал сам бачить залишок батареї і скільки годин заклад протримається. Гості бачать, що кава зварена на сонці. Плюс меню, радіо і QR-коди. Працює з інверторами Deye через Solarman-стік без додаткового обладнання; інші бренди — за запитом.</p>
         <div className="hero-cta">
           <Link href="/signup" className="btn btn-primary big">Підключити заклад</Link>
           <a href="#how" className="btn big">Як це працює</a>
@@ -61,16 +62,21 @@ export function Landing({ me }: { me: Me | null }) {
 
     <section id="pricing" className="land-sec">
       <h2>Тарифи</h2>
-      <div className="plans">
+      <div className="plans plans-3">
         <div className="plan">
           <h3>Free</h3><div className="price">0 ₴</div>
-          <ul><li>1 екран</li><li>Стандартні відеофони</li><li>Усі віджети показників, меню, QR</li><li>Невеликий напис «powered by» і плашка з QR раз на 10 хвилин</li></ul>
+          <ul><li>1 екран</li><li>Стандартні відеофони</li><li>Усі віджети: показники, автономія, меню, QR</li><li>Невеликий напис {PRODUCT_NAME} і плашка з QR раз на 10 хвилин</li></ul>
           <Link href="/signup" className="btn">Почати</Link>
         </div>
         <div className="plan pro">
-          <h3>Pro</h3><div className="price">за запитом</div>
+          <h3>Pro</h3><div className="price">600 ₴<span className="per"> / міс</span></div>
           <ul><li>До 5 екранів</li><li>Власні відеофони</li><li>Онлайн-радіо</li><li>Історія та графіки за рік</li><li>Без брендингу</li></ul>
-          <a href={CONTACT} className="btn btn-primary">Написати нам</a>
+          <a href={CONTACT} className="btn btn-primary">Підключити Pro</a>
+        </div>
+        <div className="plan">
+          <h3>Max</h3><div className="price">за домовленістю</div>
+          <ul><li>Мережа закладів, багато екранів</li><li>Інші бренди інверторів</li><li>Персональні віджети й брендування</li><li>Пріоритетна підтримка</li></ul>
+          <a href={CONTACT} className="btn">Обговорити</a>
         </div>
       </div>
     </section>
@@ -81,7 +87,7 @@ export function Landing({ me }: { me: Me | null }) {
     </section>
 
     <footer className="land-foot">
-      <span>© {new Date().getFullYear()} Deye Dashboard · tv.sun-hunter.men</span>
+      <span>© {new Date().getFullYear()} {PRODUCT_NAME} · tv.sun-hunter.men</span>
       <a href={CONTACT}>Контакт</a>
     </footer>
   </div>;

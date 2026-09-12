@@ -21,6 +21,6 @@ export function Plaque() {
   if (!on) return null;
   return <div class="plaque">
     <div class="plaque-qr" dangerouslySetInnerHTML={{ __html: svg }} />
-    <div><b>Такий екран для вашого закладу</b><div class="sub">tv.sun-hunter.men · сонячна станція наживо на ТБ</div></div>
+    <div><b>SunHunter TV — такий екран для вашого закладу</b><div class="sub">tv.sun-hunter.men · сонячна станція наживо і автономія під час відключень</div></div>
   </div>;
 }

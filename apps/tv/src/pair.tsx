@@ -34,7 +34,7 @@ export function Pair() {
 
   return <div class="pair">
     <div class="pair-box">
-      <div class="pair-title">☀ Deye Dashboard</div>
+      <div class="pair-title">☀ SunHunter TV</div>
       <div class="pair-hint">У кабінеті відкрийте екран → «Код для ТБ» і введіть 6 цифр</div>
       <form onSubmit={(e) => { e.preventDefault(); void submit(); }}>
         <input ref={input} class="pair-input" type="tel" inputMode="numeric" pattern="[0-9 ]*" maxLength={7} placeholder="000000"
