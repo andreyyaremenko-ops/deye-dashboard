@@ -191,7 +191,7 @@ int httpsRequest(const char* method, const String& path, const String& body, Str
     http.addHeader("User-Agent", "deye-esp/" FW_VERSION);
     int code = !strcmp(method, "POST") ? http.POST(body) : http.GET();
     out = code > 0 ? http.getString() : http.errorToString(code);
-    http.end();
+    http.end(); c.stop();
     return code;
 }
 
@@ -222,6 +222,10 @@ bool registerDevice() {
 void checkOta(bool force) {
     if (!force && millis() - lastOtaCheck < 6UL * 3600UL * 1000UL && lastOtaCheck) return;
     lastOtaCheck = millis();
+    // ESP8266: лише один TLS-контекст умістить памʼять — на час перевірки відпускаємо MQTT
+    if (mqtt.connected()) { mqtt.publish((topicBase + "status").c_str(), "offline", true); mqtt.disconnect(); }
+    mqttTlsNet.stop(); delay(100);
+    Serial.printf("[ota] check (heap %u)\n", ESP.getFreeHeap());
     String resp;
     int code = httpsRequest("GET", String("/api/firmware/latest?hw=" HW_NAME "&channel=") + cfg.channel, "", resp);
     if (code == 404) { Serial.println("[ota] no firmware on server"); return; }
@@ -231,9 +235,7 @@ void checkOta(bool force) {
     const char* version = doc["version"] | "";
     const char* url = doc["url"] | "";
     if (!strcmp(version, FW_VERSION) || !url[0]) { Serial.printf("[ota] up to date (%s)\n", FW_VERSION); return; }
-    Serial.printf("[ota] %s -> %s, downloading\n", FW_VERSION, version);
-    mqtt.publish((topicBase + "status").c_str(), "offline", true);
-    mqtt.disconnect(); delay(200);
+    Serial.printf("[ota] %s -> %s, downloading (heap %u)\n", FW_VERSION, version, ESP.getFreeHeap());
 #ifdef ESP8266
     BearSSL::WiFiClientSecure c;
     c.setTrustAnchors(&trustAnchors);
