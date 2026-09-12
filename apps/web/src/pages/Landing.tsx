@@ -70,6 +70,7 @@ export function Landing({ me }: { me: Me | null }) {
         </div>
         <div className="plan pro">
           <h3>Pro</h3><div className="price">600 ₴<span className="per"> / міс</span></div>
+          <p className="muted small">Пів року — 3000 ₴ (місяць у подарунок), рік — 6000 ₴ (два місяці у подарунок)</p>
           <ul><li>До 5 екранів</li><li>Власні відеофони</li><li>Онлайн-радіо</li><li>Історія та графіки за рік</li><li>Без брендингу</li></ul>
           <Link href="/signup" className="btn btn-primary">Підключити Pro</Link>
           <p className="muted small" style={{ marginTop: ".5rem" }}>Оплата карткою в кабінеті через monobank</p>

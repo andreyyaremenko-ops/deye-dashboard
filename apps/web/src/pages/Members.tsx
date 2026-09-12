@@ -80,7 +80,8 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
     location.assign(r.pageUrl);
   });
   const pro = b?.plans.find((p) => p.id === "pro");
-  const price = pro?.priceMonth ? pro.priceMonth * months : 0;
+  const opt = b?.options.find((o) => o.months === months);
+  const price = opt?.amount ?? 0;
   return <>
     <Card title="Організація">
       <p><b>{org.name}</b></p>
@@ -96,8 +97,8 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
       {!b ? <p className="muted">Завантаження…</p> : !b.enabled ? <p className="muted">Онлайн-оплата ще не підключена. Напишіть нам, щоб активувати Pro.</p> : <>
         <p className="small muted">Pro: до 5 екранів, власні відеофони, радіо, історія і графіки, без брендингу. {pro?.priceMonth ? `${uah(pro.priceMonth)} на місяць` : ""}. Оплата карткою через monobank, термін додається до поточного.</p>
         <div className="row">
-          <Field label="Період"><select value={months} onChange={(e) => setMonths(Number(e.currentTarget.value))}>{b.months.map((m) => <option key={m} value={m}>{m} міс.</option>)}</select></Field>
-          <div className="price-tag">{uah(price)}</div>
+          <Field label="Період"><select value={months} onChange={(e) => setMonths(Number(e.currentTarget.value))}>{b.options.map((o) => <option key={o.months} value={o.months}>{o.months} міс.{o.freeMonths ? ` (${o.freeMonths} у подарунок)` : ""}</option>)}</select></Field>
+          <div className="price-tag">{uah(price)}{opt?.freeMonths ? <span className="muted small"> замість {uah((pro?.priceMonth ?? 0) * months)}</span> : null}</div>
           {org.role === "owner" ? <Btn kind="primary" onClick={() => pay.run(undefined)} disabled={pay.busy}>{pay.busy ? "Створюємо рахунок…" : "Оплатити"}</Btn> : <span className="muted small">Оплатити може лише власник організації</span>}
         </div>
         <ErrorBox err={pay.err} />
