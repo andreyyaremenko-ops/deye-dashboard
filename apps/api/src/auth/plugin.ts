@@ -33,7 +33,8 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: { auth: Auth }) 
   app.decorateRequest("user", null);
 
   // Better Auth хоче сирий body у Request; парсимо як текст, щоб не ламати підписи
-  app.addContentTypeParser("application/json", { parseAs: "string" }, (_req, body, done) => {
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (req, body, done) => {
+    (req as unknown as { rawBody?: string }).rawBody = body as string;   // для перевірки підписів вебхуків
     try { done(null, body.length ? JSON.parse(body as string) : undefined); }
     catch (e) { done(e as Error); }
   });

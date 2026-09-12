@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { orgRoles, type OrgRole } from "@deye/shared";
-import { api, type Invite, type Member, type Org } from "../api.ts";
-import { Btn, Card, ErrorBox, fmtDate, useAction } from "../components/ui.tsx";
+import { api, type Billing, type Invite, type Member, type Org } from "../api.ts";
+import { Btn, Card, ErrorBox, Field, fmtDate, useAction } from "../components/ui.tsx";
 
 const ROLE: Record<OrgRole, string> = { owner: "власник", admin: "адмін", staff: "персонал" };
 
@@ -48,15 +48,63 @@ export function Members({ org, meId }: { org: Org; meId: string }) {
   </>;
 }
 
-export function Settings({ org }: { org: Org }) {
+const STATUS_UA: Record<string, string> = { created: "очікує оплати", processing: "обробляється", hold: "заблоковано", success: "оплачено", failure: "не пройшла", reversed: "повернено", expired: "прострочена" };
+const uah = (kop: number) => `${(kop / 100).toLocaleString("uk-UA")} ₴`;
+
+export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () => void }) {
   const L = org.plan.limits;
-  return <Card title="Організація">
-    <p><b>{org.name}</b></p>
-    <p>Тариф: <b>{org.plan.name}</b></p>
-    <ul className="muted">
-      <li>Екранів: {L.screens}</li><li>Власні фони: {L.custom_backgrounds ? "так" : "ні"}</li>
-      <li>Історія: {L.history_days ? `${L.history_days} днів` : "ні"}</li><li>Радіо: {L.radio ? "так" : "ні"}</li>
-      <li>Брендинг на екрані: {L.branding ? "так" : "ні"}</li>
-    </ul>
-  </Card>;
+  const [b, setB] = useState<Billing | null>(null);
+  const [months, setMonths] = useState(1);
+  const [result, setResult] = useState<string | null>(null);
+  const load = async () => setB(await api.get<Billing>(`/api/orgs/${org.id}/billing`));
+  useEffect(() => { void load(); }, [org.id]);
+  // повернення з monobank: ?payment=<id> — опитуємо статус кілька разів
+  useEffect(() => {
+    const pid = new URLSearchParams(location.search).get("payment");
+    if (!pid) return;
+    let tries = 0; let stop = false;
+    const poll = async () => {
+      const p = await api.get<{ status: string }>(`/api/orgs/${org.id}/billing/payments/${pid}`).catch(() => null);
+      if (stop) return;
+      if (p && (p.status === "success" || p.status === "failure" || p.status === "expired" || p.status === "reversed")) {
+        setResult(p.status === "success" ? "Оплата пройшла, тариф Pro активовано." : `Оплата не завершена: ${STATUS_UA[p.status] ?? p.status}.`);
+        await load(); onPlanChange?.(); history.replaceState(null, "", location.pathname); return;
+      }
+      if (++tries < 15) setTimeout(poll, 2000); else setResult("Статус оплати ще уточнюється. Оновіть сторінку за хвилину.");
+    };
+    setResult("Перевіряємо оплату…"); void poll();
+    return () => { stop = true; };
+  }, [org.id]);
+  const pay = useAction(async () => {
+    const r = await api.post<{ pageUrl: string }>(`/api/orgs/${org.id}/billing/checkout`, { planId: "pro", months });
+    location.assign(r.pageUrl);
+  });
+  const pro = b?.plans.find((p) => p.id === "pro");
+  const price = pro?.priceMonth ? pro.priceMonth * months : 0;
+  return <>
+    <Card title="Організація">
+      <p><b>{org.name}</b></p>
+      <p>Тариф: <b>{org.plan.name}</b>{b?.planUntil && <span className="muted"> · оплачено до {fmtDate(b.planUntil)}</span>}</p>
+      <ul className="muted">
+        <li>Екранів: {L.screens}</li><li>Власні фони: {L.custom_backgrounds ? "так" : "ні"}</li>
+        <li>Історія: {L.history_days ? `${L.history_days} днів` : "ні"}</li><li>Радіо: {L.radio ? "так" : "ні"}</li>
+        <li>Брендинг на екрані: {L.branding ? "так" : "ні"}</li>
+      </ul>
+    </Card>
+    <Card title={org.plan.id === "pro" ? "Продовжити Pro" : "Перейти на Pro"}>
+      {result && <div className={result.startsWith("Оплата пройшла") ? "ok" : "error"}>{result}</div>}
+      {!b ? <p className="muted">Завантаження…</p> : !b.enabled ? <p className="muted">Онлайн-оплата ще не підключена. Напишіть нам, щоб активувати Pro.</p> : <>
+        <p className="small muted">Pro: до 5 екранів, власні відеофони, радіо, історія і графіки, без брендингу. {pro?.priceMonth ? `${uah(pro.priceMonth)} на місяць` : ""}. Оплата карткою через monobank, термін додається до поточного.</p>
+        <div className="row">
+          <Field label="Період"><select value={months} onChange={(e) => setMonths(Number(e.currentTarget.value))}>{b.months.map((m) => <option key={m} value={m}>{m} міс.</option>)}</select></Field>
+          <div className="price-tag">{uah(price)}</div>
+          {org.role === "owner" ? <Btn kind="primary" onClick={() => pay.run(undefined)} disabled={pay.busy}>{pay.busy ? "Створюємо рахунок…" : "Оплатити"}</Btn> : <span className="muted small">Оплатити може лише власник організації</span>}
+        </div>
+        <ErrorBox err={pay.err} />
+      </>}
+      {b && b.payments.length > 0 && <table className="tbl small" style={{ marginTop: ".8rem" }}><thead><tr><th>Дата</th><th>Тариф</th><th>Сума</th><th>Статус</th><th></th></tr></thead><tbody>
+        {b.payments.map((p) => <tr key={p.id}><td>{fmtDate(p.createdAt)}</td><td>{p.planId} · {p.months} міс.</td><td>{uah(p.amount)}</td><td>{STATUS_UA[p.status] ?? p.status}</td><td className="actions">{p.status === "created" && p.pageUrl && <a href={p.pageUrl} className="btn btn-ghost">Сплатити</a>}</td></tr>)}
+      </tbody></table>}
+    </Card>
+  </>;
 }

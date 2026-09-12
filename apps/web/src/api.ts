@@ -59,3 +59,9 @@ export function uploadBackground(orgId: string, file: File, onProgress: (pct: nu
 }
 
 export const screenUrl = (token: string) => `${location.origin}/s/${token}`;
+
+export interface Billing {
+  enabled: boolean; planId: string; planUntil: string | null; months: number[];
+  plans: { id: string; name: string; priceMonth: number | null; limits: PlanLimits }[];
+  payments: { id: string; planId: string; months: number; amount: number; status: string; createdAt: string; appliedAt: string | null; pageUrl: string | null }[];
+}

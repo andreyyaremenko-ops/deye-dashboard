@@ -9,6 +9,7 @@ import { HttpError } from "./lib/errors.ts";
 import { registerRoutes } from "./routes.ts";
 import { registerWs } from "./ws.ts";
 import type { StateStore } from "./state/store.ts";
+import type { MonoClient } from "./billing/mono.ts";
 
 export interface AppDeps {
   db: PgDatabase<any, any, any>;
@@ -18,6 +19,7 @@ export interface AppDeps {
   mqttInternalUser: string;
   mqttInternalPass: string;
   mediaRoot: string;
+  mono?: MonoClient | null;
   logger?: boolean | object;
 }
 

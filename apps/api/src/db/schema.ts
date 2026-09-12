@@ -24,14 +24,37 @@ export const plans = pgTable("plans", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   limits: jsonb("limits").$type<PlanLimits>().notNull(),
+  priceMonth: integer("price_month"),        // копійки за місяць; null = не продається онлайн
 });
 
 export const organizations = pgTable("organizations", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   planId: text("plan_id").notNull().references(() => plans.id).default("free"),
+  planUntil: timestamp("plan_until", { withTimezone: true }),   // оплачено до; null = безстроково (free або вручну)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const paymentStatus = pgEnum("payment_status", ["created", "processing", "hold", "success", "failure", "reversed", "expired"]);
+
+// Платежі через monobank acquiring: один інвойс = один запис
+export const payments = pgTable("payments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => user.id, { onDelete: "set null" }),
+  planId: text("plan_id").notNull().references(() => plans.id),
+  months: integer("months").notNull(),
+  amount: integer("amount").notNull(),      // копійки
+  ccy: integer("ccy").notNull().default(980),
+  invoiceId: text("invoice_id").unique(),
+  pageUrl: text("page_url"),
+  status: paymentStatus("status").notNull().default("created"),
+  failureReason: text("failure_reason"),
+  appliedAt: timestamp("applied_at", { withTimezone: true }),   // коли підписку продовжено (ідемпотентність вебхука)
+  raw: jsonb("raw"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("payments_org_idx").on(t.orgId)]);
 
 export const memberships = pgTable("memberships", {
   orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
@@ -164,6 +187,6 @@ export const loggerFrames = pgTable("logger_frames", {
 
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
-  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware, loggerFrames,
+  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
 };
 export { sql };

@@ -6,6 +6,8 @@ import { db, sql } from "./db/client.ts";
 import { dispatch, type IngestDeps } from "./mqtt/ingest.ts";
 import { RedisStateStore } from "./state/store.ts";
 import { startLoggerServer } from "./solarman/server.ts";
+import { createMonoClient } from "./billing/mono.ts";
+import { expireSubscriptions } from "./billing/service.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 const app = await buildApp({
@@ -14,6 +16,7 @@ const app = await buildApp({
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
   mediaRoot: config.MEDIA_ROOT,
+  mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
   logger: { level: config.NODE_ENV === "production" ? "info" : "debug" },
 });
 
@@ -38,7 +41,11 @@ client.on("message", (topic, payload) => { void dispatch(ingest, topic, payload)
 
 // ретенція за тарифом: раз на добу (перший запуск через 5 хв після старту)
 import { runRetention } from "./history/service.ts";
-setTimeout(() => { const run = () => runRetention(db).then((n) => app.log.info({ deleted: n }, "retention")).catch((e) => app.log.warn({ err: String(e) }, "retention failed")); run(); setInterval(run, 24 * 3600_000); }, 5 * 60_000);
+setTimeout(() => {
+  const run = () => runRetention(db).then((n) => app.log.info({ deleted: n }, "retention")).catch((e) => app.log.warn({ err: String(e) }, "retention failed"));
+  const expire = () => expireSubscriptions(db).then((n) => { if (n) app.log.info({ downgraded: n }, "subscriptions expired"); }).catch((e) => app.log.warn({ err: String(e) }, "expire failed"));
+  run(); expire(); setInterval(run, 24 * 3600_000); setInterval(expire, 3600_000);
+}, 5 * 60_000);
 
 // Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
 const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGER_PORT);

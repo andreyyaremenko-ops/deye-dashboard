@@ -34,6 +34,7 @@ export function App() {
   return <Switch>
     <Route path="/invite/:token">{(p) => <Invite token={p.token!} onAccepted={reload} />}</Route>
     <Route path="/new-org"><NewOrg me={me} onCreated={reload} /></Route>
+    <Route path="/app/billing/:orgId">{(p) => <Redirect to={`/o/${p.orgId}/settings${location.search}`} />}</Route>
     <Route path="/o/:orgId/*?">{(p) => <OrgArea me={me} orgId={p.orgId!} />}</Route>
     <Route path="/app">{() => {
       const last = localStorage.getItem(LAST_ORG);
@@ -54,7 +55,7 @@ function OrgArea({ me, orgId }: { me: Me; orgId: string }) {
       <Route path="/o/:orgId/screens"><Screens org={org} /></Route>
       <Route path="/o/:orgId/screens/:screenId">{(p) => <ScreenEditor org={org} screenId={p.screenId!} />}</Route>
       <Route path="/o/:orgId/members"><Members org={org} meId={me.user.id} /></Route>
-      <Route path="/o/:orgId/settings"><Settings org={org} /></Route>
+      <Route path="/o/:orgId/settings"><Settings org={org} onPlanChange={() => void api.get<Org>(`/api/orgs/${orgId}`).then(setOrg)} /></Route>
       <Route><Redirect to={`/o/${orgId}/devices`} /></Route>
     </Switch>}
   </Layout>;

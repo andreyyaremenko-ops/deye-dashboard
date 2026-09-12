@@ -64,6 +64,13 @@
       "when": 1789250605427,
       "tag": "0008_battery_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789252990014,
+      "tag": "0009_billing",
+      "breakpoints": true
     }
   ]
 }

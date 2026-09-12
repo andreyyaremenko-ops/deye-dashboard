@@ -6,10 +6,10 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 
 export async function seed(db: PgDatabase<any, any, any>) {
 await db.insert(plans).values([
-  { id: "free", name: "Free", limits: { screens: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } },
-  { id: "pro", name: "Pro", limits: { screens: 5, custom_backgrounds: true, history_days: 365, radio: true, branding: false } },
-  { id: "max", name: "Max", limits: { screens: 50, custom_backgrounds: true, history_days: 730, radio: true, branding: false } },
-]).onConflictDoUpdate({ target: plans.id, set: { name: raw.raw("excluded.name"), limits: raw.raw("excluded.limits") } });
+  { id: "free", name: "Free", priceMonth: null, limits: { screens: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } },
+  { id: "pro", name: "Pro", priceMonth: 60000, limits: { screens: 5, custom_backgrounds: true, history_days: 365, radio: true, branding: false } },
+  { id: "max", name: "Max", priceMonth: null, limits: { screens: 50, custom_backgrounds: true, history_days: 730, radio: true, branding: false } },
+]).onConflictDoUpdate({ target: plans.id, set: { name: raw.raw("excluded.name"), limits: raw.raw("excluded.limits"), priceMonth: raw.raw("excluded.price_month") } });
 
 for (const m of Object.values(maps)) {
   await db.insert(inverterModels).values({
