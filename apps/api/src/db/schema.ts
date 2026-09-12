@@ -8,7 +8,7 @@ import {
   doublePrecision, customType, primaryKey, index, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { PlanLimits, ScreenConfig } from "@deye/shared";
-import type { RegisterField } from "@deye/register-maps";
+import type { RegisterField, RegisterMap } from "@deye/register-maps";
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => "bytea" });
 
@@ -56,6 +56,7 @@ export const inverterModels = pgTable("inverter_models", {
   deviceType: integer("device_type").notNull(),
   pollRanges: jsonb("poll_ranges").$type<[number, number][]>().notNull(),
   registerMap: jsonb("register_map").$type<RegisterField[]>().notNull(),
+  derived: jsonb("derived").$type<NonNullable<RegisterMap["derived"]>>().notNull().default([]),
 });
 
 export const devices = pgTable("devices", {

@@ -37,6 +37,8 @@ describe("інжест реального payload з ESP8266", () => {
     expect(r.modelId).toBe("deye-hp3");
     expect(r.metrics.state).toBe("normal");
     expect((r.metrics.grid_w as number) + (r.metrics.inv_w as number)).toBe(r.metrics.load_w);
+    // похідна метрика з карти в БД (регресія: derived не зберігався в inverter_models)
+    expect(r.metrics.pv_w).toBe((r.metrics.pv1_w as number) + (r.metrics.pv2_w as number));
 
     expect(published).toEqual([{ topic: `devices/${DEVICE}/cfg`, payload: JSON.stringify({ ranges: [[0, 22], [500, 700]], interval: 10 }), retain: true }]);
 

@@ -12,10 +12,10 @@ await db.insert(plans).values([
 
 for (const m of Object.values(maps)) {
   await db.insert(inverterModels).values({
-    id: m.id, name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, registerMap: m.fields,
+    id: m.id, name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, registerMap: m.fields, derived: m.derived ?? [],
   }).onConflictDoUpdate({
     target: inverterModels.id,
-    set: { name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, registerMap: m.fields },
+    set: { name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, registerMap: m.fields, derived: m.derived ?? [] },
   });
 }
 

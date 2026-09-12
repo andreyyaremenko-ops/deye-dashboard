@@ -1,0 +1,1 @@
+ALTER TABLE "inverter_models" ADD COLUMN "derived" jsonb DEFAULT '[]'::jsonb NOT NULL;

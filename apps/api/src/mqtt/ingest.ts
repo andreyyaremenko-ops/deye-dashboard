@@ -28,7 +28,7 @@ async function loadModel(db: Db, modelId: string): Promise<RegisterMap | undefin
   if (cached) return cached;
   const [m] = await db.select().from(inverterModels).where(eq(inverterModels.id, modelId));
   if (!m) return undefined;
-  const map: RegisterMap = { id: m.id, name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, fields: m.registerMap };
+  const map: RegisterMap = { id: m.id, name: m.name, deviceType: m.deviceType, pollRanges: m.pollRanges, fields: m.registerMap, derived: m.derived };
   modelCache.set(modelId, map);
   return map;
 }
