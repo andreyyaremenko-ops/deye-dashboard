@@ -1,0 +1,66 @@
+import { useEffect, useState } from "react";
+import { Link } from "wouter";
+import { api, type Me } from "../api.ts";
+import { Btn, Card, ErrorBox, ago, fmtDate, useAction } from "../components/ui.tsx";
+import { authClient } from "../auth.ts";
+
+interface OrgRow { id: string; name: string; planId: string; planUntil: string | null; createdAt: string; devices: number; online: number; screens: number; lastSeen: string | null; owners: string | null; paid: number }
+interface Overview { orgs: OrgRow[]; totals: { orgs: number; users: number; devices: number; online: number; unclaimed: number; paidTotal: number; paid30d: number } }
+interface DevRow { id: string; name: string | null; hw: string | null; fw: string | null; online: boolean; lastSeenAt: string | null; modelId: string | null; inverterSerial: string | null; stickSerial: number | null; fwChannel: string; orgId: string | null; orgName: string | null; createdAt: string }
+interface PayRow { id: string; orgName: string | null; planId: string; months: number; amount: number; status: string; createdAt: string; appliedAt: string | null; invoiceId: string | null; failureReason: string | null }
+const uah = (kop: number) => `${(kop / 100).toLocaleString("uk-UA")} ₴`;
+const STATUS: Record<string, string> = { created: "очікує", processing: "обробка", hold: "холд", success: "оплачено", failure: "відмова", reversed: "повернуто", expired: "прострочено" };
+
+export function Admin({ me }: { me: Me }) {
+  const [tab, setTab] = useState<"orgs" | "devices" | "payments">("orgs");
+  const [ov, setOv] = useState<Overview | null>(null);
+  const [devs, setDevs] = useState<DevRow[]>([]);
+  const [pays, setPays] = useState<PayRow[]>([]);
+  const [edit, setEdit] = useState<{ id: string; planId: string; until: string } | null>(null);
+  const load = async () => { setOv(await api.get<Overview>("/api/admin/overview")); setDevs(await api.get<DevRow[]>("/api/admin/devices/all")); setPays(await api.get<PayRow[]>("/api/admin/payments")); };
+  useEffect(() => { void load(); }, []);
+  const save = useAction(async () => {
+    if (!edit) return;
+    await api.patch(`/api/admin/orgs/${edit.id}/plan`, { planId: edit.planId, planUntil: edit.until ? new Date(edit.until).toISOString() : null });
+    setEdit(null); await load();
+  });
+  if (!me.user.isSuperadmin) return <div className="auth"><p>Доступ лише для адміністратора платформи.</p></div>;
+  const T = ov?.totals;
+  return <div className="layout">
+    <header className="top">
+      <div className="brand">☀ SunHunter TV · адмін</div>
+      <nav>{(["orgs", "devices", "payments"] as const).map((k) => <button key={k} className={`tab${tab === k ? " on" : ""}`} onClick={() => setTab(k)} style={{ background: tab === k ? "#23304a" : "transparent", border: 0, color: "inherit", cursor: "pointer" }}>{{ orgs: "Заклади", devices: "Пристрої", payments: "Платежі" }[k]}</button>)}<Link href="/app" className="tab">Кабінет</Link></nav>
+      <div className="grow" /><span className="muted">{me.user.email}</span>
+      <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }}>Вийти</button>
+    </header>
+    <main className="content">
+      {T && <div className="kpis">
+        {[["Заклади", T.orgs], ["Користувачі", T.users], ["Пристрої", `${T.devices} · онлайн ${T.online}`], ["Без привʼязки", T.unclaimed], ["Оплачено всього", uah(T.paidTotal)], ["За 30 днів", uah(T.paid30d)]].map(([l, v]) => <div key={String(l)} className="kpi"><span className="muted small">{l}</span><b>{v}</b></div>)}
+      </div>}
+      {tab === "orgs" && <Card title="Заклади">
+        <ErrorBox err={save.err} />
+        <table className="tbl"><thead><tr><th>Заклад</th><th>Власник</th><th>Тариф</th><th>До</th><th>Пристрої</th><th>Екрани</th><th>Останні дані</th><th>Оплачено</th><th></th></tr></thead><tbody>
+          {ov?.orgs.map((o) => <tr key={o.id}>
+            <td><b>{o.name}</b><div className="muted small">{fmtDate(o.createdAt)}</div></td><td className="small">{o.owners ?? "—"}</td>
+            <td>{edit?.id === o.id ? <select value={edit.planId} onChange={(e) => setEdit({ ...edit, planId: e.currentTarget.value })}><option value="free">free</option><option value="pro">pro</option><option value="max">max</option></select> : <b>{o.planId}</b>}</td>
+            <td className="small">{edit?.id === o.id ? <input type="date" value={edit.until} onChange={(e) => setEdit({ ...edit, until: e.currentTarget.value })} /> : o.planUntil ? fmtDate(o.planUntil) : (o.planId === "free" ? "—" : "безстроково")}</td>
+            <td>{o.devices}{o.devices ? <span className="muted"> · онлайн {o.online}</span> : null}</td><td>{o.screens}</td><td className="small muted">{ago(o.lastSeen)}</td><td>{uah(o.paid)}</td>
+            <td className="actions">{edit?.id === o.id ? <><Btn kind="primary" onClick={() => save.run(undefined)} disabled={save.busy}>Зберегти</Btn><Btn kind="ghost" onClick={() => setEdit(null)}>Скасувати</Btn></> : <Btn kind="ghost" onClick={() => setEdit({ id: o.id, planId: o.planId, until: o.planUntil ? o.planUntil.slice(0, 10) : "" })}>Тариф</Btn>}</td>
+          </tr>)}
+        </tbody></table>
+        <p className="muted small">Порожня дата «До» = безстроково. Зміна тарифу скидає нагадування.</p>
+      </Card>}
+      {tab === "devices" && <Card title="Усі пристрої">
+        <table className="tbl small"><thead><tr><th>Пристрій</th><th>Заклад</th><th>Стан</th><th>Інвертор</th><th>Прошивка</th><th>Стік</th></tr></thead><tbody>
+          {devs.map((d) => <tr key={d.id}><td><b>{d.name ?? d.id}</b><div className="muted">{d.id} · {d.hw}</div></td><td>{d.orgName ?? <span className="muted">не привʼязаний</span>}</td>
+            <td><span className={`dot ${d.online ? "on" : "off"}`} /> {d.online ? "онлайн" : "офлайн"}<div className="muted">{ago(d.lastSeenAt)}</div></td><td>{d.modelId ?? "—"}<div className="muted">{d.inverterSerial ?? ""}</div></td><td>{d.fw ?? "—"} <span className="muted">{d.fwChannel}</span></td><td>{d.stickSerial ?? "—"}</td></tr>)}
+        </tbody></table>
+      </Card>}
+      {tab === "payments" && <Card title="Платежі">
+        <table className="tbl small"><thead><tr><th>Дата</th><th>Заклад</th><th>Тариф</th><th>Сума</th><th>Статус</th><th>Інвойс</th></tr></thead><tbody>
+          {pays.map((p) => <tr key={p.id}><td>{fmtDate(p.createdAt)}</td><td>{p.orgName ?? "—"}</td><td>{p.planId} · {p.months} міс.</td><td>{uah(p.amount)}</td><td>{STATUS[p.status] ?? p.status}{p.failureReason ? <div className="muted">{p.failureReason}</div> : null}</td><td className="muted">{p.invoiceId ?? "—"}</td></tr>)}
+        </tbody></table>
+      </Card>}
+    </main>
+  </div>;
+}

@@ -107,7 +107,7 @@ describe("підписка Pro через monobank", () => {
 
   it("прострочення повертає free", async () => {
     await t.db.update(organizations).set({ planUntil: new Date(Date.now() - 1000) }).where(eq(organizations.id, orgId));
-    expect(await expireSubscriptions(t.db)).toBe(1);
+    expect(await expireSubscriptions(t.db)).toEqual([orgId]);
     expect((await owner.get(`/api/orgs/${orgId}`)).json().plan.id).toBe("free");
   });
 

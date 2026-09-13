@@ -10,6 +10,7 @@ import * as bgs from "./backgrounds/service.ts";
 import * as fw from "./firmware/service.ts";
 import * as hist from "./history/service.ts";
 import * as bill from "./billing/service.ts";
+import * as adm from "./admin/service.ts";
 import { verifyMonoSignature } from "./billing/mono.ts";
 import { ACC, mqttAclCheck, mqttAuth, mqttSuperuser } from "./mqtt/acl.ts";
 import { isStale } from "./state/store.ts";
@@ -210,6 +211,19 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     if (!verifyMonoSignature(raw, sign, pem)) { app.log.warn({ ip: req.ip }, "billing: bad webhook signature"); return reply.code(400).send({ error: "bad_sign" }); }
     await bill.applyStatus(billingDeps, req.body as never);
     return { ok: true };
+  });
+
+  // ---------------- superadmin panel
+  const requireAdmin = (req: Parameters<typeof requireUser>[0]) => { const u = requireUser(req); if (!u.isSuperadmin) throw forbidden(); return u; };
+  app.get("/api/admin/overview", async (req) => { requireAdmin(req); return adm.overview(db); });
+  app.get("/api/admin/devices/all", async (req) => { requireAdmin(req); return adm.allDevices(db); });
+  app.get("/api/admin/payments", async (req) => { requireAdmin(req); return adm.allPayments(db); });
+  app.patch("/api/admin/orgs/:orgId/plan", async (req) => {
+    requireAdmin(req); const { orgId } = orgParams.parse(req.params);
+    const { planId, planUntil } = z.object({ planId: z.string(), planUntil: z.coerce.date().nullable() }).parse(req.body);
+    const r = await adm.setOrgPlan(db, orgId, planId, planUntil);
+    await store.notifyScreen("*");
+    return r;
   });
 
   // superadmin: реєстрація пристроїв (виробництво)

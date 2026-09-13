@@ -95,9 +95,9 @@ export async function refreshPayment(deps: BillingDeps, orgId: string, userId: s
   return p;
 }
 
-/** Щоденно: прострочені платні тарифи -> free. */
-export async function expireSubscriptions(db: Db, now = new Date()) {
+/** Щогодини: прострочені платні тарифи -> free. Повертає id знижених організацій. */
+export async function expireSubscriptions(db: Db, now = new Date()): Promise<string[]> {
   const res = await db.update(organizations).set({ planId: "free", planUntil: null })
     .where(and(ne(organizations.planId, "free"), isNotNull(organizations.planUntil), lt(organizations.planUntil, now))).returning({ id: organizations.id });
-  return res.length;
+  return res.map((r) => r.id);
 }

@@ -10,6 +10,7 @@ import { Screens } from "./pages/Screens.tsx";
 import { ScreenEditor } from "./pages/ScreenEditor.tsx";
 import { Members, Settings } from "./pages/Members.tsx";
 import { Landing } from "./pages/Landing.tsx";
+import { Admin } from "./pages/Admin.tsx";
 
 const LAST_ORG = "deye.lastOrg";
 
@@ -34,6 +35,7 @@ export function App() {
   return <Switch>
     <Route path="/invite/:token">{(p) => <Invite token={p.token!} onAccepted={reload} />}</Route>
     <Route path="/new-org"><NewOrg me={me} onCreated={reload} /></Route>
+    <Route path="/admin"><Admin me={me} /></Route>
     <Route path="/app/billing/:orgId">{(p) => <Redirect to={`/o/${p.orgId}/settings${location.search}`} />}</Route>
     <Route path="/o/:orgId/*?">{(p) => <OrgArea me={me} orgId={p.orgId!} />}</Route>
     <Route path="/app">{() => {

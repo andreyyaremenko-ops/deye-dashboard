@@ -32,6 +32,7 @@ export const organizations = pgTable("organizations", {
   name: text("name").notNull(),
   planId: text("plan_id").notNull().references(() => plans.id).default("free"),
   planUntil: timestamp("plan_until", { withTimezone: true }),   // оплачено до; null = безстроково (free або вручну)
+  reminderSentFor: timestamp("reminder_sent_for", { withTimezone: true }), // для якого plan_until уже надіслано нагадування
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

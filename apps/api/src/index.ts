@@ -8,6 +8,8 @@ import { RedisStateStore } from "./state/store.ts";
 import { startLoggerServer } from "./solarman/server.ts";
 import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
+import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
+import { createMailer } from "./mail/index.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 const app = await buildApp({
@@ -43,8 +45,10 @@ client.on("message", (topic, payload) => { void dispatch(ingest, topic, payload)
 import { runRetention } from "./history/service.ts";
 setTimeout(() => {
   const run = () => runRetention(db).then((n) => app.log.info({ deleted: n }, "retention")).catch((e) => app.log.warn({ err: String(e) }, "retention failed"));
-  const expire = () => expireSubscriptions(db).then((n) => { if (n) app.log.info({ downgraded: n }, "subscriptions expired"); }).catch((e) => app.log.warn({ err: String(e) }, "expire failed"));
-  run(); expire(); setInterval(run, 24 * 3600_000); setInterval(expire, 3600_000);
+  const mailer = createMailer((m) => app.log.info({ mail: m }));
+  const expire = () => expireSubscriptions(db).then(async (ids) => { if (ids.length) { app.log.info({ downgraded: ids }, "subscriptions expired"); await notifyExpired(db, mailer, config.PUBLIC_URL, ids); } }).catch((e) => app.log.warn({ err: String(e) }, "expire failed"));
+  const remind = () => sendExpiryReminders(db, mailer, config.PUBLIC_URL).then((n) => { if (n) app.log.info({ sent: n }, "expiry reminders"); }).catch((e) => app.log.warn({ err: String(e) }, "reminders failed"));
+  run(); expire(); remind(); setInterval(run, 24 * 3600_000); setInterval(expire, 3600_000); setInterval(remind, 6 * 3600_000);
 }, 5 * 60_000);
 
 // Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
