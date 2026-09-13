@@ -35,11 +35,11 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
     void api.get<{ day: string }[]>(`/api/orgs/${org.id}/devices/${deviceId}/history/daily?days=${period.id === "month" ? 30 : period.id === "week" ? 7 : 7}`).then(setDaily).catch(() => {});
   }, [org.id, deviceId, period, allowed]);
 
-  const [kwh, setKwh] = useState(""); const [minSoc, setMinSoc] = useState("20");
-  useEffect(() => { if (device) { setKwh(device.batteryKwh?.toString() ?? ""); setMinSoc(String(device.minSoc ?? 20)); } }, [device?.id, device?.batteryKwh, device?.minSoc]);
+  const [kwh, setKwh] = useState(""); const [minSoc, setMinSoc] = useState("20"); const [kwp, setKwp] = useState("");
+  useEffect(() => { if (device) { setKwh(device.batteryKwh?.toString() ?? ""); setMinSoc(String(device.minSoc ?? 20)); setKwp(device.pvKwp?.toString() ?? ""); } }, [device?.id, device?.batteryKwh, device?.minSoc, device?.pvKwp]);
   const saveBat = useAction(async () => {
-    const d = await api.patch<Device>(`/api/orgs/${org.id}/devices/${deviceId}`, { batteryKwh: kwh ? Number(kwh) : null, minSoc: Number(minSoc) });
-    setDevice((prev) => (prev ? { ...prev, batteryKwh: d.batteryKwh, minSoc: d.minSoc } : prev));
+    const d = await api.patch<Device>(`/api/orgs/${org.id}/devices/${deviceId}`, { batteryKwh: kwh ? Number(kwh) : null, minSoc: Number(minSoc), pvKwp: kwp ? Number(kwp) : null });
+    setDevice((prev) => (prev ? { ...prev, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp } : prev));
   });
   const m = device?.state ?? {};
   const num = (k: string) => (typeof m[k] === "number" ? (m[k] as number) : null);
@@ -53,9 +53,10 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
       {[["Сонце", num("pv_w"), "W"], ["Споживання", num("load_w"), "W"], ["Мережа", num("grid_w"), "W"], ["Батарея", num("bat_soc"), "%"], ["Сьогодні сонце", num("pv_day_kwh"), "kWh"], ["Сьогодні спожито", num("load_day_kwh"), "kWh"]].map(([l, v, u]) =>
         <div key={String(l)} className="kpi"><span className="muted small">{l}</span><b>{v === null ? "—" : u === "W" ? (Math.abs(v as number) >= 1000 ? `${((v as number) / 1000).toFixed(2)} kW` : `${Math.round(v as number)} W`) : `${v} ${u}`}</b></div>)}
     </div>
-    <Card title="Батарея та відключення світла">
-      <p className="muted small">З ємністю батареї екран покаже персоналу, скільки годин заклад протримається при поточному споживанні. Без неї прогноз рахується за швидкістю розряду.</p>
+    <Card title="Батарея, станція та відключення світла">
+      <p className="muted small">З ємністю батареї екран покаже персоналу, скільки годин заклад протримається при поточному споживанні. Без неї прогноз рахується за швидкістю розряду. Потужність панелей потрібна віджету погоди для прогнозу генерації на завтра.</p>
       <div className="row">
+        <Field label="Потужність панелей, kWp"><input type="number" step="0.1" min="0.1" value={kwp} onChange={(e) => setKwp(e.currentTarget.value)} placeholder="напр. 15" disabled={org.role === "staff"} /></Field>
         <Field label="Ємність батареї, kWh"><input type="number" step="0.1" min="0.1" value={kwh} onChange={(e) => setKwh(e.currentTarget.value)} placeholder="напр. 10" disabled={org.role === "staff"} /></Field>
         <Field label="Мінімальний заряд, % (уставка інвертора)"><input type="number" min="0" max="90" value={minSoc} onChange={(e) => setMinSoc(e.currentTarget.value)} disabled={org.role === "staff"} /></Field>
         {org.role !== "staff" && <Btn kind="primary" onClick={() => saveBat.run(undefined)} disabled={saveBat.busy}>Зберегти</Btn>}

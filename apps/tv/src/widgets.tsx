@@ -20,11 +20,14 @@ function isNight(m: M | undefined): boolean {
 
 import { ChartWidget } from "./chart.tsx";
 import { QrWidget } from "./qr.tsx";
+import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
+import type { Feeds } from "./types.ts";
 
 interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string;
-  device?: { batteryKwh: number | null; minSoc: number }; socHistory?: [number, number][] }
+  device?: { batteryKwh: number | null; minSoc: number; pvKwp?: number | null }; socHistory?: [number, number][];
+  feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null }
 
-export function Widget({ type, state, props, token, deviceId, device, socHistory }: Props) {
+export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince }: Props) {
   const m = state?.metrics;
   const stale = !state || state.stale;
   const outage = !!m && gridDown(m);
@@ -89,6 +92,16 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
     }
     case "qr":
       return <QrWidget cls={cls} props={props} />;
+    case "weather":
+      return <WeatherWidget cls={cls} feed={feeds?.weather ?? null} pvKwp={device?.pvKwp} props={{ ...props, noLocation: !hasLocation }} />;
+    case "alert":
+      return <AlertWidget cls={cls} feed={feeds?.alert ?? null} props={{ ...props, noLocation: !hasLocation }} />;
+    case "eco":
+      return <EcoWidget cls={cls} token={token ?? ""} deviceId={deviceId} stale={stale} />;
+    case "outage": {
+      const est = m && outage ? estimateRuntime(m, { capacityKwh: device?.batteryKwh, minSoc: device?.minSoc ?? 20, socHistory }) : null;
+      return <OutageWidget cls={cls} outage={outage && !stale} since={outageSince} hours={est?.hours ?? null} soc={num(m, "bat_soc")} props={props} />;
+    }
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

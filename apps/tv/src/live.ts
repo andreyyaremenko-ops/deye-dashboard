@@ -5,7 +5,8 @@
  *  - при поверненні вкладки з фону — теж;
  *  - останній стан завжди лишається на екрані, лише позначається як застарілий.
  */
-import type { DeviceState, PublicScreen, ConnStatus } from "./types.ts";
+import type { DeviceState, PublicScreen, ConnStatus, Feeds } from "./types.ts";
+import { gridDown } from "@deye/shared/energy";
 
 const STALE_MS = 60_000;
 const WATCHDOG_MS = 90_000;
@@ -15,12 +16,21 @@ export interface LiveStore {
   states: Map<string, DeviceState>;
   /** історія SOC за останню годину для прогнозу часу на батареї: deviceId -> [[epochMs, soc]] */
   socHistory: Map<string, [number, number][]>;
+  /** коли зникла мережа (epochMs); null — мережа є; відсутній ключ — невідомо (сторінка відкрита під час відключення) */
+  outageSince: Map<string, number | null>;
+  feeds: Feeds;
   status: ConnStatus;
   error: string | null;
 }
 
 export function startLive(token: string, onChange: (s: LiveStore) => void) {
-  const store: LiveStore = { screen: null, states: new Map(), socHistory: new Map(), status: "connecting", error: null };
+  const store: LiveStore = { screen: null, states: new Map(), socHistory: new Map(), outageSince: new Map(), feeds: { weather: null, alert: null }, status: "connecting", error: null };
+  const trackOutage = (st: DeviceState) => {
+    const down = gridDown(st.metrics);
+    const prev = store.outageSince.get(st.deviceId);
+    if (!down) store.outageSince.set(st.deviceId, null);
+    else if (prev === null) store.outageSince.set(st.deviceId, Date.parse(st.updatedAt) || Date.now());
+  };
   const trackSoc = (st: DeviceState) => {
     const soc = st.metrics.bat_soc; if (typeof soc !== "number") return;
     const t = Date.parse(st.updatedAt) || Date.now();
@@ -41,6 +51,7 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
       if (!r.ok) { store.error = r.status === 404 ? "Екран не знайдено або посилання перевипущене" : `Помилка ${r.status}`; store.status = "offline"; emit(); return false; }
       const s = (await r.json()) as PublicScreen;
       store.screen = s;
+      if (s.feeds) store.feeds = s.feeds;
       for (const st of s.states) store.states.set(st.deviceId, st);
       store.error = null;
       emit();
@@ -62,13 +73,18 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === "hello") {
         for (const st of msg.states as DeviceState[]) store.states.set(st.deviceId, st);
+        if (msg.feeds) store.feeds = msg.feeds as Feeds;
       } else if (msg.type === "config") {
         // екран змінили в кабінеті: новий конфіг без перезавантаження
         store.screen = msg.screen as PublicScreen;
         for (const st of (msg.screen as PublicScreen).states) store.states.set(st.deviceId, st);
+        if ((msg.screen as PublicScreen).feeds) store.feeds = (msg.screen as PublicScreen).feeds!;
       } else if (msg.type === "state") {
         const st = { deviceId: msg.deviceId, updatedAt: msg.updatedAt, metrics: msg.metrics, stale: false };
-        store.states.set(msg.deviceId, st); trackSoc(st);
+        store.states.set(msg.deviceId, st); trackSoc(st); trackOutage(st);
+      } else if (msg.type === "feed") {
+        // погода або тривога оновились на сервері
+        store.feeds = { ...store.feeds, [msg.name as "weather" | "alert"]: msg.data };
       }
       store.status = "live";
       emit();

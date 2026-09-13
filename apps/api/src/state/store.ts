@@ -19,6 +19,11 @@ export interface StateStore {
   /** Екран змінено в кабінеті -> усі WS-клієнти цього екрана перечитують конфіг. */
   notifyScreen(screenId: string): Promise<void>;
   subscribeScreens(handler: (screenId: string) => void): () => void;
+  /** Зовнішні стрічки (погода, тривоги): кеш із TTL + сповіщення про оновлення за ключем. */
+  setFeed(key: string, value: unknown, ttlS: number): Promise<void>;
+  getFeed<T = unknown>(key: string): Promise<T | null>;
+  notifyFeed(key: string): Promise<void>;
+  subscribeFeeds(handler: (key: string) => void): () => void;
   close(): Promise<void>;
 }
 
@@ -32,11 +37,17 @@ export class MemoryStateStore implements StateStore {
   notified: string[] = [];
   async notifyScreen(id: string) { this.notified.push(id); this.ee.emit("screen", id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  feeds = new Map<string, { value: unknown; exp: number }>();
+  async setFeed(key: string, value: unknown, ttlS: number) { this.feeds.set(key, { value, exp: Date.now() + ttlS * 1000 }); }
+  async getFeed<T>(key: string) { const f = this.feeds.get(key); return f && f.exp > Date.now() ? (f.value as T) : null; }
+  async notifyFeed(key: string) { this.ee.emit("feed", key); }
+  subscribeFeeds(h: (key: string) => void) { this.ee.on("feed", h); return () => this.ee.off("feed", h); }
   async close() {}
 }
 
 const CHANNEL = "device_state";
 const SCREEN_CHANNEL = "screen_update";
+const FEED_CHANNEL = "feed_update";
 
 export class RedisStateStore implements StateStore {
   private pub: Redis;
@@ -45,9 +56,10 @@ export class RedisStateStore implements StateStore {
   constructor(url: string) {
     this.pub = new Redis(url, { lazyConnect: false, maxRetriesPerRequest: 2 });
     this.sub = new Redis(url);
-    this.sub.subscribe(CHANNEL, SCREEN_CHANNEL);
+    this.sub.subscribe(CHANNEL, SCREEN_CHANNEL, FEED_CHANNEL);
     this.sub.on("message", (ch: string, msg: string) => {
       if (ch === SCREEN_CHANNEL) { this.ee.emit("screen", msg); return; }
+      if (ch === FEED_CHANNEL) { this.ee.emit("feed", msg); return; }
       try { this.ee.emit("state", JSON.parse(msg)); } catch { /* ignore */ }
     });
   }
@@ -67,6 +79,10 @@ export class RedisStateStore implements StateStore {
   subscribe(h: (s: DeviceStateSnapshot) => void) { this.ee.on("state", h); return () => this.ee.off("state", h); }
   async notifyScreen(id: string) { await this.pub.publish(SCREEN_CHANNEL, id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  async setFeed(key: string, value: unknown, ttlS: number) { await this.pub.set(`feed:${key}`, JSON.stringify(value), "EX", ttlS); }
+  async getFeed<T>(key: string) { const v = await this.pub.get(`feed:${key}`); return v ? (JSON.parse(v) as T) : null; }
+  async notifyFeed(key: string) { await this.pub.publish(FEED_CHANNEL, key); }
+  subscribeFeeds(h: (key: string) => void) { this.ee.on("feed", h); return () => this.ee.off("feed", h); }
   async close() { await this.pub.quit(); await this.sub.quit(); }
 }
 

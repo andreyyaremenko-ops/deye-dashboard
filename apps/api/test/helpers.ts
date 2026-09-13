@@ -14,7 +14,7 @@ import type { Mail } from "../src/mail/index.ts";
 
 export const INTERNAL = { user: "api", pass: "internal-test-pass" };
 
-export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null } = {}) {
+export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null; feeds?: (store: MemoryStateStore, db: ReturnType<typeof drizzle>) => import("../src/feeds/hub.ts").FeedHub } = {}) {
   const pg = new PGlite();
   const db = drizzle(pg, { schema });
   const dir = join(import.meta.dirname, "../drizzle");
@@ -32,6 +32,7 @@ export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts"
     mqttInternalUser: INTERNAL.user, mqttInternalPass: INTERNAL.pass,
     mediaRoot: mkdtempSync(join(tmpdir(), "deye-media-")),
     mono: opts.mono ?? null,
+    feeds: opts.feeds ? opts.feeds(store, db) : null,
   });
   await app.ready();
   return { app, db, store, mails, pg, close: async () => { await app.close(); await pg.close(); } };

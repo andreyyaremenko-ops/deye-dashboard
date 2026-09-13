@@ -139,3 +139,6 @@ html, body { overflow-x: hidden; }
   .tbl td:first-child { flex-direction: column; align-items: flex-start; text-align: left; gap: .15rem; padding-bottom: .45rem; border-bottom: 1px solid var(--line); margin-bottom: .2rem; }
   .tbl td:first-child::before { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
 }
+.loc-hits { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: .3rem; }
+.loc-hit { text-align: left; background: #1b2434; color: var(--fg); border: 0; border-bottom: 1px solid var(--line); padding: .5rem .7rem; cursor: pointer; font: inherit; } .loc-hit:last-child { border-bottom: 0; } .loc-hit:hover { background: #243043; }
+.loc-cur { margin-bottom: .4rem; }

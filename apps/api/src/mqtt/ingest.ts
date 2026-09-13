@@ -7,6 +7,7 @@ import type { PgDatabase } from "drizzle-orm/pg-core";
 import { decode, decodeIdentity, mapForDeviceType, rangesToTable, type RegisterMap } from "@deye/register-maps";
 import { deviceInfoSchema, telemetryPayloadSchema } from "@deye/shared";
 import { devices, deviceState, inverterModels, telemetry, telemetryRaw } from "../db/schema.ts";
+import { recordMonthBaseline } from "../stats/counters.ts";
 import type { StateStore } from "../state/store.ts";
 
 type Db = PgDatabase<any, any, any>;
@@ -86,6 +87,7 @@ export async function handleTelemetry(deps: IngestDeps, deviceId: string, raw: B
   await deps.db.insert(deviceState).values({ deviceId, updatedAt: now, state: metrics })
     .onConflictDoUpdate({ target: deviceState.deviceId, set: { updatedAt: now, state: metrics } });
   await deps.store.set(snapshot);
+  await recordMonthBaseline(deps.db, deviceId, metrics, now);
   return { ok: true as const, parsed: true as const, modelId, metrics };
 }
 

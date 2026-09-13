@@ -9,7 +9,8 @@
     ".": "./src/index.ts",
     "./chart": "./src/chart.ts",
     "./energy": "./src/energy.ts",
-    "./brand": "./src/brand.ts"
+    "./brand": "./src/brand.ts",
+    "./feeds": "./src/feeds.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

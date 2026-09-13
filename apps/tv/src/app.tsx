@@ -4,6 +4,7 @@ import { Widget } from "./widgets.tsx";
 import { Background, GradientBackground } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
 import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
+import { AlertOverlay } from "./feeds.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -57,15 +58,19 @@ export function App() {
   const video = files ? (files["1080"] ?? files["720"]) : null;
   const lite = new URLSearchParams(location.search).has("lite");   // діагностика: без відео і розмиття
   const src = !lite && video ? (video.startsWith("http") ? video : `/media/${video}`) : null;
+  // повноекранний банер тривоги, якщо є віджет тривоги і в нього не вимкнено оверлей
+  const overlay = screen.config.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false);
 
   return <div class={`screen theme-${screen.config.theme}${lite ? " lite" : ""}`}>
     <Background src={src} />
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
         <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}
-          device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined} />
+          device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined}
+          feeds={live.feeds} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} />
       </div>
     ))}
+    {overlay && <AlertOverlay feed={live.feeds.alert} />}
     {radioUrl && <audio ref={audio} preload="none" />}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
     {screen.branding && <div class="brand">SunHunter TV · tv.sun-hunter.men</div>}

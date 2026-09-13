@@ -1,4 +1,7 @@
-import type { ScreenConfig } from "@deye/shared";
+import type { ScreenConfig, ScreenLocation } from "@deye/shared";
+import type { AlertFeed, WeatherFeed } from "@deye/shared/feeds";
+
+export interface Feeds { weather: WeatherFeed | null; alert: AlertFeed | null }
 
 export interface DeviceState {
   deviceId: string;
@@ -12,8 +15,10 @@ export interface PublicScreen {
   config: ScreenConfig;
   background: { files: Record<string, string> | null; preview: string | null } | null;
   deviceIds: string[];
-  devices?: { id: string; batteryKwh: number | null; minSoc: number }[];
+  devices?: { id: string; batteryKwh: number | null; minSoc: number; pvKwp?: number | null }[];
+  location?: ScreenLocation | null;
   branding: boolean;
   states: DeviceState[];
+  feeds?: Feeds;
 }
 export type ConnStatus = "connecting" | "live" | "reconnecting" | "offline";

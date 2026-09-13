@@ -10,10 +10,14 @@ import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
 import { createMailer } from "./mail/index.ts";
+import { FeedHub } from "./feeds/hub.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
+// погода/тривоги: стартує після buildApp, щоб писати в app.log
+const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL,
+  log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
 const app = await buildApp({
-  db, auth, store,
+  db, auth, store, feeds,
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
@@ -21,6 +25,7 @@ const app = await buildApp({
   mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
   logger: { level: config.NODE_ENV === "production" ? "info" : "debug" },
 });
+feeds.start();
 
 // MQTT-інжест: API сам є підписником брокера
 const client = mqtt.connect(config.MQTT_URL, {
@@ -54,7 +59,7 @@ setTimeout(() => {
 // Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
 const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGER_PORT);
 
-app.addHook("onClose", async () => { stickServer.server.close(); client.end(true); await store.close(); await sql.end(); });
+app.addHook("onClose", async () => { feeds.stop(); stickServer.server.close(); client.end(true); await store.close(); await sql.end(); });
 
 try {
   await app.listen({ port: config.API_PORT, host: "0.0.0.0" });

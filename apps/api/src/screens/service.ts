@@ -9,7 +9,7 @@ import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
-export const defaultConfig: ScreenConfig = { backgroundId: null, widgets: [], radioUrl: null, radioVolume: 0.6, theme: "dark" };
+export const defaultConfig: ScreenConfig = { backgroundId: null, location: null, widgets: [], radioUrl: null, radioVolume: 0.6, theme: "dark" };
 
 async function validateConfig(db: Db, orgId: string, input: unknown): Promise<ScreenConfig> {
   const parsed = screenConfigSchema.safeParse(input);
@@ -79,7 +79,7 @@ export async function publicScreen(db: Db, token: string) {
   const referenced = [...new Set(cfg.widgets.map((w) => w.deviceId).filter((x): x is string => !!x))];
   // лише пристрої, що досі належать цій організації
   const own = referenced.length
-    ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
+    ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc, pvKwp: devices.pvKwp }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
   let background: { files: Record<string, string> | null; preview: string | null; attribution: string | null } | null = null;
   if (cfg.backgroundId) {
@@ -94,7 +94,8 @@ export async function publicScreen(db: Db, token: string) {
     config: cfg,
     background,
     deviceIds: own.map((d) => d.id),
-    devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc })),
+    devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp })),
+    location: cfg.location ?? null,
     branding: row.planLimits.branding,
   };
 }

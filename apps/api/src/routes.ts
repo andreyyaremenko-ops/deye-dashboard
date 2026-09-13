@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { orgRoles, RADIO_STATIONS } from "@deye/shared";
+import { orgRoles, OBLASTS, RADIO_STATIONS, guessOblast } from "@deye/shared";
+import { deviceStats } from "./stats/counters.ts";
 import { requireUser } from "./auth/plugin.ts";
 import type { AppDeps } from "./app.ts";
 import * as orgs from "./orgs/service.ts";
@@ -96,7 +97,7 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   });
   app.patch("/api/orgs/:orgId/devices/:deviceId", async (req) => {
     const u = requireUser(req); const { orgId, deviceId } = z.object({ orgId: uuid, deviceId: z.string() }).parse(req.params);
-    const patch = z.object({ name: z.string().min(1).max(100).optional(), batteryKwh: z.number().min(0.1).max(1000).nullable().optional(), minSoc: z.number().int().min(0).max(90).optional() }).parse(req.body);
+    const patch = z.object({ name: z.string().min(1).max(100).optional(), batteryKwh: z.number().min(0.1).max(1000).nullable().optional(), minSoc: z.number().int().min(0).max(90).optional(), pvKwp: z.number().min(0.1).max(10000).nullable().optional() }).parse(req.body);
     return dev.updateDevice(db, orgId, u.id, deviceId, patch);
   });
   app.post("/api/orgs/:orgId/devices/:deviceId/unclaim", async (req, reply) => {
@@ -298,8 +299,36 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     const { token } = z.object({ token: z.string().min(20) }).parse(req.params);
     const s = await scr.publicScreen(db, token);
     const states = await store.getMany(s.deviceIds);
-    return { ...s, states: states.map((x) => ({ ...x, stale: isStale(x) })) };
+    const feeds = deps.feeds ? await deps.feeds.forScreen(s.location) : { weather: null, alert: null };
+    return { ...s, states: states.map((x) => ({ ...x, stale: isStale(x) })), feeds };
   });
+  // місячна статистика для еко-віджета (лічильники "всього", працює і на free)
+  app.get("/api/public/screens/:token/stats", async (req) => {
+    const { token } = z.object({ token: z.string().min(20) }).parse(req.params);
+    const { deviceId } = z.object({ deviceId: z.string() }).parse(req.query);
+    const s = await scr.publicScreen(db, token);
+    if (!s.deviceIds.includes(deviceId)) throw forbidden();
+    return deviceStats(db, store, deviceId);
+  });
+  app.get("/api/orgs/:orgId/devices/:deviceId/stats", async (req) => {
+    const u = requireUser(req); const { orgId, deviceId } = z.object({ orgId: uuid, deviceId: z.string() }).parse(req.params);
+    await orgs.requireRole(db, orgId, u.id, "staff");
+    await dev.deviceInOrg(db, orgId, deviceId);
+    return deviceStats(db, store, deviceId);
+  });
+  // геокодер для поля "Локація" в редакторі екрана (Open-Meteo, без ключа)
+  app.get("/api/geocode", { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } }, async (req) => {
+    requireUser(req);
+    const { q } = z.object({ q: z.string().min(2).max(80) }).parse(req.query);
+    const base = deps.geocodeBase ?? "https://geocoding-api.open-meteo.com";
+    const r = await fetch(`${base}/v1/search?${new URLSearchParams({ name: q, count: "6", language: "uk", countryCode: "UA" })}`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw badRequest("Geocoder unavailable", "geocode");
+    const j = (await r.json()) as { results?: { name: string; latitude: number; longitude: number; admin1?: string; admin2?: string; country_code?: string }[] };
+    return (j.results ?? []).filter((x) => x.country_code === "UA").map((x) => ({
+      name: [x.name, x.admin2, x.admin1].filter(Boolean).join(", "), lat: x.latitude, lon: x.longitude, oblast: guessOblast(x.admin1),
+    }));
+  });
+  app.get("/api/oblasts", async () => OBLASTS);
 
   // ТБ вводить код: rate-limit проти перебору (6 цифр)
   app.post("/api/public/pair", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req) => {

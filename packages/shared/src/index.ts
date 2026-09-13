@@ -42,7 +42,7 @@ export type OrgRole = (typeof orgRoles)[number];
 /** Конфіг екрана для ТБ */
 export const widgetSchema = z.object({
   id: z.string(),
-  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr", "runtime"]),
+  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr", "runtime", "weather", "alert", "eco", "outage"]),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
   w: z.number().min(1).max(100),
@@ -50,8 +50,18 @@ export const widgetSchema = z.object({
   deviceId: z.string().optional(),
   props: z.record(z.string(), z.unknown()).default({}),
 });
+/** Локація екрана: для погоди (координати) і тривог (область як у джерелі, напр. "Київська область", "м. Київ"). */
+export const screenLocationSchema = z.object({
+  name: z.string().min(1).max(100),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  oblast: z.string().max(60).nullable().default(null),
+});
+export type ScreenLocation = z.infer<typeof screenLocationSchema>;
+
 export const screenConfigSchema = z.object({
   backgroundId: z.string().uuid().nullable(),
+  location: screenLocationSchema.nullable().default(null),
   widgets: z.array(widgetSchema),
   radioUrl: z.string().url().nullable(),
   radioVolume: z.number().min(0).max(1).default(0.6),
@@ -72,3 +82,4 @@ export * from "./radio.ts";
 export * from "./chart.ts";
 export * from "./energy.ts";
 export * from "./brand.ts";
+export * from "./feeds.ts";

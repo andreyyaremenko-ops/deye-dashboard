@@ -101,6 +101,7 @@ export const devices = pgTable("devices", {
   fwChannel: text("fw_channel").notNull().default("stable"),   // stable | beta
   batteryKwh: doublePrecision("battery_kwh"),                  // ємність батареї для прогнозу часу роботи
   minSoc: integer("min_soc").notNull().default(20),            // нижче не розряджаємо (налаштування інвертора)
+  pvKwp: doublePrecision("pv_kwp"),                            // потужність сонячної станції для прогнозу за погодою
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("devices_org_idx").on(t.orgId)]);
 
@@ -132,6 +133,14 @@ export const telemetry = pgTable("telemetry", {
   metric: text("metric").notNull(),
   value: doublePrecision("value").notNull(),
 }, (t) => [index("telemetry_device_metric_time_idx").on(t.deviceId, t.metric, t.time.desc())]);
+
+// Лічильники "всього" на початок місяця: місячна статистика без історії (free-тариф зберігає 2 дні).
+export const deviceCounters = pgTable("device_counters", {
+  deviceId: text("device_id").notNull().references(() => devices.id, { onDelete: "cascade" }),
+  month: text("month").notNull(),                       // YYYY-MM за Europe/Kyiv
+  counters: jsonb("counters").$type<Record<string, number>>().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [primaryKey({ columns: [t.deviceId, t.month] })]);
 
 export const deviceState = pgTable("device_state", {
   deviceId: text("device_id").primaryKey().references(() => devices.id, { onDelete: "cascade" }),
@@ -188,6 +197,6 @@ export const loggerFrames = pgTable("logger_frames", {
 
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
-  telemetryRaw, telemetry, deviceState, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
+  telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
 };
 export { sql };

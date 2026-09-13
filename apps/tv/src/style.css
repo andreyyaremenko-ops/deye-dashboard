@@ -95,3 +95,40 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 
 /* ?lite=1: без розмиття (слабкі GPU / зламане прискорення) */
 .screen.lite .w { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(10,16,28,.8); }
+
+/* погода */
+.w-weather .wx-now { display: flex; align-items: center; gap: .8vw; }
+.w-weather .wx-icon { font-size: 3.4vw; line-height: 1; }
+.w-weather .wx-desc { font-size: 1.3vw; line-height: 1.2; opacity: .9; } .w-weather .wx-desc small { font-size: 1.05vw; opacity: .75; }
+.w-weather .wx-row { display: flex; align-items: baseline; gap: .8vw; font-size: 1.25vw; margin-top: .35vw; }
+.w-weather .wx-row b { font-size: 1.4vw; } .w-weather .wx-t { opacity: .75; margin-left: auto; }
+.w-weather .wx-row.sun b { color: #ffd36b; }
+
+/* тривога */
+.w-alert.on { border-color: rgba(229,72,77,.8); background: rgba(120,20,25,.7); animation: alertpulse 2s infinite; }
+.w-alert.off .big { color: #7ee3a3; font-size: 2.4vw; }
+.w-alert.on .big { color: #ff8a8e; font-size: 2.6vw; }
+@keyframes alertpulse { 0%,100% { box-shadow: 0 0 0 0 rgba(229,72,77,.5); } 50% { box-shadow: 0 0 2vw .4vw rgba(229,72,77,.35); } }
+.alert-overlay { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2vw; text-align: center; color: #fff; }
+.alert-overlay.on { background: rgba(140,15,20,.88); animation: alertbg 1.6s infinite; }
+.alert-overlay.off { background: rgba(20,110,60,.88); }
+@keyframes alertbg { 0%,100% { background: rgba(140,15,20,.88); } 50% { background: rgba(190,30,35,.9); } }
+.alert-icon { font-size: 9vw; line-height: 1; }
+.alert-h { font-size: 6vw; font-weight: 800; letter-spacing: .1em; }
+.alert-s { font-size: 2.4vw; opacity: .9; }
+.alert-t { font-size: 2.8vw; font-weight: 600; margin-top: 1vw; }
+
+/* еко */
+.w-eco .big { color: #ffd36b; }
+.w-eco .row { font-size: 1.25vw; }
+
+/* відключення */
+.w-outage { justify-content: center; }
+.w-outage.hidden { visibility: hidden; }
+.w-outage.on { border-color: rgba(229,72,77,.8); background: rgba(120,20,25,.7); }
+.w-outage.ok { border-color: rgba(126,227,163,.5); }
+.og-h { font-size: 2.2vw; font-weight: 700; } .w-outage.on .og-h { color: #ff8a8e; } .w-outage.ok .og-h { color: #7ee3a3; }
+.og-s { font-size: 1.4vw; opacity: .9; margin-top: .3vw; }
+.og-n { font-size: 1.3vw; margin-top: .5vw; opacity: .85; }
+
+.qr-wifi { font-size: 1.2vw; opacity: .85; text-align: center; }

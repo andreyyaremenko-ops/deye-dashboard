@@ -10,6 +10,7 @@ import { registerRoutes } from "./routes.ts";
 import { registerWs } from "./ws.ts";
 import type { StateStore } from "./state/store.ts";
 import type { MonoClient } from "./billing/mono.ts";
+import type { FeedHub } from "./feeds/hub.ts";
 
 export interface AppDeps {
   db: PgDatabase<any, any, any>;
@@ -20,6 +21,10 @@ export interface AppDeps {
   mqttInternalPass: string;
   mediaRoot: string;
   mono?: MonoClient | null;
+  /** погода/тривоги; без нього екрани отримують feeds = null */
+  feeds?: FeedHub | null;
+  /** геокодер для кабінету (Open-Meteo) */
+  geocodeBase?: string;
   logger?: boolean | object;
 }
 
