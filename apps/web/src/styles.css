@@ -142,3 +142,9 @@ html, body { overflow-x: hidden; }
 .loc-hits { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-top: .3rem; }
 .loc-hit { text-align: left; background: #1b2434; color: var(--fg); border: 0; border-bottom: 1px solid var(--line); padding: .5rem .7rem; cursor: pointer; font: inherit; } .loc-hit:last-child { border-bottom: 0; } .loc-hit:hover { background: #243043; }
 .loc-cur { margin-bottom: .4rem; }
+/* FAQ на лендінгу */
+.faq { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: .5rem; }
+.faq details { background: var(--card, #141c2b); border: 1px solid var(--line); border-radius: 10px; padding: .8rem 1rem; }
+.faq summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
+.faq details[open] summary { margin-bottom: .5rem; }
+.faq p { margin: 0; color: var(--muted); line-height: 1.5; }

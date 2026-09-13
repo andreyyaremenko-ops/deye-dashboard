@@ -1,3 +1,4 @@
+import { track } from "../analytics.ts";
 import { useEffect, useState } from "react";
 import { orgRoles, type OrgRole } from "@deye/shared";
 import { api, type Billing, type Invite, type Member, type Org } from "../api.ts";
@@ -77,6 +78,7 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
   }, [org.id]);
   const pay = useAction(async () => {
     const r = await api.post<{ pageUrl: string }>(`/api/orgs/${org.id}/billing/checkout`, { planId: "pro", months });
+    track("begin_checkout", { currency: "UAH", value: (b?.options.find((o) => o.months === months)?.amount ?? 0) / 100, items: [{ item_id: "pro", item_name: "Pro", quantity: months }] });
     location.assign(r.pageUrl);
   });
   const pro = b?.plans.find((p) => p.id === "pro");

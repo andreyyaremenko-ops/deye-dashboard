@@ -11,6 +11,10 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY packages ./packages
 COPY apps/tv ./apps/tv
 COPY apps/web ./apps/web
+# GA4 і Search Console: значення з deploy/.env (GA_ID, GOOGLE_SITE_VERIFICATION) через build-args
+ARG VITE_GA_ID=""
+ARG VITE_GOOGLE_SITE_VERIFICATION=""
+ENV VITE_GA_ID=$VITE_GA_ID VITE_GOOGLE_SITE_VERIFICATION=$VITE_GOOGLE_SITE_VERIFICATION
 RUN pnpm --filter @deye/tv build && pnpm --filter @deye/web build
 
 FROM alpine:3

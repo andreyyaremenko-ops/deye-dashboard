@@ -11,6 +11,8 @@ import { ScreenEditor } from "./pages/ScreenEditor.tsx";
 import { Members, Settings } from "./pages/Members.tsx";
 import { Landing } from "./pages/Landing.tsx";
 import { Admin } from "./pages/Admin.tsx";
+import { flushPending, pageView } from "./analytics.ts";
+import { isPublicPath, titleFor } from "./seo.ts";
 
 const LAST_ORG = "deye.lastOrg";
 
@@ -21,11 +23,20 @@ export function App() {
     try { setMe(await api.get<Me>("/api/me")); }
     catch (e) { if (e instanceof ApiError && e.status === 401) setMe(null); else throw e; }
   }, []);
-  useEffect(() => { void reload(); }, [reload]);
+  useEffect(() => { void reload(); flushPending(); }, [reload]);
+  // SEO/аналітика: заголовок, noindex для кабінету, page_view при зміні маршруту
+  useEffect(() => {
+    document.title = titleFor(loc);
+    let m = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
+    if (!m) { m = document.createElement("meta"); m.name = "robots"; document.head.appendChild(m); }
+    m.content = isPublicPath(loc) ? "index, follow" : "noindex, nofollow";
+    pageView(loc);
+  }, [loc]);
 
+  // лендінг не чекає /api/me: пререндерена розмітка гідрується одразу, кнопка «Кабінет» зʼявиться після відповіді
+  if (isPublicPath(loc)) return <Landing me={me ?? null} />;
   if (me === undefined) return <div className="auth"><p className="muted">Завантаження…</p></div>;
   const isAuthPage = loc.startsWith("/login") || loc.startsWith("/signup");
-  if (loc === "/" || loc === "/landing") return <Landing me={me} />;
   if (!me) {
     if (isAuthPage) return <Switch><Route path="/login"><Login mode="login" /></Route><Route path="/signup"><Login mode="signup" /></Route></Switch>;
     return <Redirect to={`/login?next=${encodeURIComponent(loc)}`} />;

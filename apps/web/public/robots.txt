@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /$
+Allow: /landing
+Allow: /landing/
+Disallow: /app
+Disallow: /o/
+Disallow: /admin
+Disallow: /login
+Disallow: /signup
+Disallow: /invite/
+Disallow: /new-org
+Disallow: /s/
+Disallow: /tv
+Disallow: /api/
+Disallow: /media/
+Disallow: /ws
+
+Sitemap: https://tv.sun-hunter.men/sitemap.xml

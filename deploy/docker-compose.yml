@@ -74,7 +74,12 @@ services:
 
   # статика: docker compose run --rm static
   static:
-    build: { context: .., dockerfile: deploy/static.Dockerfile }
+    build:
+      context: ..
+      dockerfile: deploy/static.Dockerfile
+      args:
+        VITE_GA_ID: ${GA_ID:-}
+        VITE_GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
     profiles: [tools]
     volumes:
       - web_dist:/srv/web

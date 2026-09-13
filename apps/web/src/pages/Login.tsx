@@ -1,3 +1,4 @@
+import { trackAfterReload } from "../analytics.ts";
 import { useState } from "react";
 import { Link } from "wouter";
 import { authClient } from "../auth.ts";
@@ -14,6 +15,7 @@ export function Login({ mode }: { mode: "login" | "signup" }) {
       ? await authClient.signIn.email({ email, password })
       : await authClient.signUp.email({ email, password, name: name || email.split("@")[0]! });
     if (r.error) throw new Error(r.error.message ?? "Помилка входу");
+    trackAfterReload(mode === "signup" ? "sign_up" : "login", { method: "password" });
     location.assign(next); // повне перезавантаження: App перечитає /api/me
   });
   const magic = useAction(async () => {

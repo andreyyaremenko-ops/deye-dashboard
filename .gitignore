@@ -7,3 +7,4 @@ firmware/.pio/
 __pycache__/
 *.pyc
 .DS_Store
+dist-ssr/
