@@ -4,7 +4,7 @@ import { guessOblast, pvForecastKwh, wifiQr, wmoLabel } from "../src/feeds.ts";
 describe("feeds helpers", () => {
   it("Wi-Fi QR за специфікацією, спецсимволи екрануються", () => {
     expect(wifiQr("Cafe", "pass123")).toBe("WIFI:T:WPA;S:Cafe;P:pass123;;");
-    expect(wifiQr("My;Net", 'a:b"c', "WPA")).toBe('WIFI:T:WPA;S:My\;Net;P:a\\:b\\"c;;');
+    expect(wifiQr("My;Net", 'a:b"c', "WPA")).toBe('WIFI:T:WPA;S:My\\;Net;P:a\\:b\\"c;;');
     expect(wifiQr("Open", "", "nopass")).toBe("WIFI:T:nopass;S:Open;;");
   });
   it("область з admin1 геокодера", () => {
