@@ -9,7 +9,7 @@ import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
-export const defaultConfig: ScreenConfig = { backgroundId: null, location: null, widgets: [], radioUrl: null, radioVolume: 0.6, theme: "dark" };
+export const defaultConfig: ScreenConfig = { backgroundId: null, location: null, widgets: [], radioUrl: null, radioVolume: 0.6, tvVideo: "auto", theme: "dark" };
 
 async function validateConfig(db: Db, orgId: string, input: unknown): Promise<ScreenConfig> {
   const parsed = screenConfigSchema.safeParse(input);

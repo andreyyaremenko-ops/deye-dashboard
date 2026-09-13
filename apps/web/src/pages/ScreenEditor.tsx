@@ -150,6 +150,14 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
               <option value="">Вимкнено</option>
               {radio.map((r) => <option key={r.id} value={r.url}>{r.title}</option>)}
             </select></Field>
+          {cfg.radioUrl && <Field label="Відео разом з радіо">
+            <select value={cfg.tvVideo ?? "auto"} disabled={!canEdit} onChange={(e) => update({ tvVideo: e.currentTarget.value as "auto" | "always" | "poster" })}>
+              <option value="auto">авто (Samsung: кадр замість відео)</option>
+              <option value="poster">завжди кадр замість відео</option>
+              <option value="always">завжди відео</option>
+            </select>
+            <span className="muted small">Деякі ТБ (Samsung Tizen) не грають відео і радіо одночасно. В авто-режимі екран сам переходить на нерухомий кадр із повільним наїздом.</span>
+          </Field>}
           {cfg.radioUrl && <Field label={`Гучність ${Math.round(cfg.radioVolume * 100)}%`}><input type="range" min={0} max={1} step={0.05} value={cfg.radioVolume} onChange={(e) => update({ radioVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
         </Card>
         <Card title="Підключити телевізор">

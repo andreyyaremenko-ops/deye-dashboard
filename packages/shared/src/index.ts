@@ -65,6 +65,8 @@ export const screenConfigSchema = z.object({
   widgets: z.array(widgetSchema),
   radioUrl: z.string().url().nullable(),
   radioVolume: z.number().min(0).max(1).default(0.6),
+  /** Samsung Tizen грає лише один медіаелемент: auto — визначати, poster — кадр замість відео при радіо, always — завжди відео */
+  tvVideo: z.enum(["auto", "always", "poster"]).default("auto"),
   theme: z.enum(["dark", "light"]).default("dark"),
 });
 export type ScreenConfig = z.infer<typeof screenConfigSchema>;

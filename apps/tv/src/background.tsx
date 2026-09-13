@@ -35,15 +35,28 @@ export function VideoBackground({ src, onFail }: { src: string; onFail?: () => v
   </div>;
 }
 
+/** Кадр із відео з повільним наїздом: для ТБ, які не грають відео і радіо одночасно (Samsung Tizen). */
+export function PosterBackground({ src }: { src: string }) {
+  return <div class="bg bg-poster"><img src={src} alt="" /></div>;
+}
+
+/** Samsung Tizen (і деякі інші ТБ-браузери) дозволяють лише один медіаелемент одночасно. */
+export function isSingleMediaTv(): boolean {
+  const ua = navigator.userAgent;
+  if (/Tizen|SMART-TV|SmartTV|NetCast/i.test(ua)) return true;
+  try { return localStorage.getItem("sh_single_media") === "1"; } catch { return false; }
+}
+export function rememberSingleMedia() { try { localStorage.setItem("sh_single_media", "1"); } catch { /* ignore */ } }
+
 /** Без відео: спокійний градієнт, щоб екран не був чорним. */
 export function GradientBackground() {
   return <div class="bg bg-gradient" />;
 }
 
 /** Обгортка: відео з відкатом на градієнт і повторною спробою через 5 хв. */
-export function Background({ src }: { src: string | null }) {
+export function Background({ src, poster }: { src: string | null; poster?: string | null }) {
   const [failedAt, setFailedAt] = useState<number | null>(null);
   useEffect(() => { if (failedAt === null) return; const t = setTimeout(() => setFailedAt(null), 5 * 60_000); return () => clearTimeout(t); }, [failedAt]);
-  if (!src || failedAt !== null) return <GradientBackground />;
+  if (!src || failedAt !== null) return poster ? <PosterBackground src={poster} /> : <GradientBackground />;
   return <VideoBackground src={src} onFail={() => setFailedAt(Date.now())} />;
 }

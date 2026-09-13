@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { startLive, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
-import { Background, GradientBackground } from "./background.tsx";
+import { Background, GradientBackground, isSingleMediaTv, rememberSingleMedia } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
 import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
 import { AlertOverlay } from "./feeds.tsx";
@@ -21,6 +21,8 @@ export function App() {
   }, []);
   const [live, setLive] = useState<LiveStore | null>(null);
   const [needTap, setNeedTap] = useState(false);
+  // ТБ, що не грає відео і радіо разом: визначено за UA або за фактом (радіо стало на паузу, щойно пішло відео)
+  const [singleMedia, setSingleMedia] = useState(isSingleMediaTv);
   const audio = useRef<HTMLAudioElement>(null);
 
   useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
@@ -32,7 +34,16 @@ export function App() {
     if (!el || !radioUrl) { setNeedTap(false); return; }
     el.volume = radioVolume;
     let retry = 2000, timer: number | undefined, blocked = false;
-    const start = () => { if (el.src !== radioUrl) { el.src = radioUrl; el.load(); } el.play().then(() => { blocked = false; setNeedTap(false); retry = 2000; }).catch(() => { blocked = true; setNeedTap(true); }); };
+    let wanted = false, stopping = false;
+    const start = () => { if (el.src !== radioUrl) { el.src = radioUrl; el.load(); } wanted = true; el.play().then(() => { blocked = false; setNeedTap(false); retry = 2000; }).catch(() => { blocked = true; setNeedTap(true); }); };
+    // паузу поставили не ми: якщо в цей момент грає відеофон — ТБ не тягне обидва; переходимо на кадр і повертаємо радіо
+    const onPause = () => {
+      if (!wanted || stopping || blocked) return;
+      const v = document.querySelector<HTMLVideoElement>("video.bgv.on");
+      if (v && !v.paused && !v.ended) { rememberSingleMedia(); setSingleMedia(true); console.warn("radio paused by video: switching to poster background"); }
+      clearTimeout(timer); timer = window.setTimeout(start, 800);
+    };
+    el.addEventListener("pause", onPause);
     // Автозапуск зі звуком заборонено: будь-яка кнопка пульта / дотик вмикає (як в акваріумі)
     const kick = () => { if (blocked) start(); };
     for (const ev of ["pointerdown", "touchstart", "keydown"]) addEventListener(ev, kick, true);
@@ -41,9 +52,9 @@ export function App() {
     el.addEventListener("error", onFail); el.addEventListener("stalled", onFail); el.addEventListener("ended", onFail);
     start();
     return () => {
-      clearTimeout(timer);
+      stopping = true; clearTimeout(timer);
       for (const ev of ["pointerdown", "touchstart", "keydown"]) removeEventListener(ev, kick, true);
-      el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail);
+      el.removeEventListener("pause", onPause); el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail);
       el.pause(); el.removeAttribute("src"); el.load();
     };
   }, [radioUrl]);
@@ -57,12 +68,17 @@ export function App() {
   const files = screen.background?.files;
   const video = files ? (files["1080"] ?? files["720"]) : null;
   const lite = new URLSearchParams(location.search).has("lite");   // діагностика: без відео і розмиття
-  const src = !lite && video ? (video.startsWith("http") ? video : `/media/${video}`) : null;
+  const media = (f: string) => (f.startsWith("http") ? f : `/media/${f}`);
+  const preview = screen.background?.preview ? media(screen.background.preview) : null;
+  const mode = screen.config.tvVideo ?? "auto";
+  // радіо + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
+  const posterOnly = !!radioUrl && (mode === "poster" || (mode === "auto" && singleMedia));
+  const src = !lite && !posterOnly && video ? media(video) : null;
   // повноекранний банер тривоги, якщо є віджет тривоги і в нього не вимкнено оверлей
   const overlay = screen.config.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false);
 
   return <div class={`screen theme-${screen.config.theme}${lite ? " lite" : ""}`}>
-    <Background src={src} />
+    <Background src={src} poster={!lite ? preview : null} />
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
         <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}
