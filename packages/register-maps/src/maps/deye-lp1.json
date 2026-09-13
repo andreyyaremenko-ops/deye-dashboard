@@ -2,7 +2,7 @@
   "id": "deye-lp1",
   "name": "Deye single-phase LV hybrid (SUN-3.6/5/6/8K-SG0xLP1)",
   "deviceType": 3,
-  "pollRanges": [[0, 22], [59, 100], [150, 200]],
+  "pollRanges": [[0, 22], [59, 113], [150, 200]],
   "fields": [
     { "key": "state", "reg": 59, "enum": { "0": "standby", "1": "self_check", "2": "normal", "3": "alarm", "4": "fault" } },
     { "key": "pv_day_kwh", "reg": 60, "scale": 0.1, "unit": "kWh" },
@@ -13,8 +13,7 @@
     { "key": "bat_discharge_total_kwh", "reg": 74, "words": 2, "scale": 0.1, "unit": "kWh" },
     { "key": "grid_buy_day_kwh", "reg": 76, "scale": 0.1, "unit": "kWh" },
     { "key": "grid_sell_day_kwh", "reg": 77, "scale": 0.1, "unit": "kWh" },
-    { "key": "grid_buy_total_lo", "reg": 78, "unit": "raw" },
-    { "key": "grid_buy_total_hi", "reg": 80, "unit": "raw" },
+    { "key": "grid_buy_total_kwh", "reg": 78, "words": 2, "hiReg": 80, "scale": 0.1, "unit": "kWh" },
     { "key": "grid_hz", "reg": 79, "scale": 0.01, "unit": "Hz" },
     { "key": "grid_sell_total_kwh", "reg": 81, "words": 2, "scale": 0.1, "unit": "kWh" },
     { "key": "load_day_kwh", "reg": 84, "scale": 0.1, "unit": "kWh" },
@@ -49,5 +48,5 @@
   "derived": [
     { "key": "pv_w", "sum": ["pv1_w", "pv2_w"], "unit": "W" }
   ],
-  "_notes": "Карта з протоколу Deye LV hybrid (single phase). 79 = частота мережі, тому total bought = 78 (low) + 80 (high) — окремі raw-поля. Знаки bat_w/grid_w і масштаб pv1_w перевірити на реальному дампі (ON-Coffe, стік 3591980541)."
+  "_notes": "Перевірено на кадрі ON-Coffe (spike/dumps/3591980541_*): баланс load = grid + inv точний, bat_w < 0 = заряд, pv у ватах без масштабу, 79 = частота мережі (total bought = 78 + 80). Регістри 20-21 тут не номінал."
 }

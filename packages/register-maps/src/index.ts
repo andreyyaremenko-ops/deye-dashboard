@@ -8,8 +8,10 @@ import deyeLp1 from "./maps/deye-lp1.json" with { type: "json" };
 export interface RegisterField {
   key: string;
   reg: number;
-  /** 1 = uint16/int16, 2 = uint32 (low word у reg, high у reg+1) */
+  /** 1 = uint16/int16, 2 = uint32 (low word у reg, high у reg+1 або у hiReg) */
   words?: 1 | 2;
+  /** регістр high word, якщо не reg+1 (LP1: total bought = 78 + 80, бо 79 — частота) */
+  hiReg?: number;
   scale?: number;
   offset?: number;
   signed?: boolean;
@@ -63,7 +65,7 @@ export function decodeField(f: RegisterField, table: Map<number, number>): numbe
   if (lo === undefined) return undefined;
   let raw: number;
   if (f.words === 2) {
-    const hi = table.get(f.reg + 1);
+    const hi = table.get(f.hiReg ?? f.reg + 1);
     if (hi === undefined) return undefined;
     raw = hi * 65536 + lo;
   } else {

@@ -27,8 +27,9 @@ describe("hexToRegs / rangesToTable", () => {
 });
 
 describe("deye-hp3 на реальних дампах", () => {
-  expect(dumpFiles.length).toBeGreaterThan(0);
-  for (const file of dumpFiles) {
+  const hp3Files = dumpFiles.filter((f) => decodeIdentity(tableFromDump(f)).deviceType === 6);
+  expect(hp3Files.length).toBeGreaterThan(0);
+  for (const file of hp3Files) {
     const table = tableFromDump(file);
     const id = decodeIdentity(table);
     const map = mapForDeviceType(id.deviceType!);
@@ -59,6 +60,30 @@ describe("deye-hp3 на реальних дампах", () => {
       }
       expect(m.pv_total_kwh).toBeGreaterThan(20000); // 32-бітний лічильник, high word = 4
       expect(m.pv_w).toBe((m.pv1_w as number) + (m.pv2_w as number));
+    });
+  }
+});
+
+describe("deye-lp1 (однофазний 6 kW, ON-Coffe) на реальному кадрі", () => {
+  const files = dumpFiles.filter((f) => decodeIdentity(tableFromDump(f)).deviceType === 3);
+  expect(files.length).toBeGreaterThan(0);
+  for (const file of files) {
+    const table = tableFromDump(file);
+    const id = decodeIdentity(table);
+    const map = mapForDeviceType(3)!;
+    it(`${file}: ідентифікація і баланс`, () => {
+      expect(id.inverterSerial).toBe("2510163946");
+      expect(map.id).toBe("deye-lp1");
+      const m = decode(map, table);
+      expect(m.state).toBe("normal");
+      expect((m.grid_w as number) + (m.inv_w as number)).toBe(m.load_w);          // 20 + 442 = 462
+      expect(m.pv_w).toBe(797); expect(m.bat_w).toBe(-343);                        // сонце заряджає батарею
+      expect((m.pv_w as number) + (m.bat_w as number)).toBeGreaterThan(m.inv_w as number); // PV − заряд ≈ інвертор + втрати
+      expect(m.bat_soc).toBe(40); expect(m.bat_v).toBeCloseTo(52.87, 2); expect(m.bat_temp_c).toBe(24.5);
+      expect(m.grid_hz).toBe(50.01); expect(m.grid_v_l1).toBe(234.2);
+      expect(m.grid_buy_total_kwh).toBe(3864.1); expect(m.load_total_kwh).toBe(6748.9); expect(m.pv_total_kwh).toBe(2814.6);
+      // енергобаланс лічильників: спожито ≈ куплено + сонце − продано (± втрати батареї)
+      expect(Math.abs((m.load_total_kwh as number) - ((m.grid_buy_total_kwh as number) + (m.pv_total_kwh as number) - (m.grid_sell_total_kwh as number)))).toBeLessThan(200);
     });
   }
 });

@@ -90,8 +90,13 @@ describe("стік у режимі TCP-Client", () => {
 
   it("розрив зʼєднання -> офлайн", async () => {
     stick.destroy();
-    await new Promise((r) => setTimeout(r, 300));
-    const [d] = await t.db.select().from(devices).where(eq(devices.id, "002763543833"));
-    expect(d!.online).toBe(false);
+    // під паралельними сьютами закриття обробляється не миттєво — чекаємо до 3 с
+    let online = true;
+    for (let i = 0; i < 30 && online; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+      const [d] = await t.db.select().from(devices).where(eq(devices.id, "002763543833"));
+      online = d!.online;
+    }
+    expect(online).toBe(false);
   });
 });
