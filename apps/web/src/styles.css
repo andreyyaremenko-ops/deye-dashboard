@@ -134,3 +134,8 @@ html, body { overflow-x: hidden; }
   .hero h1 { font-size: 1.7rem; } .land-top nav a:not(.btn) { display: none; } .land-top { padding: .8rem 0; }
   .lc-lbl { font-size: 18px; }
 }
+@media (max-width: 760px) {
+  /* перша клітинка картки (назва + технічний рядок) — у стовпчик, вирівняно ліворуч */
+  .tbl td:first-child { flex-direction: column; align-items: flex-start; text-align: left; gap: .15rem; padding-bottom: .45rem; border-bottom: 1px solid var(--line); margin-bottom: .2rem; }
+  .tbl td:first-child::before { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; }
+}
