@@ -1,0 +1,382 @@
+{
+  "id": "deye-lp3",
+  "name": "Deye three-phase LV hybrid (SUN-5/6/8/10/12K-SG04LP3)",
+  "deviceType": 5,
+  "pollRanges": [
+    [
+      0,
+      22
+    ],
+    [
+      500,
+      700
+    ]
+  ],
+  "fields": [
+    {
+      "key": "state",
+      "reg": 500,
+      "enum": {
+        "0": "standby",
+        "1": "self_check",
+        "2": "normal",
+        "3": "alarm",
+        "4": "fault"
+      }
+    },
+    {
+      "key": "bat_charge_day_kwh",
+      "reg": 514,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "bat_discharge_day_kwh",
+      "reg": 515,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "bat_charge_total_kwh",
+      "reg": 516,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "bat_discharge_total_kwh",
+      "reg": 518,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_buy_day_kwh",
+      "reg": 520,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_sell_day_kwh",
+      "reg": 521,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_buy_total_kwh",
+      "reg": 522,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_sell_total_kwh",
+      "reg": 524,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "load_day_kwh",
+      "reg": 526,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "load_total_kwh",
+      "reg": 527,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "pv_day_kwh",
+      "reg": 529,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "pv_total_kwh",
+      "reg": 534,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "temp_dc_c",
+      "reg": 540,
+      "scale": 0.1,
+      "offset": -100,
+      "unit": "C"
+    },
+    {
+      "key": "temp_heatsink_c",
+      "reg": 541,
+      "scale": 0.1,
+      "offset": -100,
+      "unit": "C"
+    },
+    {
+      "key": "bat_temp_c",
+      "reg": 586,
+      "scale": 0.1,
+      "offset": -100,
+      "unit": "C"
+    },
+    {
+      "key": "bat_v",
+      "reg": 587,
+      "scale": 0.01,
+      "unit": "V"
+    },
+    {
+      "key": "bat_soc",
+      "reg": 588,
+      "unit": "%"
+    },
+    {
+      "key": "bat_w",
+      "reg": 590,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "bat_a",
+      "reg": 591,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "grid_v_l1",
+      "reg": 598,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "grid_v_l2",
+      "reg": 599,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "grid_v_l3",
+      "reg": 600,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "grid_w_l1",
+      "reg": 604,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "grid_w_l2",
+      "reg": 605,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "grid_w_l3",
+      "reg": 606,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "grid_w",
+      "reg": 607,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "grid_hz",
+      "reg": 609,
+      "scale": 0.01,
+      "unit": "Hz"
+    },
+    {
+      "key": "grid_a_l1",
+      "reg": 610,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "grid_a_l2",
+      "reg": 611,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "grid_a_l3",
+      "reg": 612,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "inv_v_l1",
+      "reg": 627,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "inv_v_l2",
+      "reg": 628,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "inv_v_l3",
+      "reg": 629,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "inv_a_l1",
+      "reg": 630,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "inv_a_l2",
+      "reg": 631,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "inv_a_l3",
+      "reg": 632,
+      "scale": 0.01,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "inv_w_l1",
+      "reg": 633,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "inv_w_l2",
+      "reg": 634,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "inv_w_l3",
+      "reg": 635,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "inv_w",
+      "reg": 636,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "inv_hz",
+      "reg": 638,
+      "scale": 0.01,
+      "unit": "Hz"
+    },
+    {
+      "key": "load_v_l1",
+      "reg": 644,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "load_v_l2",
+      "reg": 645,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "load_v_l3",
+      "reg": 646,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "load_w_l1",
+      "reg": 650,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "load_w_l2",
+      "reg": 651,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "load_w_l3",
+      "reg": 652,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "load_w",
+      "reg": 653,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "load_hz",
+      "reg": 655,
+      "scale": 0.01,
+      "unit": "Hz"
+    },
+    {
+      "key": "pv1_w",
+      "reg": 672,
+      "unit": "W"
+    },
+    {
+      "key": "pv2_w",
+      "reg": 673,
+      "unit": "W"
+    },
+    {
+      "key": "pv1_v",
+      "reg": 676,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "pv1_a",
+      "reg": 677,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "pv2_v",
+      "reg": 678,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "pv2_a",
+      "reg": 679,
+      "scale": 0.1,
+      "unit": "A"
+    }
+  ],
+  "derived": [
+    {
+      "key": "pv_w",
+      "sum": [
+        "pv1_w",
+        "pv2_w"
+      ],
+      "unit": "W"
+    }
+  ],
+  "_notes": "Ті самі регістри, що deye-hp3 (500-700); відмінності: bat_v 0.01 V (LV 48 V), pv1_w/pv2_w без масштабу ×10 — за документацією SG04LP3, підтвердити вдень за V×A. Перевірено вночі на кадрі Stiklyashka (стік 3575357385): баланс load = grid + inv з точністю до 7 W."
+}

@@ -88,6 +88,30 @@ describe("deye-lp1 (однофазний 6 kW, ON-Coffe) на реальному
   }
 });
 
+describe("deye-lp3 (трифазний LV 12 kW, Stiklyashka) на реальному кадрі", () => {
+  const files = dumpFiles.filter((f) => decodeIdentity(tableFromDump(f)).deviceType === 5);
+  expect(files.length).toBeGreaterThan(0);
+  for (const file of files) {
+    const table = tableFromDump(file);
+    const id = decodeIdentity(table);
+    const map = mapForDeviceType(5)!;
+    it(`${file}: ідентифікація, баланс, LV-батарея`, () => {
+      expect(id.inverterSerial).toBe("2507225076"); expect(id.ratedW).toBe(12000);
+      expect(map.id).toBe("deye-lp3");
+      const m = decode(map, table);
+      expect(m.state).toBe("normal");
+      expect(Math.abs((m.grid_w as number) + (m.inv_w as number) - (m.load_w as number))).toBeLessThan(15);   // 1020 − 54 ≈ 959
+      expect((m.grid_w_l1 as number) + (m.grid_w_l2 as number) + (m.grid_w_l3 as number)).toBe(m.grid_w);
+      expect((m.load_w_l1 as number) + (m.load_w_l2 as number) + (m.load_w_l3 as number)).toBe(m.load_w);
+      expect(m.bat_v).toBeCloseTo(52.72, 2); expect(m.bat_soc).toBe(50); expect(m.bat_temp_c).toBe(22.5);
+      for (const k of ["grid_v_l1", "grid_v_l2", "grid_v_l3"]) { expect(m[k]).toBeGreaterThan(180); expect(m[k]).toBeLessThan(260); }
+      expect(m.grid_hz).toBe(49.95);
+      expect(m.load_total_kwh).toBe(10772.9); expect(m.grid_buy_total_kwh).toBe(6269.2); expect(m.pv_total_kwh).toBe(5811.1);
+      expect(Math.abs((m.load_total_kwh as number) - ((m.grid_buy_total_kwh as number) + (m.pv_total_kwh as number) - (m.grid_sell_total_kwh as number)))).toBeLessThan(1500); // втрати батареї ~280 kWh + інвертор
+    });
+  }
+});
+
 describe("signed / words / offset", () => {
   it("знакові значення і температура з offset", () => {
     const t = new Map<number, number>([[590, 0xfc18], [540, 1250], [516, 7750], [517, 1]]);

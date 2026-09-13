@@ -30,7 +30,7 @@ describe("схема + seed", () => {
     await seed(db);
     expect((await db.select().from(plans)).map((p) => p.id).sort()).toEqual(["free", "max", "pro"]);
     const models = await db.select().from(inverterModels);
-    expect(models.map((m) => m.id)).toEqual(["deye-hp3", "deye-lp1"]);
+    expect(models.map((m) => m.id)).toEqual(["deye-hp3", "deye-lp1", "deye-lp3"]);
     expect(models[0]!.registerMap.length).toBeGreaterThan(50);
   });
 
