@@ -81,7 +81,7 @@ export function EcoWidget({ cls, token, deviceId, stale }: { cls: string; token:
     <div class="big">{s?.pvMonthKwh !== null && s?.pvMonthKwh !== undefined ? fmtKwh(s.pvMonthKwh) : "—"}</div>
     <div class="sub">{s?.co2MonthKg ? `≈ ${s.co2MonthKg.toLocaleString("uk-UA")} кг CO₂ не потрапило в повітря` : s ? `рахуємо з ${new Date(s.since).toLocaleDateString("uk-UA")}` : ""}</div>
     {s?.pvPrevMonthKwh !== null && s?.pvPrevMonthKwh !== undefined && <div class="row"><span>минулого місяця</span><b>{fmtKwh(s.pvPrevMonthKwh)}</b></div>}
-    {trees !== null && trees > 0 && <div class="row"><span>як {trees} {trees === 1 ? "дерево" : trees < 5 ? "дерева" : "дерев"} за місяць</span><b>🌳</b></div>}
+    {trees !== null && trees > 0 && <div class="row"><span>стільки поглинають за місяць</span><b>🌳 {trees} {trees === 1 ? "дерево" : trees < 5 ? "дерева" : "дерев"}</b></div>}
     {s?.pvTotalKwh !== null && s?.pvTotalKwh !== undefined && <div class="row"><span>всього від сонця</span><b>{fmtKwh(s.pvTotalKwh)}</b></div>}
   </div>;
 }

@@ -101,7 +101,8 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .w-weather .wx-icon { font-size: 3.4vw; line-height: 1; }
 .w-weather .wx-desc { font-size: 1.3vw; line-height: 1.2; opacity: .9; } .w-weather .wx-desc small { font-size: 1.05vw; opacity: .75; }
 .w-weather .wx-row { display: flex; align-items: baseline; gap: .8vw; font-size: 1.25vw; margin-top: .35vw; }
-.w-weather .wx-row b { font-size: 1.4vw; } .w-weather .wx-t { opacity: .75; margin-left: auto; }
+.w-weather .wx-row > span:first-child { white-space: nowrap; } .w-weather .wx-row b { font-size: 1.4vw; white-space: nowrap; }
+.w-weather .wx-t { opacity: .75; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-weather .wx-row.sun b { color: #ffd36b; }
 
 /* тривога */
