@@ -34,7 +34,7 @@ export interface Device {
   inverterSerial: string | null; inverterType: number | null; modelId: string | null; stickSerial: number | null; batteryKwh: number | null; minSoc: number; pvKwp: number | null;
   state: Record<string, number | string | boolean> | null; stateUpdatedAt: string | null; stale: boolean;
 }
-export interface Screen { id: string; orgId: string; name: string; config: ScreenConfig; viewToken: string; createdAt: string; updatedAt: string }
+export interface Screen { id: string; orgId: string; name: string; config: ScreenConfig; viewToken: string; createdAt: string; updatedAt: string; lastViewedAt: string | null; viewers?: number }
 export interface Background {
   id: string; orgId: string | null; name: string; category: string | null; status: "uploaded" | "processing" | "ready" | "failed";
   files: Record<"1080" | "720", string> | null; preview: string | null; attribution: string | null; license: string | null; durationS: number | null; createdAt: string;

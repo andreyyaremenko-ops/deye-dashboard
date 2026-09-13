@@ -11,6 +11,11 @@ export interface DeviceStateSnapshot {
   metrics: Record<string, number | string | boolean>;
 }
 
+export interface Viewer { connId: string; ip: string; ua: string; since: string; lastSeen: string }
+/** Глядач без heartbeat довше цього вважається відпалим (ping кожні 25 с). */
+export const VIEWER_TTL_MS = 75_000;
+const liveViewers = (list: Viewer[], now = Date.now()) => list.filter((v) => now - Date.parse(v.lastSeen) < VIEWER_TTL_MS);
+
 export interface StateStore {
   set(s: DeviceStateSnapshot): Promise<void>;
   get(deviceId: string): Promise<DeviceStateSnapshot | null>;
@@ -20,6 +25,11 @@ export interface StateStore {
   notifyScreen(screenId: string): Promise<void>;
   subscribeScreens(handler: (screenId: string) => void): () => void;
   /** Зовнішні стрічки (погода, тривоги): кеш із TTL + сповіщення про оновлення за ключем. */
+  /** Телевізори, підключені до екрана по WS (для «показується / ні» в кабінеті й адмінці). */
+  touchViewer(screenId: string, v: Viewer): Promise<void>;
+  removeViewer(screenId: string, connId: string): Promise<void>;
+  viewers(screenId: string): Promise<Viewer[]>;
+  viewerCounts(screenIds: string[]): Promise<Record<string, number>>;
   setFeed(key: string, value: unknown, ttlS: number): Promise<void>;
   getFeed<T = unknown>(key: string): Promise<T | null>;
   notifyFeed(key: string): Promise<void>;
@@ -37,6 +47,11 @@ export class MemoryStateStore implements StateStore {
   notified: string[] = [];
   async notifyScreen(id: string) { this.notified.push(id); this.ee.emit("screen", id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  viewerMap = new Map<string, Map<string, Viewer>>();
+  async touchViewer(id: string, v: Viewer) { const m = this.viewerMap.get(id) ?? new Map(); m.set(v.connId, v); this.viewerMap.set(id, m); }
+  async removeViewer(id: string, connId: string) { this.viewerMap.get(id)?.delete(connId); }
+  async viewers(id: string) { return liveViewers([...(this.viewerMap.get(id)?.values() ?? [])]); }
+  async viewerCounts(ids: string[]) { const out: Record<string, number> = {}; for (const id of ids) out[id] = (await this.viewers(id)).length; return out; }
   feeds = new Map<string, { value: unknown; exp: number }>();
   async setFeed(key: string, value: unknown, ttlS: number) { this.feeds.set(key, { value, exp: Date.now() + ttlS * 1000 }); }
   async getFeed<T>(key: string) { const f = this.feeds.get(key); return f && f.exp > Date.now() ? (f.value as T) : null; }
@@ -79,6 +94,18 @@ export class RedisStateStore implements StateStore {
   subscribe(h: (s: DeviceStateSnapshot) => void) { this.ee.on("state", h); return () => this.ee.off("state", h); }
   async notifyScreen(id: string) { await this.pub.publish(SCREEN_CHANNEL, id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  // hash на екран: connId -> JSON; відпалі поля чистяться при читанні, ключ живе годину після останнього touch
+  async touchViewer(id: string, v: Viewer) { await this.pub.multi().hset(`viewers:${id}`, v.connId, JSON.stringify(v)).expire(`viewers:${id}`, 3600).exec(); }
+  async removeViewer(id: string, connId: string) { await this.pub.hdel(`viewers:${id}`, connId); }
+  async viewers(id: string) {
+    const all = await this.pub.hgetall(`viewers:${id}`);
+    const parsed = Object.values(all).map((s) => JSON.parse(s) as Viewer);
+    const live = liveViewers(parsed);
+    const dead = parsed.filter((v) => !live.includes(v)).map((v) => v.connId);
+    if (dead.length) await this.pub.hdel(`viewers:${id}`, ...dead);
+    return live;
+  }
+  async viewerCounts(ids: string[]) { const out: Record<string, number> = {}; for (const id of ids) out[id] = (await this.viewers(id)).length; return out; }
   async setFeed(key: string, value: unknown, ttlS: number) { await this.pub.set(`feed:${key}`, JSON.stringify(value), "EX", ttlS); }
   async getFeed<T>(key: string) { const v = await this.pub.get(`feed:${key}`); return v ? (JSON.parse(v) as T) : null; }
   async notifyFeed(key: string) { await this.pub.publish(FEED_CHANNEL, key); }

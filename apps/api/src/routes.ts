@@ -218,6 +218,11 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   const requireAdmin = (req: Parameters<typeof requireUser>[0]) => { const u = requireUser(req); if (!u.isSuperadmin) throw forbidden(); return u; };
   app.get("/api/admin/overview", async (req) => { requireAdmin(req); return adm.overview(db); });
   app.get("/api/admin/devices/all", async (req) => { requireAdmin(req); return adm.allDevices(db); });
+  app.get("/api/admin/screens", async (req) => {
+    requireAdmin(req);
+    const list = await adm.allScreens(db);
+    return Promise.all(list.map(async (s) => { const v = await store.viewers(s.id); return { ...s, viewers: v.length, tvs: v.map((x) => ({ device: adm.describeUa(x.ua), ip: x.ip, since: x.since })) }; }));
+  });
   app.get("/api/admin/payments", async (req) => { requireAdmin(req); return adm.allPayments(db); });
   app.patch("/api/admin/orgs/:orgId/plan", async (req) => {
     requireAdmin(req); const { orgId } = orgParams.parse(req.params);
@@ -244,7 +249,9 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   app.get("/api/orgs/:orgId/screens", async (req) => {
     const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
     await orgs.requireRole(db, orgId, u.id, "staff");
-    return scr.listScreens(db, orgId);
+    const list = await scr.listScreens(db, orgId);
+    const counts = await store.viewerCounts(list.map((s) => s.id));
+    return list.map((s) => ({ ...s, viewers: counts[s.id] ?? 0 }));
   });
   app.patch("/api/orgs/:orgId/screens/:screenId", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);

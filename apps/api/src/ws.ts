@@ -8,6 +8,9 @@ import type { AppDeps } from "./app.ts";
 import { publicScreen } from "./screens/service.ts";
 import { isStale } from "./state/store.ts";
 import { feedMatches } from "./feeds/hub.ts";
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { screens } from "./db/schema.ts";
 
 export async function registerWs(app: FastifyInstance, deps: AppDeps) {
   await app.register(websocket, { options: { maxPayload: 1024 } });
@@ -46,8 +49,19 @@ export async function registerWs(app: FastifyInstance, deps: AppDeps) {
       const data = kind === "alert" ? await deps.feeds.alertFor(location!.oblast) : await deps.feeds.getWeather(location!.lat, location!.lon);
       if (data) send({ type: "feed", name: kind, data });
     });
-    const ping = setInterval(() => { if (socket.readyState === socket.OPEN) socket.ping(); }, 25_000);
-    const cleanup = () => { unsub(); unsubScreen(); unsubFeeds(); clearInterval(ping); };
+    // облік підключених ТБ: heartbeat разом із ping, last_viewed_at у БД при підключенні і раз на 5 хв
+    const viewer = { connId: randomUUID(), ip: req.ip, ua: String(req.headers["user-agent"] ?? "").slice(0, 200), since: new Date().toISOString(), lastSeen: new Date().toISOString() };
+    const markViewed = () => deps.db.update(screens).set({ lastViewedAt: new Date() }).where(eq(screens.id, screenId)).catch(() => {});
+    await deps.store.touchViewer(screenId, viewer); await markViewed();
+    let beats = 0;
+    const ping = setInterval(() => {
+      if (socket.readyState !== socket.OPEN) return;
+      socket.ping();
+      viewer.lastSeen = new Date().toISOString();
+      void deps.store.touchViewer(screenId, viewer);
+      if (++beats % 12 === 0) void markViewed();
+    }, 25_000);
+    const cleanup = () => { unsub(); unsubScreen(); unsubFeeds(); clearInterval(ping); void deps.store.removeViewer(screenId, viewer.connId); };
     socket.on("close", cleanup);
     socket.on("error", cleanup);
   });

@@ -178,6 +178,7 @@ export const screens = pgTable("screens", {
   orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   config: jsonb("config").$type<ScreenConfig>().notNull(),
+  lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),   // останнє підключення ТБ по WS
   viewToken: text("view_token").notNull(),
   pairCode: text("pair_code"),                                       // 6 цифр для введення на ТБ
   pairCodeExpiresAt: timestamp("pair_code_expires_at", { withTimezone: true }),

@@ -7,7 +7,7 @@ export function Screens({ org }: { org: Org }) {
   const [list, setList] = useState<Screen[] | null>(null);
   const canEdit = org.role !== "staff";
   const load = async () => setList(await api.get<Screen[]>(`/api/orgs/${org.id}/screens`));
-  useEffect(() => { void load(); }, [org.id]);
+  useEffect(() => { void load(); const t = setInterval(() => void load().catch(() => {}), 30_000); return () => clearInterval(t); }, [org.id]);
   const create = useAction(async () => { const n = prompt("Назва екрана", "Зал"); if (n) { await api.post(`/api/orgs/${org.id}/screens`, { name: n }); await load(); } });
   const del = useAction(async (s: Screen) => { if (confirm(`Видалити екран «${s.name}»?`)) { await api.del(`/api/orgs/${org.id}/screens/${s.id}`); await load(); } });
   const limit = org.plan.limits.screens;
@@ -16,9 +16,10 @@ export function Screens({ org }: { org: Org }) {
     <p className="muted small">Тариф {org.plan.name}: до {limit} екран(ів). Посилання відкривайте в браузері телевізора.</p>
     <ErrorBox err={create.err ?? del.err} />
     {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <p className="muted">Ще немає екранів.</p> :
-    <table className="tbl"><thead><tr><th>Назва</th><th>Віджетів</th><th>Радіо</th><th>Змінено</th><th>Посилання для ТБ</th><th></th></tr></thead>
+    <table className="tbl"><thead><tr><th>Назва</th><th>Телевізор</th><th>Віджетів</th><th>Радіо</th><th>Змінено</th><th>Посилання для ТБ</th><th></th></tr></thead>
       <tbody>{list.map((s) => <tr key={s.id}>
         <td data-l="Назва"><Link href={`/o/${org.id}/screens/${s.id}`}><b>{s.name}</b></Link></td>
+        <td data-l="Телевізор">{s.viewers ? <><span className="dot on" /> показується{s.viewers > 1 ? ` (${s.viewers})` : ""}</> : s.lastViewedAt ? <span className="muted small">востаннє {ago(s.lastViewedAt)}</span> : <span className="muted small">ще не відкривали</span>}</td>
         <td data-l="Віджетів">{s.config.widgets.length}</td>
         <td data-l="Радіо">{s.config.radioUrl ? "так" : "—"}</td>
         <td data-l="Змінено" className="muted small">{ago(s.updatedAt)}</td>

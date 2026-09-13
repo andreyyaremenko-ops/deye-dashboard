@@ -11,14 +11,17 @@ interface PayRow { id: string; orgName: string | null; planId: string; months: n
 const uah = (kop: number) => `${(kop / 100).toLocaleString("uk-UA")} ₴`;
 const STATUS: Record<string, string> = { created: "очікує", processing: "обробка", hold: "холд", success: "оплачено", failure: "відмова", reversed: "повернуто", expired: "прострочено" };
 
+interface ScreenRow { id: string; name: string; orgId: string; orgName: string; planId: string; updatedAt: string; lastViewedAt: string | null; widgets: number; radio: boolean; background: boolean; viewers: number; tvs: { device: string; ip: string; since: string }[] }
+
 export function Admin({ me }: { me: Me }) {
-  const [tab, setTab] = useState<"orgs" | "devices" | "payments">("orgs");
+  const [tab, setTab] = useState<"orgs" | "devices" | "screens" | "payments">("orgs");
+  const [scr, setScr] = useState<ScreenRow[]>([]);
   const [ov, setOv] = useState<Overview | null>(null);
   const [devs, setDevs] = useState<DevRow[]>([]);
   const [pays, setPays] = useState<PayRow[]>([]);
   const [edit, setEdit] = useState<{ id: string; planId: string; until: string } | null>(null);
-  const load = async () => { setOv(await api.get<Overview>("/api/admin/overview")); setDevs(await api.get<DevRow[]>("/api/admin/devices/all")); setPays(await api.get<PayRow[]>("/api/admin/payments")); };
-  useEffect(() => { void load(); }, []);
+  const load = async () => { setOv(await api.get<Overview>("/api/admin/overview")); setDevs(await api.get<DevRow[]>("/api/admin/devices/all")); setPays(await api.get<PayRow[]>("/api/admin/payments")); setScr(await api.get<ScreenRow[]>("/api/admin/screens")); };
+  useEffect(() => { void load(); const t = setInterval(() => void load().catch(() => {}), 30_000); return () => clearInterval(t); }, []);
   const save = useAction(async () => {
     if (!edit) return;
     await api.patch(`/api/admin/orgs/${edit.id}/plan`, { planId: edit.planId, planUntil: edit.until ? new Date(edit.until).toISOString() : null });
@@ -33,7 +36,7 @@ export function Admin({ me }: { me: Me }) {
         <div className="grow" /><span className="muted hide-m">{me.user.email}</span>
         <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }}>Вийти</button>
       </div>
-      <nav className="top-nav">{(["orgs", "devices", "payments"] as const).map((k) => <button key={k} className={`tab${tab === k ? " on" : ""}`} onClick={() => setTab(k)} style={{ background: tab === k ? "#23304a" : "transparent", border: 0, color: "inherit", cursor: "pointer", font: "inherit" }}>{{ orgs: "Заклади", devices: "Пристрої", payments: "Платежі" }[k]}</button>)}<Link href="/app" className="tab">Кабінет</Link></nav>
+      <nav className="top-nav">{(["orgs", "devices", "screens", "payments"] as const).map((k) => <button key={k} className={`tab${tab === k ? " on" : ""}`} onClick={() => setTab(k)} style={{ background: tab === k ? "#23304a" : "transparent", border: 0, color: "inherit", cursor: "pointer", font: "inherit" }}>{{ orgs: "Заклади", devices: "Пристрої", screens: "Екрани", payments: "Платежі" }[k]}</button>)}<Link href="/app" className="tab">Кабінет</Link></nav>
     </header>
     <main className="content">
       {T && <div className="kpis">
@@ -57,6 +60,18 @@ export function Admin({ me }: { me: Me }) {
           {devs.map((d) => <tr key={d.id}><td data-l="Пристрій"><b>{d.name ?? d.id}</b><div className="muted">{d.id} · {d.hw}</div></td><td data-l="Заклад">{d.orgName ?? <span className="muted">не привʼязаний</span>}</td>
             <td data-l="Стан"><span className={`dot ${d.online ? "on" : "off"}`} /> {d.online ? "онлайн" : "офлайн"}<div className="muted">{ago(d.lastSeenAt)}</div></td><td data-l="Інвертор">{d.modelId ?? "—"}<div className="muted">{d.inverterSerial ?? ""}</div></td><td data-l="Прошивка">{d.fw ?? "—"} <span className="muted">{d.fwChannel}</span></td><td data-l="Стік">{d.stickSerial ?? "—"}</td></tr>)}
         </tbody></table>
+      </Card>}
+      {tab === "screens" && <Card title={`Екрани · на телевізорах зараз: ${scr.filter((s) => s.viewers > 0).length} з ${scr.length}`}>
+        <table className="tbl small"><thead><tr><th>Заклад</th><th>Екран</th><th>Показується</th><th>Телевізор</th><th>Віджетів</th><th>Змінено</th></tr></thead><tbody>
+          {scr.map((s) => <tr key={s.id}>
+            <td data-l="Заклад"><b>{s.orgName}</b><div className="muted">{s.planId}</div></td>
+            <td data-l="Екран">{s.name}<div className="muted">{s.background ? "відео" : "без фону"}{s.radio ? " · радіо" : ""}</div></td>
+            <td data-l="Показується">{s.viewers > 0 ? <><span className="dot on" /> так{s.viewers > 1 ? ` · ${s.viewers} ТБ` : ""}</> : <><span className="dot off" /> ні<div className="muted">{s.lastViewedAt ? `востаннє ${ago(s.lastViewedAt)}` : "ще не відкривали"}</div></>}</td>
+            <td data-l="Телевізор">{s.tvs.length ? s.tvs.map((tv, i) => <div key={i}>{tv.device} <span className="muted">· з {ago(tv.since)} · {tv.ip}</span></div>) : "—"}</td>
+            <td data-l="Віджетів">{s.widgets}</td><td data-l="Змінено" className="muted">{ago(s.updatedAt)}</td>
+          </tr>)}
+        </tbody></table>
+        <p className="muted small">«Показується» = відкритий WebSocket з телевізора; зникає за ~1 хв після закриття сторінки. Оновлюється кожні 30 с.</p>
       </Card>}
       {tab === "payments" && <Card title="Платежі">
         <table className="tbl small"><thead><tr><th>Дата</th><th>Заклад</th><th>Тариф</th><th>Сума</th><th>Статус</th><th>Інвойс</th></tr></thead><tbody>

@@ -26,6 +26,28 @@ export async function overview(db: Db) {
     totals: { orgs: Number(totals?.orgs ?? 0), users: Number(usersN?.n ?? 0), devices: Number(dev?.total ?? 0), online: Number(dev?.online ?? 0), unclaimed: Number(dev?.unclaimed ?? 0), paidTotal: Number(pay?.success ?? 0), paid30d: Number(pay?.month ?? 0) } };
 }
 
+export async function allScreens(db: Db) {
+  return db.select({
+    id: screens.id, name: screens.name, orgId: screens.orgId, orgName: organizations.name, planId: organizations.planId,
+    updatedAt: screens.updatedAt, lastViewedAt: screens.lastViewedAt, config: screens.config,
+  }).from(screens).innerJoin(organizations, eq(screens.orgId, organizations.id)).orderBy(desc(screens.lastViewedAt))
+    .then((rows) => rows.map(({ config, ...r }) => ({ ...r, widgets: config.widgets.length, radio: !!config.radioUrl, background: !!config.backgroundId })));
+}
+
+/** Коротка назва пристрою з User-Agent браузера ТБ. */
+export function describeUa(ua: string): string {
+  if (/Tizen/i.test(ua)) return "Samsung (Tizen)";
+  if (/Web0S|webOS/i.test(ua)) return "LG (webOS)";
+  if (/Android.*TV|AFT|BRAVIA|SHIELD|MiBOX|Chromecast/i.test(ua)) return "Android TV";
+  if (/iPhone|iPad/i.test(ua)) return "iPhone/iPad";
+  if (/Android/i.test(ua)) return "Android";
+  if (/HeadlessChrome/i.test(ua)) return "бот/тест";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Macintosh/i.test(ua)) return "Mac";
+  if (/Linux/i.test(ua)) return "Linux";
+  return ua ? ua.slice(0, 30) : "?";
+}
+
 export async function allDevices(db: Db) {
   return db.select({
     id: devices.id, name: devices.name, hw: devices.hw, fw: devices.fw, online: devices.online, lastSeenAt: devices.lastSeenAt,
