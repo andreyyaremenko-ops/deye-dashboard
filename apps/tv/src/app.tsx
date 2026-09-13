@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { startLive, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
-import { GradientBackground, VideoBackground } from "./background.tsx";
+import { Background, GradientBackground } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
 import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
 
@@ -55,10 +55,11 @@ export function App() {
   const { screen } = live;
   const files = screen.background?.files;
   const video = files ? (files["1080"] ?? files["720"]) : null;
-  const src = video ? (video.startsWith("http") ? video : `/media/${video}`) : null;
+  const lite = new URLSearchParams(location.search).has("lite");   // діагностика: без відео і розмиття
+  const src = !lite && video ? (video.startsWith("http") ? video : `/media/${video}`) : null;
 
-  return <div class={`screen theme-${screen.config.theme}`}>
-    {src ? <VideoBackground src={src} /> : <GradientBackground />}
+  return <div class={`screen theme-${screen.config.theme}${lite ? " lite" : ""}`}>
+    <Background src={src} />
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
         <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}
