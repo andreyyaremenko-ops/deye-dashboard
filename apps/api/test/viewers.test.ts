@@ -23,6 +23,7 @@ describe("облік підключених телевізорів", () => {
     await tick();
     list = (await owner.get(`/api/orgs/${orgId}/screens`)).json();
     expect(list[0].viewers).toBe(2); expect(list[0].lastViewedAt).not.toBeNull();
+    expect(list[0].tvs).toHaveLength(2); expect(list[0].tvs[0].ip).toBe("127.0.0.1");
 
     await closed(ws1); await tick();
     expect((await owner.get(`/api/orgs/${orgId}/screens`)).json()[0].viewers).toBe(1);

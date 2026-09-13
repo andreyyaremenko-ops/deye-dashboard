@@ -250,8 +250,8 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
     await orgs.requireRole(db, orgId, u.id, "staff");
     const list = await scr.listScreens(db, orgId);
-    const counts = await store.viewerCounts(list.map((s) => s.id));
-    return list.map((s) => ({ ...s, viewers: counts[s.id] ?? 0 }));
+    // власник бачить, з яких телевізорів дивляться: тип пристрою, IP, з якого часу
+    return Promise.all(list.map(async (s) => { const v = await store.viewers(s.id); return { ...s, viewers: v.length, tvs: v.map((x) => ({ device: adm.describeUa(x.ua), ip: x.ip, since: x.since })) }; }));
   });
   app.patch("/api/orgs/:orgId/screens/:screenId", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = z.object({ orgId: uuid, screenId: uuid }).parse(req.params);
