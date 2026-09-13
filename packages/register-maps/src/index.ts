@@ -3,6 +3,7 @@
  * Пристрій шле сирі регістри, уся інтерпретація тут (і в БД inverter_models).
  */
 import deyeHp3 from "./maps/deye-hp3.json" with { type: "json" };
+import deyeLp1 from "./maps/deye-lp1.json" with { type: "json" };
 
 export interface RegisterField {
   key: string;
@@ -31,6 +32,7 @@ export type Metrics = Record<string, number | string>;
 
 export const maps: Record<string, RegisterMap> = {
   [deyeHp3.id]: deyeHp3 as unknown as RegisterMap,
+  [deyeLp1.id]: deyeLp1 as unknown as RegisterMap,
 };
 
 /** Вибір карти за reg 0 (тип пристрою). Повертає undefined, якщо не знаємо такий. */
