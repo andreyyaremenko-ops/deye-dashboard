@@ -91,3 +91,46 @@ textarea:focus { outline: 2px solid var(--accent); }
 .plans-3 { max-width: none; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); } .price .per { font-size: 1rem; font-weight: 400; color: var(--muted); }
 
 .price-tag { font-size: 1.4rem; font-weight: 700; align-self: center; }
+
+/* ---------- мобільна розкладка ---------- */
+html, body { overflow-x: hidden; }
+.top { display: block; padding: 0; }
+.top-row { display: flex; align-items: center; gap: .8rem; padding: .55rem 1.2rem; flex-wrap: nowrap; min-width: 0; }
+.top-row .brand { white-space: nowrap; }
+.top-row .orgsel { min-width: 0; max-width: 40vw; text-overflow: ellipsis; }
+.top-nav { display: flex; gap: .2rem; padding: 0 1.2rem .5rem; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.top-nav::-webkit-scrollbar { display: none; } .top-nav .tab { white-space: nowrap; flex: 0 0 auto; }
+.show-m { display: none; }
+@media (max-width: 760px) {
+  .hide-m { display: none !important; } .show-m { display: inline-flex; }
+  .top-row { padding: .5rem .8rem; gap: .5rem; } .top-row .brand { font-size: .95rem; }
+  .top-nav { padding: 0 .8rem .45rem; }
+  .content { padding: .8rem; gap: .8rem; }
+  .card { padding: .8rem .9rem; border-radius: 10px; }
+  .card-h { flex-wrap: wrap; } .card-h h2 { font-size: 1rem; }
+  .row { flex-direction: column; align-items: stretch; } .row .field { min-width: 0; } .row .btn { width: 100%; justify-content: center; }
+  .btn { min-height: 44px; }   /* зручно для пальця */
+  input:not([type=range]):not([type=checkbox]), select, textarea { font-size: 16px; }  /* iOS не зумить */
+  /* таблиці -> картки */
+  .tbl, .tbl tbody, .tbl tr, .tbl td { display: block; width: 100%; }
+  .tbl thead { display: none; }
+  .tbl tr { border: 1px solid var(--line); border-radius: 10px; padding: .5rem .7rem; margin-bottom: .6rem; background: #131a25; }
+  .tbl td { border: 0; padding: .3rem 0; display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; text-align: right; }
+  .tbl td::before { content: attr(data-l); color: var(--muted); font-size: .8rem; text-align: left; flex: 0 0 auto; }
+  .tbl td:not([data-l])::before { content: none; }
+  .tbl td.actions { justify-content: flex-end; flex-wrap: wrap; gap: .3rem; padding-top: .5rem; text-align: right; }
+  .tbl td.actions .btn { width: auto; min-height: 40px; }
+  .tbl td > a { overflow-wrap: anywhere; }
+  .kpis { grid-template-columns: repeat(2, 1fr); } .kpi b { font-size: 1.1rem; }
+  /* редактор */
+  .editor-top { gap: .4rem; } .editor-top .name { min-width: 0; flex: 1 1 100%; order: -1; }
+  .editor-top .btn { flex: 1 1 auto; justify-content: center; font-size: .9rem; padding: .5rem .6rem; }
+  .editor-body { gap: .8rem; } .side { gap: .6rem; }
+  .canvas { border-radius: 8px; }
+  .chips .chip { min-height: 40px; }
+  .auth-box { padding: 1.2rem; }
+  .price-tag { text-align: center; }
+  .plans, .steps, .feats { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 1.7rem; } .land-top nav a:not(.btn) { display: none; } .land-top { padding: .8rem 0; }
+  .lc-lbl { font-size: 18px; }
+}

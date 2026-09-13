@@ -24,9 +24,9 @@ export function Members({ org, meId }: { org: Org; meId: string }) {
       <ErrorBox err={remove.err ?? change.err} />
       <table className="tbl"><thead><tr><th>Email</th><th>Імʼя</th><th>Роль</th><th>З</th><th></th></tr></thead><tbody>
         {members.map((m) => <tr key={m.userId}>
-          <td>{m.email}{m.userId === meId && <span className="muted"> (ви)</span>}</td><td>{m.name}</td>
-          <td>{isOwner ? <select value={m.role} onChange={(e) => change.run({ m, r: e.currentTarget.value as OrgRole })}>{orgRoles.map((r) => <option key={r} value={r}>{ROLE[r]}</option>)}</select> : ROLE[m.role]}</td>
-          <td className="muted small">{fmtDate(m.since)}</td>
+          <td data-l="Email">{m.email}{m.userId === meId && <span className="muted"> (ви)</span>}</td><td data-l="Імʼя">{m.name}</td>
+          <td data-l="Роль">{isOwner ? <select value={m.role} onChange={(e) => change.run({ m, r: e.currentTarget.value as OrgRole })}>{orgRoles.map((r) => <option key={r} value={r}>{ROLE[r]}</option>)}</select> : ROLE[m.role]}</td>
+          <td data-l="З" className="muted small">{fmtDate(m.since)}</td>
           <td className="actions">{isOwner && <Btn kind="ghost" onClick={() => remove.run(m)}>Прибрати</Btn>}</td>
         </tr>)}
       </tbody></table>
@@ -42,7 +42,7 @@ export function Members({ org, meId }: { org: Org; meId: string }) {
       <ErrorBox err={invite.err ?? revoke.err} />
       {link && <div className="ok"><code className="wrap">{link}</code><Btn kind="ghost" onClick={() => navigator.clipboard?.writeText(link)}>Копіювати</Btn></div>}
       {invites.filter((i) => !i.usedAt).length > 0 && <table className="tbl small"><thead><tr><th>Роль</th><th>Діє до</th><th></th></tr></thead><tbody>
-        {invites.filter((i) => !i.usedAt).map((i) => <tr key={i.id}><td>{ROLE[i.role]}</td><td>{fmtDate(i.expiresAt)}</td><td className="actions"><Btn kind="ghost" onClick={() => revoke.run(i.id)}>Відкликати</Btn></td></tr>)}
+        {invites.filter((i) => !i.usedAt).map((i) => <tr key={i.id}><td data-l="Роль">{ROLE[i.role]}</td><td data-l="Діє до">{fmtDate(i.expiresAt)}</td><td className="actions"><Btn kind="ghost" onClick={() => revoke.run(i.id)}>Відкликати</Btn></td></tr>)}
       </tbody></table>}
     </Card>}
   </>;
@@ -104,7 +104,7 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
         <ErrorBox err={pay.err} />
       </>}
       {b && b.payments.length > 0 && <table className="tbl small" style={{ marginTop: ".8rem" }}><thead><tr><th>Дата</th><th>Тариф</th><th>Сума</th><th>Статус</th><th></th></tr></thead><tbody>
-        {b.payments.map((p) => <tr key={p.id}><td>{fmtDate(p.createdAt)}</td><td>{p.planId} · {p.months} міс.</td><td>{uah(p.amount)}</td><td>{STATUS_UA[p.status] ?? p.status}</td><td className="actions">{p.status === "created" && p.pageUrl && <a href={p.pageUrl} className="btn btn-ghost">Сплатити</a>}</td></tr>)}
+        {b.payments.map((p) => <tr key={p.id}><td data-l="Дата">{fmtDate(p.createdAt)}</td><td data-l="Тариф">{p.planId} · {p.months} міс.</td><td data-l="Сума">{uah(p.amount)}</td><td data-l="Статус">{STATUS_UA[p.status] ?? p.status}</td><td className="actions">{p.status === "created" && p.pageUrl && <a href={p.pageUrl} className="btn btn-ghost">Сплатити</a>}</td></tr>)}
       </tbody></table>}
     </Card>
   </>;

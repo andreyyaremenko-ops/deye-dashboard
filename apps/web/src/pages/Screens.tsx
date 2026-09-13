@@ -18,11 +18,11 @@ export function Screens({ org }: { org: Org }) {
     {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <p className="muted">Ще немає екранів.</p> :
     <table className="tbl"><thead><tr><th>Назва</th><th>Віджетів</th><th>Радіо</th><th>Змінено</th><th>Посилання для ТБ</th><th></th></tr></thead>
       <tbody>{list.map((s) => <tr key={s.id}>
-        <td><Link href={`/o/${org.id}/screens/${s.id}`}><b>{s.name}</b></Link></td>
-        <td>{s.config.widgets.length}</td>
-        <td>{s.config.radioUrl ? "так" : "—"}</td>
-        <td className="muted small">{ago(s.updatedAt)}</td>
-        <td><a href={screenUrl(s.viewToken)} target="_blank" rel="noreferrer" className="small">{screenUrl(s.viewToken).replace(/^https?:\/\//, "").slice(0, 34)}…</a></td>
+        <td data-l="Назва"><Link href={`/o/${org.id}/screens/${s.id}`}><b>{s.name}</b></Link></td>
+        <td data-l="Віджетів">{s.config.widgets.length}</td>
+        <td data-l="Радіо">{s.config.radioUrl ? "так" : "—"}</td>
+        <td data-l="Змінено" className="muted small">{ago(s.updatedAt)}</td>
+        <td data-l="Посилання"><a href={screenUrl(s.viewToken)} target="_blank" rel="noreferrer" className="small">{screenUrl(s.viewToken).replace(/^https?:\/\//, "").slice(0, 34)}…</a></td>
         <td className="actions"><Link href={`/o/${org.id}/screens/${s.id}`} className="btn btn-ghost">Редагувати</Link>{canEdit && <Btn kind="ghost" onClick={() => del.run(s)}>Видалити</Btn>}</td>
       </tr>)}</tbody></table>}
   </Card>;

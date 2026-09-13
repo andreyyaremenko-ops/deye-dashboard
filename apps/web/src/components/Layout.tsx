@@ -13,16 +13,18 @@ export function Layout({ me, orgId, children }: { me: Me; orgId: string; childre
   };
   return <div className="layout">
     <header className="top">
-      <div className="brand">☀ {PRODUCT_NAME}</div>
-      <select className="orgsel" value={orgId} onChange={(e) => { const v = e.currentTarget.value; navigate(v === "__new" ? "/new-org" : `/o/${v}/devices`); }}>
-        {me.orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-        <option value="__new">+ Нова організація…</option>
-      </select>
-      <nav>{tab("devices", "Пристрої")}{tab("screens", "Екрани")}{tab("members", "Учасники")}{tab("settings", "Налаштування")}</nav>
-      <div className="grow" />
-      {me.user.isSuperadmin && <Link href="/admin" className="tab">Адмін</Link>}
-      <span className="muted">{me.user.email}{org ? ` · ${org.role}` : ""}</span>
-      <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }}>Вийти</button>
+      <div className="top-row">
+        <div className="brand">☀ {PRODUCT_NAME}</div>
+        <select className="orgsel" value={orgId} onChange={(e) => { const v = e.currentTarget.value; navigate(v === "__new" ? "/new-org" : `/o/${v}/devices`); }}>
+          {me.orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          <option value="__new">+ Нова організація…</option>
+        </select>
+        <div className="grow" />
+        {me.user.isSuperadmin && <Link href="/admin" className="tab hide-m">Адмін</Link>}
+        <span className="muted hide-m">{me.user.email}{org ? ` · ${org.role}` : ""}</span>
+        <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }} title="Вийти">Вийти</button>
+      </div>
+      <nav className="top-nav">{tab("devices", "Пристрої")}{tab("screens", "Екрани")}{tab("members", "Учасники")}{tab("settings", "Налаштування")}{me.user.isSuperadmin && <Link href="/admin" className="tab show-m">Адмін</Link>}</nav>
     </header>
     <main className="content">{children}</main>
   </div>;
