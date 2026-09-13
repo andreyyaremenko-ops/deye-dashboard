@@ -36,7 +36,16 @@ export function Landing({ me }: { me: Me | null }) {
         </div>
         <p className="muted small">Безкоштовний тариф назавжди. Налаштування займає 10 хвилин.</p>
       </div>
-      <div className="hero-shot"><img src="/landing/screen.jpg" width={1400} height={788} alt="Екран SunHunter TV на телевізорі в кафе: відеофон з каміном, показники сонячної станції Deye, заряд батареї, меню закладу" /></div>
+      <div className="hero-shot">
+        {/* запис реального екрана; постер і <img> лишаються для пошуковиків і для режиму без анімації */}
+        <video className="hero-video" autoPlay muted loop playsInline preload="metadata" poster="/landing/screen.jpg" width={1280} height={720}
+          aria-label="Екран SunHunter TV на телевізорі в кафе: відеофон, показники сонячної станції Deye, заряд батареї, меню закладу, тривога">
+          <source src="/landing/hero.webm" type="video/webm" />
+          <source src="/landing/hero.mp4" type="video/mp4" />
+        </video>
+        <img className="hero-img" src="/landing/screen.jpg" width={1280} height={720} alt="Екран SunHunter TV на телевізорі в кафе: відеофон з каміном, показники сонячної станції Deye, заряд батареї, меню закладу" />
+        <a className="hero-live" href="/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8" target="_blank" rel="noreferrer" onClick={cta("hero_live")}>▶ Подивитись наживо</a>
+      </div>
     </section>
 
     <section id="outage" className="land-sec outage-sec">
