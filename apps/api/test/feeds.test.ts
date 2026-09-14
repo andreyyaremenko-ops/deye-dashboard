@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { alertsChanged, kyivToIso, parseAlerts, parseUkrainealarm } from "../src/feeds/alerts.ts";
+import { alertsChanged, kyivToIso, parseAlerts, parseUkrainealarm, parseWebhookEvent } from "../src/feeds/alerts.ts";
+import { webhookSecret, webhookUrlFor } from "../src/feeds/hub.ts";
 import { OBLASTS } from "@deye/shared";
 import { parseWeather, weatherKey } from "../src/feeds/weather.ts";
 import { FeedHub, feedMatches } from "../src/feeds/hub.ts";
@@ -79,6 +80,49 @@ describe("ukrainealarm", () => {
       await hub.refreshAlerts();
       expect(calls.length).toBe(5); expect(events).toBe(2);                      // Київська область відбій -> сповіщення
       expect((await t2.store.getFeed<{ oblasts: Record<string, { active: boolean }> }>("alerts"))!.oblasts["Київська область"]!.active).toBe(false);
+    } finally { await t2.close(); }
+  });
+});
+
+describe("ukrainealarm: вебхук", () => {
+  it("парсер події: варіанти полів, не-AIR і райони ігноруються", () => {
+    expect(parseWebhookEvent({ regionId: "14", status: "Activate", alarmType: "AIR", createdAt: "2026-09-14T05:10:00Z" })).toEqual({ oblast: "Київська область", active: true, at: "2026-09-14T05:10:00.000Z" });
+    expect(parseWebhookEvent({ regionId: 31, status: "Deactivate", alarmType: "AIR" })).toEqual({ oblast: "м. Київ", active: false, at: null });
+    expect(parseWebhookEvent({ regionId: "14", isActive: true })).toMatchObject({ active: true });
+    expect(parseWebhookEvent({ regionId: "14", status: "Activate", alarmType: "ARTILLERY" })).toBeNull();
+    expect(parseWebhookEvent({ regionId: "100", status: "Activate" })).toBeNull();
+    expect(parseWebhookEvent({ regionId: "14" })).toBeNull();
+    expect(webhookUrlFor("https://tv.sun-hunter.men/", "k")).toBe(`https://tv.sun-hunter.men/api/webhooks/ukrainealarm/${webhookSecret("k")}`);
+    expect(webhookSecret("k")).toHaveLength(32);
+  });
+  it("підписка: POST, при 4xx — PATCH; подія через маршрут оновлює кеш і сповіщає лише при зміні", async () => {
+    const calls: { url: string; method: string; body: string }[] = [];
+    const f = (async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url); calls.push({ url: u, method: init?.method ?? "GET", body: String(init?.body ?? "") });
+      if (u.endsWith("/webhook")) return new Response("", { status: init?.method === "POST" ? 400 : 200 });
+      return new Response(JSON.stringify(UA_ALERTS), { status: 200 });
+    }) as typeof fetch;
+    let hub!: FeedHub;
+    const t2 = await makeTestApp({ alertsWebhookSecret: "s".repeat(32), feeds: (store, db) => { hub = new FeedHub({ db, store, log: { info() {}, warn() {} }, fetchImpl: f, alertsKey: "k:v", alertsApi: "https://ua.test", webhookUrl: "https://tv.test/api/webhooks/ukrainealarm/x" }); return hub; } });
+    try {
+      expect(await hub.subscribeWebhook()).toBe(true);
+      expect(calls.map((c) => c.method)).toEqual(["POST", "PATCH"]); expect(JSON.parse(calls[0]!.body)).toEqual({ webHookUrl: "https://tv.test/api/webhooks/ukrainealarm/x" });
+      // повна синхронізація без /status
+      await hub.refreshAlerts(); expect(calls.at(-1)!.url).toBe("https://ua.test/api/v3/alerts");
+      let events = 0; t2.store.subscribeFeeds(() => events++);
+      expect((await t2.app.inject({ method: "POST", url: "/api/webhooks/ukrainealarm/wrong-secret-wrong-secret", payload: { regionId: "27", status: "Activate" } })).statusCode).toBe(403);
+      const r = await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "27", status: "Activate", alarmType: "AIR", createdAt: "2026-09-14T06:00:00Z" } });
+      expect(r.statusCode).toBe(200); expect(r.json().applied).toBe(true); expect(events).toBe(1);
+      const snap = await t2.store.getFeed<{ source: string; oblasts: Record<string, { active: boolean; since: string | null }> }>("alerts");
+      expect(snap!.source).toBe("ukrainealarm"); expect(snap!.oblasts["Львівська область"]).toEqual({ active: true, since: "2026-09-14T06:00:00.000Z" });
+      expect(snap!.oblasts["Київська область"]!.active).toBe(true);   // зі синхронізації
+      // повторна така сама подія — без сповіщення; район — прийнято, але не застосовано
+      await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "27", status: "Activate", alarmType: "AIR" } });
+      expect(events).toBe(1);
+      expect((await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "100", status: "Activate" } })).json().applied).toBe(false);
+      // відбій
+      await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "27", status: "Deactivate", alarmType: "AIR" } });
+      expect(events).toBe(2); expect((await t2.store.getFeed<typeof snap>("alerts"))!.oblasts["Львівська область"]!.active).toBe(false);
     } finally { await t2.close(); }
   });
 });

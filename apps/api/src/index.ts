@@ -10,14 +10,15 @@ import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
 import { createMailer } from "./mail/index.ts";
-import { FeedHub } from "./feeds/hub.ts";
+import { FeedHub, webhookSecret, webhookUrlFor } from "./feeds/hub.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 // погода/тривоги: стартує після buildApp, щоб писати в app.log
 const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL, alertsKey: config.ALERTS_API_KEY ?? null, alertsApi: config.ALERTS_API,
+  webhookUrl: config.ALERTS_API_KEY && config.PUBLIC_URL.startsWith("https://") ? webhookUrlFor(config.PUBLIC_URL, config.ALERTS_API_KEY) : null,
   log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
 const app = await buildApp({
-  db, auth, store, feeds,
+  db, auth, store, feeds, alertsWebhookSecret: config.ALERTS_API_KEY ? webhookSecret(config.ALERTS_API_KEY) : null,
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,

@@ -23,6 +23,7 @@ export interface AppDeps {
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */
   feeds?: FeedHub | null;
+  alertsWebhookSecret?: string | null;
   /** геокодер для кабінету (Open-Meteo) */
   geocodeBase?: string;
   logger?: boolean | object;

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { orgRoles, OBLASTS, RADIO_STATIONS, guessOblast } from "@deye/shared";
 import { deviceStats } from "./stats/counters.ts";
+import { parseWebhookEvent } from "./feeds/alerts.ts";
 import { requireUser } from "./auth/plugin.ts";
 import type { AppDeps } from "./app.ts";
 import * as orgs from "./orgs/service.ts";
@@ -336,6 +337,15 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     }));
   });
   app.get("/api/oblasts", async () => OBLASTS);
+  // вебхук ukrainealarm: секрет у шляху; тіло логуємо, поки не звірили формат
+  app.post("/api/webhooks/ukrainealarm/:secret", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req, reply) => {
+    const { secret } = z.object({ secret: z.string().min(16) }).parse(req.params);
+    if (!deps.feeds || !deps.alertsWebhookSecret || secret !== deps.alertsWebhookSecret) throw forbidden();
+    const ev = parseWebhookEvent(req.body);
+    app.log.info({ body: req.body, parsed: ev }, "ukrainealarm webhook");
+    if (ev) await deps.feeds.applyWebhookEvent(ev);
+    return reply.code(200).send({ ok: true, applied: !!ev });
+  });
 
   // ТБ вводить код: rate-limit проти перебору (6 цифр)
   app.post("/api/public/pair", { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } }, async (req) => {

@@ -10,6 +10,11 @@ import type { AlertFeed, ScreenLocation, WeatherFeed } from "@deye/shared";
 import type { StateStore } from "../state/store.ts";
 import { ALERTS_REFRESH_MS, ALERTS_TTL_S, ALERTS_URL, UKRAINEALARM_API, UKRAINEALARM_STATUS_MS, alertsChanged, parseAlerts, parseUkrainealarm, type AlertsSnapshot } from "./alerts.ts";
 import { OBLASTS } from "@deye/shared";
+import { createHash } from "node:crypto";
+
+/** Секрет у шляху вебхука виводиться з ключа API: нового env не потрібно. */
+export function webhookSecret(apiKey: string): string { return createHash("sha256").update("ukrainealarm-webhook:" + apiKey).digest("hex").slice(0, 32); }
+export function webhookUrlFor(publicUrl: string, apiKey: string): string { return `${publicUrl.replace(/\/$/, "")}/api/webhooks/ukrainealarm/${webhookSecret(apiKey)}`; }
 import { WEATHER_REFRESH_MS, WEATHER_TTL_S, parseWeather, weatherKey, weatherUrl } from "./weather.ts";
 
 type Db = PgDatabase<any, any, any>;
@@ -22,6 +27,8 @@ export interface FeedHubOpts {
   /** ключ api.ukrainealarm.com: якщо є — офіційне джерело, дзеркало ubilling лише без ключа */
   alertsKey?: string | null;
   alertsApi?: string;
+  /** публічна адреса вебхука для ukrainealarm (без неї — опитування статусу) */
+  webhookUrl?: string | null;
   weatherBase?: string;
 }
 
@@ -40,7 +47,13 @@ export class FeedHub {
   constructor(o: FeedHubOpts) { this.o = o; this.fetchImpl = o.fetchImpl ?? fetch; }
 
   start() {
-    if (this.o.alertsUrl !== null) {
+    if (this.o.alertsUrl !== null && this.o.alertsKey && this.o.webhookUrl) {
+      // офіційне джерело через вебхук: підписка, повна синхронізація через 30 с, далі контрольна раз на 30 хв.
+      // Запити рознесені в часі: API віддає 401 на щільні серії запитів з одним ключем.
+      setTimeout(() => void this.subscribeWebhook(), 5000);
+      setTimeout(() => void this.refreshAlerts(), 30_000);
+      this.timers.push(setInterval(() => void this.refreshAlerts(), 30 * 60_000));
+    } else if (this.o.alertsUrl !== null) {
       void this.refreshAlerts();
       this.timers.push(setInterval(() => void this.refreshAlerts(), this.o.alertsKey ? UKRAINEALARM_STATUS_MS : ALERTS_REFRESH_MS));
     }
@@ -73,7 +86,7 @@ export class FeedHub {
 
       const changed = alertsChanged(this.lastAlerts, snap);
       this.lastAlerts = snap;
-      await this.o.store.setFeed("alerts", snap, ALERTS_TTL_S);
+      await this.o.store.setFeed("alerts", snap, this.o.webhookUrl ? 2 * 3600 : ALERTS_TTL_S);
       if (changed) await this.o.store.notifyFeed("alerts");
       return snap;
     } catch (e) {
@@ -81,10 +94,39 @@ export class FeedHub {
       return null;
     }
   }
+  /** POST /webhook; якщо підписка вже є (4xx) — PATCH на нову адресу. Один-два запити на старт. */
+  async subscribeWebhook(): Promise<boolean> {
+    const base = this.o.alertsApi ?? UKRAINEALARM_API;
+    const body = JSON.stringify({ webHookUrl: this.o.webhookUrl });
+    const headers = { authorization: this.o.alertsKey!, "content-type": "application/json", "user-agent": "SunHunterTV/1.0 (+https://tv.sun-hunter.men)" };
+    try {
+      let r = await this.fetchImpl(`${base}/api/v3/webhook`, { method: "POST", headers, body, signal: AbortSignal.timeout(10_000) });
+      if (!r.ok && r.status !== 401) {
+        await new Promise((res) => setTimeout(res, 5000));
+        r = await this.fetchImpl(`${base}/api/v3/webhook`, { method: "PATCH", headers, body, signal: AbortSignal.timeout(10_000) });
+      }
+      this.o.log.info({ status: r.status, url: this.o.webhookUrl }, r.ok ? "ukrainealarm webhook subscribed" : "ukrainealarm webhook subscription failed");
+      return r.ok;
+    } catch (e) { this.o.log.warn({ err: String(e) }, "ukrainealarm webhook subscribe failed"); return false; }
+  }
+
+  /** Подія з вебхука: оновлюємо кеш і сповіщаємо екрани, якщо стан області змінився. */
+  async applyWebhookEvent(ev: { oblast: string; active: boolean; at: string | null }): Promise<boolean> {
+    const cur = this.lastAlerts ?? (await this.o.store.getFeed<AlertsSnapshot>("alerts")) ?? { updatedAt: new Date().toISOString(), source: "ukrainealarm" as const, oblasts: Object.fromEntries(OBLASTS.map((o) => [o, { active: false, since: null }])) };
+    const prev = cur.oblasts[ev.oblast];
+    const snap: AlertsSnapshot = { ...cur, updatedAt: new Date().toISOString(), source: "ukrainealarm", oblasts: { ...cur.oblasts, [ev.oblast]: { active: ev.active, since: ev.at ?? new Date().toISOString() } } };
+    this.lastAlerts = snap;
+    await this.o.store.setFeed("alerts", snap, 2 * 3600);   // між контрольними синхронізаціями кеш живе
+    const changed = prev?.active !== ev.active;
+    if (changed) await this.o.store.notifyFeed("alerts");
+    return changed;
+  }
+
   /** Повертає null, якщо lastActionIndex не змінився (повний список не читаємо). */
   private async fetchUkrainealarm(): Promise<AlertsSnapshot | null> {
     const base = this.o.alertsApi ?? UKRAINEALARM_API;
     const h = { authorization: this.o.alertsKey! };
+    if (this.o.webhookUrl) return parseUkrainealarm(await this.getJson(`${base}/api/v3/alerts`, h), OBLASTS);
     const st = (await this.getJson(`${base}/api/v3/alerts/status`, h)) as { lastActionIndex?: unknown };
     if (this.lastAlerts && st?.lastActionIndex !== undefined && st.lastActionIndex === this.lastActionIndex) {
       await this.o.store.setFeed("alerts", { ...this.lastAlerts, updatedAt: new Date().toISOString() }, ALERTS_TTL_S);

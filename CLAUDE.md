@@ -19,8 +19,10 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
 - Основний шлях даних: стік у режимі TCP-Client → `apps/api/src/solarman/` (порт 10000);
   плата — запасний шлях.
 - Зовнішні стрічки (`apps/api/src/feeds/`): погода — Open-Meteo без ключа; тривоги —
-  офіційний api.ukrainealarm.com (`ALERTS_API_KEY`, статус кожні 15 с, повний список при
-  зміні індексу), без ключа — дзеркало ubilling.net.ua (`ALERTS_URL`, `off` вимикає). Кеш у Redis `feed:*`,
+  офіційний api.ukrainealarm.com (`ALERTS_API_KEY`): підписка на вебхук
+  `/api/webhooks/ukrainealarm/<sha256(ключ)>`, повна синхронізація раз на 30 хв; API
+  віддає 401 на щільні серії запитів з одним ключем, тому запити рознесені в часі. Без
+  ключа — дзеркало ubilling.net.ua (`ALERTS_URL`, `off` вимикає). Кеш у Redis `feed:*`,
   WS-повідомлення `feed`. Місячна статистика — `device_counters` (база лічильників на
   початок місяця), бо free зберігає телеметрію 2 дні.
 

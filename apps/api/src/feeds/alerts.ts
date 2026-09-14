@@ -62,3 +62,36 @@ export function alertsChanged(a: AlertsSnapshot | null, b: AlertsSnapshot): bool
   for (const [k, v] of Object.entries(b.oblasts)) if (a.oblasts[k]?.active !== v.active) return true;
   return Object.keys(a.oblasts).length !== Object.keys(b.oblasts).length;
 }
+
+/** regionId рівня State з GET /api/v3/regions (2026-09-14) -> назва області, як у OBLASTS. */
+export const UKRAINEALARM_REGIONS: Record<string, string> = {
+  "3": "Хмельницька область", "4": "Вінницька область", "5": "Рівненська область", "8": "Волинська область", "9": "Дніпропетровська область",
+  "10": "Житомирська область", "11": "Закарпатська область", "12": "Запорізька область", "13": "Івано-Франківська область", "14": "Київська область",
+  "15": "Кіровоградська область", "16": "Луганська область", "17": "Миколаївська область", "18": "Одеська область", "19": "Полтавська область",
+  "20": "Сумська область", "21": "Тернопільська область", "22": "Харківська область", "23": "Херсонська область", "24": "Черкаська область",
+  "25": "Чернігівська область", "26": "Чернівецька область", "27": "Львівська область", "28": "Донецька область", "31": "м. Київ",
+  "9999": "Автономна Республіка Крим", "1293": "м. Харків та Харківська територіальна громада", "564": "м. Запоріжжя та Запорізька територіальна громада",
+};
+
+export interface WebhookEvent { oblast: string; active: boolean; at: string | null }
+
+/**
+ * Подія вебхука ukrainealarm (приклад у swagger: { regionId, status: "Activate"|"Deactivate", alarmType: "AIR", createdAt }).
+ * Парсер толерантний до варіантів назв полів. Повертає null для не-повітряних тривог і регіонів нижче області.
+ */
+export function parseWebhookEvent(body: unknown): WebhookEvent | null {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const regionId = String(b.regionId ?? b.RegionId ?? b.region_id ?? "");
+  const oblast = UKRAINEALARM_REGIONS[regionId];
+  if (!oblast) return null;
+  const type = String(b.alarmType ?? b.type ?? b.AlarmType ?? "AIR").toUpperCase();
+  if (type && type !== "AIR") return null;
+  const st = b.status ?? b.Status ?? b.isActive ?? b.active;
+  let active: boolean;
+  if (typeof st === "boolean") active = st;
+  else if (typeof st === "string") active = /^(activate|active|start|on|true|1)$/i.test(st);
+  else return null;
+  const raw = b.createdAt ?? b.CreatedAt ?? b.lastUpdate ?? b.time;
+  const at = typeof raw === "string" && !Number.isNaN(Date.parse(raw)) ? new Date(raw).toISOString() : null;
+  return { oblast, active, at };
+}
