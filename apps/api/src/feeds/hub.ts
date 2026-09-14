@@ -8,7 +8,7 @@ import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { AlertFeed, ScreenLocation, WeatherFeed } from "@deye/shared";
 import type { StateStore } from "../state/store.ts";
-import { ALERTS_REFRESH_MS, ALERTS_TTL_S, ALERTS_URL, UKRAINEALARM_API, UKRAINEALARM_STATUS_MS, alertsChanged, buildRegionIndex, learnRegions, oblastFromAlerts, parseAlerts, parseUkrainealarm, regionIndexFromJson, regionIndexToJson, seedRegionIndex, type AlertsSnapshot, type OblastAlert, type OblastState, type RegionIndex, type WebhookEvent } from "./alerts.ts";
+import { ALERTS_REFRESH_MS, ALERTS_TTL_S, ALERTS_URL, UKRAINEALARM_API, UKRAINEALARM_STATUS_MS, alertsChanged, buildRegionIndex, learnRegions, oblastFromAlerts, parseAlerts, parseUkrainealarm, regionIndexFromJson, regionIndexToJson, baseRegionIndex, seedRegionIndex, type AlertsSnapshot, type OblastAlert, type OblastState, type RegionIndex, type WebhookEvent } from "./alerts.ts";
 import { OBLASTS } from "@deye/shared";
 import { createHash } from "node:crypto";
 
@@ -39,14 +39,16 @@ export class FeedHub {
   private inflight = new Map<string, Promise<WeatherFeed | null>>();
   private lastAlerts: AlertsSnapshot | null = null;
   private lastActionIndex: unknown = null;
-  /** regionId -> області; стартово лише області, повна мапа з /regions (кеш у Redis на 7 днів) */
+  /** regionId -> області; стартово вбудований дамп дерева, свіжа мапа з /regions (кеш у Redis на 7 днів) */
   private index: RegionIndex = seedRegionIndex();
   private regionsLoadedAt = 0;
   private regionsAttemptAt = 0;
   /** остання успішна повна синхронізація з офіційного джерела */
   private lastSyncOkAt = 0;
   static REGIONS_TTL_S = 7 * 86_400;
-  static REGIONS_RETRY_MS = 60 * 60_000;
+  static REGIONS_RETRY_MS = 15 * 60_000;
+  /** /regions читаємо не одразу після старту: API віддає 401 на щільну серію запитів */
+  static REGIONS_DELAY_MS = 5 * 60_000;
   /** у режимі вебхука кеш «живий», поки остання синхронізація не старша за це */
   static SYNC_FRESH_MS = 45 * 60_000;
   /** ключ ukrainealarm відхилено (401/403): 10 хв працюємо через дзеркало, потім пробуємо знову */
@@ -62,13 +64,13 @@ export class FeedHub {
       // Запити рознесені в часі: API віддає 401 на щільні серії запитів з одним ключем.
       setTimeout(() => void this.subscribeWebhook(), 5000);
       setTimeout(() => void this.refreshAlerts(), 30_000);
-      setTimeout(() => void this.loadRegions(), 60_000);
+      setTimeout(() => void this.loadRegions(), FeedHub.REGIONS_DELAY_MS);
       this.timers.push(setInterval(() => void this.refreshAlerts(), 30 * 60_000));
       // між синхронізаціями оновлюємо updatedAt, щоб екран не вважав дані застарілими, поки джерело живе
       this.timers.push(setInterval(() => void this.touchAlerts(), 2 * 60_000));
     } else if (this.o.alertsUrl !== null) {
       void this.refreshAlerts();
-      if (this.o.alertsKey) setTimeout(() => void this.loadRegions(), 60_000);
+      if (this.o.alertsKey) setTimeout(() => void this.loadRegions(), FeedHub.REGIONS_DELAY_MS);
       this.timers.push(setInterval(() => void this.refreshAlerts(), this.o.alertsKey ? UKRAINEALARM_STATUS_MS : ALERTS_REFRESH_MS));
     }
     this.timers.push(setInterval(() => void this.refreshWeatherAll(), WEATHER_REFRESH_MS));
@@ -172,7 +174,7 @@ export class FeedHub {
       const base = this.o.alertsApi ?? UKRAINEALARM_API;
       const json = await this.getJson(`${base}/api/v3/regions`, { authorization: this.o.alertsKey });
       const index = buildRegionIndex(json, OBLASTS);
-      if (index.size <= seedRegionIndex().size) throw new Error("ukrainealarm regions: empty tree");
+      if (index.size <= baseRegionIndex().size) throw new Error("ukrainealarm regions: empty tree");
       this.index = index; this.regionsLoadedAt = Date.now();
       await this.o.store.setFeed("regions", regionIndexToJson(index), FeedHub.REGIONS_TTL_S);
       this.o.log.info({ regions: index.size }, "ukrainealarm regions loaded");

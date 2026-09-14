@@ -4,6 +4,9 @@
  *   { states: { "Київська область": { alertnow: true, changed: "2026-09-13 09:40:45" } } }
  * Час у джерелі київський; "1970-01-01 ..." означає, що початок невідомий.
  */
+import { OBLASTS } from "@deye/shared";
+import bundledRegions from "./ukrainealarm-regions.json" with { type: "json" };
+
 export const ALERTS_URL = "https://ubilling.net.ua/aerialalerts/?json=true";
 export const ALERTS_REFRESH_MS = 20_000;
 export const ALERTS_TTL_S = 180;
@@ -102,7 +105,7 @@ export function oblastNamesFor(regionName: string | undefined, allOblasts: reado
  * Мапа з дерева GET /api/v3/regions: { states: [{ regionId, regionName, regionType: "State", regionChildIds: [...] }] }.
  * Парсер толерантний до назви поля з дітьми. Район/громада -> своя область; громади-міста з OBLASTS — ще й самі по собі.
  */
-export function buildRegionIndex(json: unknown, allOblasts: readonly string[], seed: RegionIndex = seedRegionIndex()): RegionIndex {
+export function buildRegionIndex(json: unknown, allOblasts: readonly string[], seed: RegionIndex = baseRegionIndex()): RegionIndex {
   const index: RegionIndex = new Map(seed);
   const walk = (node: unknown, ancestors: string[]) => {
     if (Array.isArray(node)) { for (const n of node) walk(n, ancestors); return; }
@@ -135,11 +138,17 @@ export const UKRAINEALARM_REGIONS: Record<string, string> = {
 /** Громади-міста з OBLASTS: тривога в них стосується і області. */
 const CITY_COMMUNITY_PARENT: Record<string, string> = { "1293": "Харківська область", "564": "Запорізька область" };
 
-/** Стартова мапа без мережі: лише області та дві громади-міста. */
-export function seedRegionIndex(): RegionIndex {
+/** Базова мапа: лише області та дві громади-міста (без дерева). */
+export function baseRegionIndex(): RegionIndex {
   const m: RegionIndex = new Map();
   for (const [id, name] of Object.entries(UKRAINEALARM_REGIONS)) m.set(id, CITY_COMMUNITY_PARENT[id] ? [name, CITY_COMMUNITY_PARENT[id]] : [name]);
   return m;
+}
+let seedCache: RegionIndex | null = null;
+/** Стартова мапа без мережі: вбудований дамп GET /api/v3/regions (2026-09-14). Свіжу версію хаб підтягує з API. */
+export function seedRegionIndex(): RegionIndex {
+  seedCache ??= buildRegionIndex(bundledRegions, OBLASTS, baseRegionIndex());
+  return new Map(seedCache);
 }
 
 /** Мапа <-> JSON для кешу в Redis. */

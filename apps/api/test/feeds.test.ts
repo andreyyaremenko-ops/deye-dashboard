@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { alertsChanged, buildRegionIndex, kyivToIso, learnRegions, parseAlerts, parseUkrainealarm, parseWebhookEvent, seedRegionIndex } from "../src/feeds/alerts.ts";
+import { alertsChanged, baseRegionIndex, buildRegionIndex, kyivToIso, learnRegions, parseAlerts, parseUkrainealarm, parseWebhookEvent, seedRegionIndex } from "../src/feeds/alerts.ts";
 import { webhookSecret, webhookUrlFor } from "../src/feeds/hub.ts";
 import { OBLASTS } from "@deye/shared";
 import { parseWeather, weatherKey } from "../src/feeds/weather.ts";
@@ -93,7 +93,8 @@ describe("ukrainealarm: вебхук", () => {
     expect(parseWebhookEvent({ regionId: "14" })).toBeNull();
     // реальна подія 2026-09: район, рівень із activeAlertLevels (максимум), DEACTIVATE великими
     const ev = parseWebhookEvent({ status: "Activate", regionId: 125, alarmType: "AIR", createdAt: "2026-09-14T17:45:41.2472074Z", alertLevel: "Yellow", activeAlertLevels: [{ alertLevel: "Yellow" }, { alertLevel: "Red" }] });
-    expect(ev).toEqual({ regionId: "125", oblasts: [], active: true, at: "2026-09-14T17:45:41.247Z", level: "red" });
+    expect(ev).toEqual({ regionId: "125", oblasts: ["Харківська область"], active: true, at: "2026-09-14T17:45:41.247Z", level: "red" });   // Ізюмський район
+    expect(parseWebhookEvent({ regionId: 999999, status: "Activate" })).toMatchObject({ oblasts: [] });
     expect(parseWebhookEvent({ status: "DEACTIVATE", regionId: 59, alarmType: "AIR", activeAlertLevels: [] })).toMatchObject({ active: false, level: null });
     // громада-місто стосується і себе, і області
     expect(parseWebhookEvent({ regionId: 564, status: "Activate" })!.oblasts).toEqual(["м. Запоріжжя та Запорізька територіальна громада", "Запорізька область"]);
@@ -107,7 +108,7 @@ describe("ukrainealarm: вебхук", () => {
       { regionId: "12", regionName: "Запорізька область", regionType: "State", regionChildIds: [{ regionId: "564", regionName: "м. Запоріжжя", regionType: "Community", regionChildIds: [] }] },
       { regionId: "9998", regionName: "м. Севастополь", regionType: "State", regionChildIds: [] },
     ] };
-    const idx = buildRegionIndex(tree, OBLASTS);
+    const idx = buildRegionIndex(tree, OBLASTS, baseRegionIndex());
     expect(idx.get("125")).toEqual(["Сумська область"]); expect(idx.get("700")).toEqual(["Сумська область"]);
     expect(idx.get("564")).toEqual(["м. Запоріжжя та Запорізька територіальна громада", "Запорізька область"]);
     expect(idx.get("9998")).toEqual(["Севастополь"]); expect(idx.get("14")).toEqual(["Київська область"]);
@@ -115,17 +116,17 @@ describe("ukrainealarm: вебхук", () => {
     // район, вкладений у State у відповіді /alerts, робить область активною і потрапляє в мапу
     const alerts = [{ regionId: "19", regionType: "State", regionName: "Полтавська область", activeAlerts: [{ regionId: "140", regionType: "District", type: "AIR", lastUpdate: "2026-09-14T18:00:00Z", alertLevel: "Yellow" }] },
       { regionId: "141", regionType: "District", regionName: "Лубенський район", activeAlerts: [{ regionId: "141", regionType: "District", type: "AIR" }] }];
-    const seed = seedRegionIndex();
+    const seed = baseRegionIndex();
     expect(learnRegions(alerts, seed, OBLASTS)).toBe(1); expect(seed.get("140")).toEqual(["Полтавська область"]);
     const snap = parseUkrainealarm(alerts, OBLASTS, new Date("2026-09-14T18:05:00Z"), seed);
     expect(snap.oblasts["Полтавська область"]).toMatchObject({ active: true, since: "2026-09-14T18:00:00.000Z", level: "yellow", alerts: { "140": { level: "yellow" } } });
     expect(snap.oblasts["Київська область"]!.active).toBe(false);   // район 141 без мапи не застосовано
   });
   it("реальні дампи 2026-09-14: дерево /regions + /alerts дають області як у дзеркалі", () => {
-    const tree = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/ukrainealarm-regions-2026-09-14.json"), "utf8"));
+    const tree = JSON.parse(readFileSync(join(import.meta.dirname, "../src/feeds/ukrainealarm-regions.json"), "utf8"));
     const alerts = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/ukrainealarm-alerts-2026-09-14.json"), "utf8"));
-    const idx = buildRegionIndex(tree, OBLASTS);
-    expect(idx.size).toBeGreaterThan(1500);
+    const idx = buildRegionIndex(tree, OBLASTS, baseRegionIndex());
+    expect(idx.size).toBeGreaterThan(1500); expect(seedRegionIndex().size).toBe(idx.size);   // вбудований дамп = те саме дерево
     expect(idx.get("116")).toEqual(["Сумська область"]);                       // район
     expect(idx.get("1284")).toEqual(["Харківська область"]);                    // громада
     expect(idx.get("564")).toEqual(["м. Запоріжжя та Запорізька територіальна громада", "Запорізька область"]);
@@ -139,11 +140,11 @@ describe("ukrainealarm: вебхук", () => {
     expect(snap.oblasts["Харківська область"]!.level).toBe("red");
     expect(Object.keys(snap.oblasts["Харківська область"]!.alerts!).sort()).toEqual(["124", "126", "1284", "1293"]);   // райони, громада та місто-громада
     expect(snap.oblasts["Дніпропетровська область"]!.alerts).toEqual({ "48": { since: expect.any(String), level: "red" } });   // ARTILLERY громад не рахуємо
-    // без дерева (тільки seed) райони невидимі — саме так було до фіксу
-    const bare = Object.entries(parseUkrainealarm(alerts, OBLASTS).oblasts).filter(([, v]) => v.active).map(([k]) => k);
+    // без дерева (лише області) райони невидимі — саме так було до фіксу
+    const bare = Object.entries(parseUkrainealarm(alerts, OBLASTS, new Date(), baseRegionIndex()).oblasts).filter(([, v]) => v.active).map(([k]) => k);
     expect(bare.sort()).toEqual(["Автономна Республіка Крим", "Запорізька область", "Луганська область", "Харківська область", "м. Запоріжжя та Запорізька територіальна громада", "м. Харків та Харківська територіальна громада"].sort());
     // подія вебхука для району з реального логу
-    expect(parseWebhookEvent({ status: "Activate", regionId: 145, alarmType: "AIR", createdAt: "2026-09-14T17:46:51.848783Z", alertLevel: "Red" }, idx)).toMatchObject({ oblasts: ["Запорізька область"], level: "red" });
+    expect(parseWebhookEvent({ status: "Activate", regionId: 145, alarmType: "AIR", createdAt: "2026-09-14T17:46:51.848783Z", alertLevel: "Red" })).toMatchObject({ oblasts: ["Запорізька область"], level: "red" });   // без явної мапи — вбудований дамп
   });
   it("підписка: POST, при 4xx — PATCH; подія через маршрут оновлює кеш і сповіщає лише при зміні", async () => {
     const calls: { url: string; method: string; body: string }[] = [];
@@ -169,7 +170,7 @@ describe("ukrainealarm: вебхук", () => {
       // повторна така сама подія — без сповіщення; район — прийнято, але не застосовано
       await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "27", status: "Activate", alarmType: "AIR" } });
       expect(events).toBe(1);
-      expect((await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "100", status: "Activate" } })).json().applied).toBe(false);
+      expect((await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "999999", status: "Activate" } })).json().applied).toBe(false);
       // відбій
       await t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload: { regionId: "27", status: "Deactivate", alarmType: "AIR" } });
       expect(events).toBe(2); expect((await t2.store.getFeed<typeof snap>("alerts"))!.oblasts["Львівська область"]!.active).toBe(false);
@@ -177,7 +178,7 @@ describe("ukrainealarm: вебхук", () => {
   });
   it("райони: область активна, поки активний хоч один район; зміна рівня сповіщає; /regions кешується", async () => {
     const tree = { states: [{ regionId: "20", regionName: "Сумська область", regionType: "State", regionChildIds: [
-      { regionId: "125", regionName: "Сумський район", regionType: "District", regionChildIds: [] }, { regionId: "126", regionName: "Охтирський район", regionType: "District", regionChildIds: [] }] }] };
+      { regionId: "88125", regionName: "Новий район", regionType: "District", regionChildIds: [] }, { regionId: "88126", regionName: "Ще новіший район", regionType: "District", regionChildIds: [] }] }] };
     let regionsCalls = 0;
     const f = (async (url: string | URL | Request) => {
       const u = String(url);
@@ -190,24 +191,24 @@ describe("ukrainealarm: вебхук", () => {
       const post = (payload: Record<string, unknown>) => t2.app.inject({ method: "POST", url: `/api/webhooks/ukrainealarm/${"s".repeat(32)}`, payload });
       let events = 0; t2.store.subscribeFeeds(() => events++);
       // до завантаження мапи район невідомий: не застосовано, але мапа підвантажується
-      expect((await post({ regionId: 125, status: "Activate", alarmType: "AIR", alertLevel: "Yellow" })).json().applied).toBe(false);
-      await new Promise((r) => setTimeout(r, 20)); expect(regionsCalls).toBe(1); expect(hub.regions.get("126")).toEqual(["Сумська область"]);
-      expect((await post({ regionId: 125, status: "Activate", alarmType: "AIR", alertLevel: "Yellow", createdAt: "2026-09-14T17:00:00Z" })).json().applied).toBe(true);
+      expect((await post({ regionId: 88125, status: "Activate", alarmType: "AIR", alertLevel: "Yellow" })).json().applied).toBe(false);
+      await new Promise((r) => setTimeout(r, 20)); expect(regionsCalls).toBe(1); expect(hub.regions.get("88126")).toEqual(["Сумська область"]);
+      expect((await post({ regionId: 88125, status: "Activate", alarmType: "AIR", alertLevel: "Yellow", createdAt: "2026-09-14T17:00:00Z" })).json().applied).toBe(true);
       expect(events).toBe(1);
       const get = async () => (await t2.store.getFeed<{ oblasts: Record<string, { active: boolean; since: string | null; level: string | null }> }>("alerts"))!.oblasts["Сумська область"]!;
       expect(await get()).toMatchObject({ active: true, level: "yellow", since: "2026-09-14T17:00:00.000Z" });
       expect(await hub.alertFor("Сумська область")).toMatchObject({ active: true, level: "yellow" });
       // другий район червоний -> рівень області червоний, сповіщення
-      await post({ regionId: 126, status: "Activate", alarmType: "AIR", alertLevel: "Red", createdAt: "2026-09-14T17:10:00Z" });
+      await post({ regionId: 88126, status: "Activate", alarmType: "AIR", alertLevel: "Red", createdAt: "2026-09-14T17:10:00Z" });
       expect(events).toBe(2); expect(await get()).toMatchObject({ active: true, level: "red", since: "2026-09-14T17:00:00.000Z" });
       // відбій жовтого району: область лишається червоною без сповіщення; відбій другого: неактивна з часом відбою
-      await post({ regionId: 125, status: "DEACTIVATE", alarmType: "AIR", createdAt: "2026-09-14T17:20:00Z" });
+      await post({ regionId: 88125, status: "DEACTIVATE", alarmType: "AIR", createdAt: "2026-09-14T17:20:00Z" });
       expect(events).toBe(2); expect(await get()).toMatchObject({ active: true, level: "red", since: "2026-09-14T17:00:00.000Z" });
-      await post({ regionId: 126, status: "DEACTIVATE", alarmType: "AIR", createdAt: "2026-09-14T17:30:00Z" });
+      await post({ regionId: 88126, status: "DEACTIVATE", alarmType: "AIR", createdAt: "2026-09-14T17:30:00Z" });
       expect(events).toBe(3); expect(await get()).toMatchObject({ active: false, level: null, since: "2026-09-14T17:30:00.000Z" });
       // мапа в кеші: новий хаб не ходить у мережу
       const hub2 = new FeedHub({ db: t2.db, store: t2.store, log: { info() {}, warn() {} }, fetchImpl: f, alertsKey: "k:v", alertsApi: "https://ua.test", webhookUrl: "https://tv.test/x" });
-      expect(await hub2.loadRegions()).toBe(true); expect(regionsCalls).toBe(1); expect(hub2.regions.get("125")).toEqual(["Сумська область"]);
+      expect(await hub2.loadRegions()).toBe(true); expect(regionsCalls).toBe(1); expect(hub2.regions.get("88125")).toEqual(["Сумська область"]);
       // touch: без синхронізації updatedAt не подовжується
       expect(await hub2.touchAlerts()).toBe(false);
     } finally { await t2.close(); }
