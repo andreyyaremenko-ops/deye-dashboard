@@ -14,7 +14,7 @@ import { FeedHub } from "./feeds/hub.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 // погода/тривоги: стартує після buildApp, щоб писати в app.log
-const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL,
+const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL, alertsKey: config.ALERTS_API_KEY ?? null, alertsApi: config.ALERTS_API,
   log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
 const app = await buildApp({
   db, auth, store, feeds,

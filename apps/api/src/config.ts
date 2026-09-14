@@ -11,6 +11,8 @@ const schema = z.object({
   LOGGER_PORT: z.coerce.number().default(10000),
   MONO_TOKEN: z.string().optional(),                       // токен monobank acquiring (тестовий з api.monobank.ua або бойовий)
   MONO_API: z.string().default("https://api.monobank.ua"),
+  ALERTS_API_KEY: z.string().optional(),                   // api.ukrainealarm.com: офіційне джерело тривог
+  ALERTS_API: z.string().default("https://api.ukrainealarm.com"),
   ALERTS_URL: z.string().default("https://ubilling.net.ua/aerialalerts/?json=true"), // "off" — вимкнути тривоги
   PUBLIC_URL: z.string().default("http://localhost:5173"),
   BETTER_AUTH_SECRET: z.string().default("dev-secret-change-me-please-32-bytes"),

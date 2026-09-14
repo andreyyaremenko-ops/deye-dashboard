@@ -8,7 +8,8 @@ import { sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import type { AlertFeed, ScreenLocation, WeatherFeed } from "@deye/shared";
 import type { StateStore } from "../state/store.ts";
-import { ALERTS_REFRESH_MS, ALERTS_TTL_S, ALERTS_URL, alertsChanged, parseAlerts, type AlertsSnapshot } from "./alerts.ts";
+import { ALERTS_REFRESH_MS, ALERTS_TTL_S, ALERTS_URL, UKRAINEALARM_API, UKRAINEALARM_STATUS_MS, alertsChanged, parseAlerts, parseUkrainealarm, type AlertsSnapshot } from "./alerts.ts";
+import { OBLASTS } from "@deye/shared";
 import { WEATHER_REFRESH_MS, WEATHER_TTL_S, parseWeather, weatherKey, weatherUrl } from "./weather.ts";
 
 type Db = PgDatabase<any, any, any>;
@@ -18,6 +19,9 @@ export interface FeedHubOpts {
   db: Db; store: StateStore; log: Log;
   fetchImpl?: typeof fetch;
   alertsUrl?: string | null;       // null -> тривоги вимкнено
+  /** ключ api.ukrainealarm.com: якщо є — офіційне джерело, дзеркало ubilling лише без ключа */
+  alertsKey?: string | null;
+  alertsApi?: string;
   weatherBase?: string;
 }
 
@@ -27,6 +31,7 @@ export class FeedHub {
   private timers: ReturnType<typeof setInterval>[] = [];
   private inflight = new Map<string, Promise<WeatherFeed | null>>();
   private lastAlerts: AlertsSnapshot | null = null;
+  private lastActionIndex: unknown = null;
   private fetchImpl: typeof fetch;
   private o: FeedHubOpts;
   constructor(o: FeedHubOpts) { this.o = o; this.fetchImpl = o.fetchImpl ?? fetch; }
@@ -34,7 +39,7 @@ export class FeedHub {
   start() {
     if (this.o.alertsUrl !== null) {
       void this.refreshAlerts();
-      this.timers.push(setInterval(() => void this.refreshAlerts(), ALERTS_REFRESH_MS));
+      this.timers.push(setInterval(() => void this.refreshAlerts(), this.o.alertsKey ? UKRAINEALARM_STATUS_MS : ALERTS_REFRESH_MS));
     }
     this.timers.push(setInterval(() => void this.refreshWeatherAll(), WEATHER_REFRESH_MS));
     setTimeout(() => void this.refreshWeatherAll(), 5000);
@@ -42,15 +47,17 @@ export class FeedHub {
   }
   stop() { for (const t of this.timers) clearInterval(t); this.timers = []; }
 
-  private async getJson(url: string): Promise<unknown> {
-    const r = await this.fetchImpl(url, { signal: AbortSignal.timeout(10_000), headers: { "user-agent": "SunHunterTV/1.0 (+https://tv.sun-hunter.men)" } });
+  private async getJson(url: string, headers: Record<string, string> = {}): Promise<unknown> {
+    const r = await this.fetchImpl(url, { signal: AbortSignal.timeout(10_000), headers: { "user-agent": "SunHunterTV/1.0 (+https://tv.sun-hunter.men)", ...headers } });
     if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
     return r.json();
   }
 
   async refreshAlerts(): Promise<AlertsSnapshot | null> {
     try {
-      const snap = parseAlerts(await this.getJson(this.o.alertsUrl ?? ALERTS_URL));
+      const snap = this.o.alertsKey ? await this.fetchUkrainealarm() : parseAlerts(await this.getJson(this.o.alertsUrl ?? ALERTS_URL));
+      if (!snap) return this.lastAlerts;   // індекс не змінився: лише продовжуємо TTL кешу
+
       const changed = alertsChanged(this.lastAlerts, snap);
       this.lastAlerts = snap;
       await this.o.store.setFeed("alerts", snap, ALERTS_TTL_S);
@@ -60,6 +67,19 @@ export class FeedHub {
       this.o.log.warn({ err: String(e) }, "alerts fetch failed");
       return null;
     }
+  }
+  /** Повертає null, якщо lastActionIndex не змінився (повний список не читаємо). */
+  private async fetchUkrainealarm(): Promise<AlertsSnapshot | null> {
+    const base = this.o.alertsApi ?? UKRAINEALARM_API;
+    const h = { authorization: this.o.alertsKey! };
+    const st = (await this.getJson(`${base}/api/v3/alerts/status`, h)) as { lastActionIndex?: unknown };
+    if (this.lastAlerts && st?.lastActionIndex !== undefined && st.lastActionIndex === this.lastActionIndex) {
+      await this.o.store.setFeed("alerts", { ...this.lastAlerts, updatedAt: new Date().toISOString() }, ALERTS_TTL_S);
+      return null;
+    }
+    const snap = parseUkrainealarm(await this.getJson(`${base}/api/v3/alerts`, h), OBLASTS);
+    this.lastActionIndex = st?.lastActionIndex ?? null;
+    return snap;
   }
 
   /** Погода для точки: з кешу або одразу з джерела (одна паралельна спроба на точку). */

@@ -12,7 +12,7 @@ describe("feeds helpers", () => {
     expect(guessOblast("Київ")).toBe("м. Київ");
     expect(guessOblast("місто Київ")).toBe("м. Київ");
     expect(guessOblast("Львівська область")).toBe("Львівська область");
-    expect(guessOblast("Автономна Республіка Крим")).toBeNull();
+    expect(guessOblast("Автономна Республіка Крим")).toBe("Автономна Республіка Крим");
     expect(guessOblast(null)).toBeNull();
   });
   it("прогноз генерації і підписи погоди", () => {

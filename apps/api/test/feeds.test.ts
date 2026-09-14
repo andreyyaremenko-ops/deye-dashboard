@@ -2,7 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { alertsChanged, kyivToIso, parseAlerts } from "../src/feeds/alerts.ts";
+import { alertsChanged, kyivToIso, parseAlerts, parseUkrainealarm } from "../src/feeds/alerts.ts";
+import { OBLASTS } from "@deye/shared";
 import { parseWeather, weatherKey } from "../src/feeds/weather.ts";
 import { FeedHub, feedMatches } from "../src/feeds/hub.ts";
 import { clearModelCache, handleTelemetry, type IngestDeps } from "../src/mqtt/ingest.ts";
@@ -23,8 +24,8 @@ describe("парсери стрічок", () => {
     expect(kyivToIso("2026-01-10 08:00:00")).toBe("2026-01-10T06:00:00.000Z"); // зима +2
     expect(kyivToIso("1970-01-01 03:00:00")).toBeNull();
     const s = parseAlerts(ALERTS_JSON, new Date("2026-09-13T06:41:00Z"));
-    expect(s.oblasts["Київська область"]).toEqual({ active: true, since: "2026-09-13T06:12:00.000Z" });
-    expect(s.oblasts["м. Київ"]).toEqual({ active: false, since: null });
+    expect(s.oblasts["Київська область"]!).toEqual({ active: true, since: "2026-09-13T06:12:00.000Z" });
+    expect(s.oblasts["м. Київ"]!).toEqual({ active: false, since: null });
     expect(() => parseAlerts({})).toThrow();
   });
   it("зміна стану виявляється лише по active", () => {
@@ -40,6 +41,45 @@ describe("парсери стрічок", () => {
     expect(w.daily[1]!.sunKwhM2).toBe(2.61);
     expect(weatherKey(50.36098, 31.32173)).toBe("50.35,31.30");
     expect(weatherKey(50.37, 31.33)).toBe("50.35,31.35");
+  });
+});
+
+const UA_ALERTS = [
+  { regionId: "16", regionType: "State", regionName: "Луганська область", lastUpdate: "2022-04-04T16:45:00Z", activeAlerts: [{ regionId: "16", regionType: "State", type: "AIR", lastUpdate: "2022-04-04T16:45:00Z" }] },
+  { regionId: "14", regionType: "State", regionName: "Київська область", lastUpdate: "2026-09-14T05:10:00Z", activeAlerts: [{ regionId: "14", regionType: "State", type: "AIR", lastUpdate: "2026-09-14T05:10:00Z" }] },
+  { regionId: "31", regionType: "State", regionName: "м. Київ", activeAlerts: [{ regionId: "31", regionType: "State", type: "ARTILLERY" }] },   // не повітряна
+  { regionId: "100", regionType: "District", regionName: "Бучанський район", activeAlerts: [{ regionId: "100", regionType: "District", type: "AIR" }] },
+];
+describe("ukrainealarm", () => {
+  it("парсер: активні лише State з AIR, решта областей неактивні", () => {
+    const s = parseUkrainealarm(UA_ALERTS, OBLASTS);
+    expect(s.source).toBe("ukrainealarm");
+    expect(s.oblasts["Київська область"]!).toEqual({ active: true, since: "2026-09-14T05:10:00.000Z" });
+    expect(s.oblasts["м. Київ"]!).toEqual({ active: false, since: null });
+    expect(s.oblasts["Львівська область"]!).toEqual({ active: false, since: null });
+    expect(Object.keys(s.oblasts).length).toBeGreaterThanOrEqual(OBLASTS.length);
+    expect(() => parseUkrainealarm({}, OBLASTS)).toThrow();
+  });
+  it("hub: статус без змін -> повний список не читається; зміна індексу -> читається і сповіщає", async () => {
+    const calls: string[] = []; let index = 1; let alerts = UA_ALERTS;
+    const f = (async (url: string | URL | Request, init?: RequestInit) => {
+      const u = String(url); calls.push(u);
+      expect((init?.headers as Record<string, string>).authorization).toBe("k:v");
+      return new Response(JSON.stringify(u.endsWith("/status") ? { lastActionIndex: index } : alerts), { status: 200 });
+    }) as typeof fetch;
+    const t2 = await makeTestApp({ feeds: (store, db) => new FeedHub({ db, store, log: { info() {}, warn() {} }, fetchImpl: f, alertsKey: "k:v", alertsApi: "https://ua.test" }) });
+    try {
+      const hub = new FeedHub({ db: t2.db, store: t2.store, log: { info() {}, warn() {} }, fetchImpl: f, alertsKey: "k:v", alertsApi: "https://ua.test" });
+      let events = 0; t2.store.subscribeFeeds(() => events++);
+      await hub.refreshAlerts();
+      expect(calls).toEqual(["https://ua.test/api/v3/alerts/status", "https://ua.test/api/v3/alerts"]); expect(events).toBe(1);
+      await hub.refreshAlerts();
+      expect(calls.length).toBe(3); expect(events).toBe(1);                      // лише status
+      index = 2; alerts = UA_ALERTS.slice(0, 1);
+      await hub.refreshAlerts();
+      expect(calls.length).toBe(5); expect(events).toBe(2);                      // Київська область відбій -> сповіщення
+      expect((await t2.store.getFeed<{ oblasts: Record<string, { active: boolean }> }>("alerts"))!.oblasts["Київська область"]!.active).toBe(false);
+    } finally { await t2.close(); }
   });
 });
 
