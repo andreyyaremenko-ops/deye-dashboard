@@ -341,10 +341,10 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
   app.post("/api/webhooks/ukrainealarm/:secret", { config: { rateLimit: { max: 120, timeWindow: "1 minute" } } }, async (req, reply) => {
     const { secret } = z.object({ secret: z.string().min(16) }).parse(req.params);
     if (!deps.feeds || !deps.alertsWebhookSecret || secret !== deps.alertsWebhookSecret) throw forbidden();
-    const ev = parseWebhookEvent(req.body);
-    app.log.info({ body: req.body, parsed: ev }, "ukrainealarm webhook");
-    if (ev) await deps.feeds.applyWebhookEvent(ev);
-    return reply.code(200).send({ ok: true, applied: !!ev });
+    const ev = parseWebhookEvent(req.body, deps.feeds.regions);
+    const applied = ev ? await deps.feeds.applyWebhookEvent(ev) : false;
+    app.log.info({ body: req.body, parsed: ev, applied }, "ukrainealarm webhook");
+    return reply.code(200).send({ ok: true, applied: !!ev && ev.oblasts.length > 0 });
   });
 
   // ТБ вводить код: rate-limit проти перебору (6 цифр)

@@ -24,6 +24,8 @@ export function WeatherWidget({ cls, feed, pvKwp, props }: { cls: string; feed: 
   </div>;
 }
 
+const levelText = (l: AlertFeed["level"]) => (l === "red" ? "ракетна загроза" : l === "yellow" ? "дронова загроза" : "");
+
 /** Картка тривоги: червона під час тривоги, тиха зелена — без. */
 export function AlertWidget({ cls, feed, props }: { cls: string; feed: AlertFeed | null; props: Record<string, unknown> }) {
   const [, tick] = useState(0);
@@ -33,8 +35,8 @@ export function AlertWidget({ cls, feed, props }: { cls: string; feed: AlertFeed
   const dur = feed.since ? Math.max(0, (Date.now() - Date.parse(feed.since)) / 3600_000) : null;
   return <div class={`${cls} w-alert${feed.active ? " on" : " off"}`}>
     <div class="title">{feed.oblast}{stale && <span class="badge">дані застарілі</span>}</div>
-    <div class="big">{feed.active ? "🔴 Тривога" : "🟢 Тривоги немає"}</div>
-    <div class="sub">{feed.active ? (feed.since ? `з ${hhmm(feed.since)}${dur !== null && dur >= 0.25 ? ` · ${fmtHours(dur)}` : ""} · пройдіть в укриття` : "пройдіть в укриття") : feed.since ? `відбій о ${hhmm(feed.since)}` : ""}</div>
+    <div class="big">{feed.active ? (feed.level === "yellow" ? "🟡 Тривога" : "🔴 Тривога") : "🟢 Тривоги немає"}</div>
+    <div class="sub">{feed.active ? [feed.since ? `з ${hhmm(feed.since)}${dur !== null && dur >= 0.25 ? ` · ${fmtHours(dur)}` : ""}` : "", levelText(feed.level), "пройдіть в укриття"].filter(Boolean).join(" · ") : feed.since ? `відбій о ${hhmm(feed.since)}` : ""}</div>
   </div>;
 }
 
@@ -51,7 +53,7 @@ export function AlertOverlay({ feed }: { feed: AlertFeed | null }) {
   if (feed?.active) return <div class="alert-overlay on">
     <div class="alert-icon">🚨</div>
     <div class="alert-h">ПОВІТРЯНА ТРИВОГА</div>
-    <div class="alert-s">{feed.oblast}{feed.since ? ` · з ${hhmm(feed.since)}` : ""}</div>
+    <div class="alert-s">{feed.oblast}{feed.since ? ` · з ${hhmm(feed.since)}` : ""}{feed.level ? ` · ${levelText(feed.level)}` : ""}</div>
     <div class="alert-t">Пройдіть в укриття</div>
   </div>;
   if (clearedAt && Date.now() - clearedAt < 3 * 60_000) return <div class="alert-overlay off">

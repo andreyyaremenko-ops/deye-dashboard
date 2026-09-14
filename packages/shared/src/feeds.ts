@@ -23,6 +23,8 @@ export interface AlertFeed {
   active: boolean;
   /** початок поточного стану, якщо джерело його знає */
   since: string | null;
+  /** рівень загрози (офіційне джерело): red — ракети, yellow — дрони */
+  level?: "red" | "yellow" | null;
 }
 
 /** Підпис і емодзі для WMO-коду погоди. */
