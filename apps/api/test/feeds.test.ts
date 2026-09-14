@@ -83,6 +83,27 @@ describe("ukrainealarm", () => {
   });
 });
 
+describe("ukrainealarm: відхилений ключ", () => {
+  it("401 -> дзеркало ubilling у тому ж циклі, офіційне джерело не чіпаємо 10 хв", async () => {
+    const calls: string[] = [];
+    const f = (async (url: string | URL | Request) => {
+      const u = String(url); calls.push(u);
+      if (u.includes("ua.test")) return new Response("", { status: 401 });
+      return new Response(JSON.stringify(ALERTS_JSON), { status: 200 });
+    }) as typeof fetch;
+    const t2 = await makeTestApp();
+    try {
+      const hub = new FeedHub({ db: t2.db, store: t2.store, log: { info() {}, warn() {} }, fetchImpl: f, alertsKey: "bad", alertsApi: "https://ua.test" });
+      const s = await hub.refreshAlerts();
+      expect(s?.source).toBe("ubilling"); expect(s?.oblasts["Київська область"]?.active).toBe(true);
+      expect(calls.filter((c) => c.includes("ua.test"))).toHaveLength(1);
+      await hub.refreshAlerts();
+      expect(calls.filter((c) => c.includes("ua.test"))).toHaveLength(1);   // без повторних спроб
+      expect(calls.filter((c) => c.includes("aerialalerts"))).toHaveLength(2);
+    } finally { await t2.close(); }
+  });
+});
+
 describe("FeedHub, публічний екран і статистика", () => {
   let t: TestApp; let hub: FeedHub;
   const calls: string[] = [];

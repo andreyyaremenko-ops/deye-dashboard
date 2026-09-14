@@ -32,6 +32,9 @@ export class FeedHub {
   private inflight = new Map<string, Promise<WeatherFeed | null>>();
   private lastAlerts: AlertsSnapshot | null = null;
   private lastActionIndex: unknown = null;
+  /** ключ ukrainealarm відхилено (401/403): 10 хв працюємо через дзеркало, потім пробуємо знову */
+  private keyRejectedAt = 0;
+  static KEY_RETRY_MS = 10 * 60_000;
   private fetchImpl: typeof fetch;
   private o: FeedHubOpts;
   constructor(o: FeedHubOpts) { this.o = o; this.fetchImpl = o.fetchImpl ?? fetch; }
@@ -55,7 +58,17 @@ export class FeedHub {
 
   async refreshAlerts(): Promise<AlertsSnapshot | null> {
     try {
-      const snap = this.o.alertsKey ? await this.fetchUkrainealarm() : parseAlerts(await this.getJson(this.o.alertsUrl ?? ALERTS_URL));
+      const useOfficial = !!this.o.alertsKey && Date.now() - this.keyRejectedAt > FeedHub.KEY_RETRY_MS;
+      let snap: AlertsSnapshot | null;
+      if (useOfficial) {
+        try { snap = await this.fetchUkrainealarm(); }
+        catch (e) {
+          if (!/HTTP 40[13]/.test(String(e))) throw e;
+          this.keyRejectedAt = Date.now(); this.lastActionIndex = null;
+          this.o.log.warn({ err: String(e) }, "ukrainealarm key rejected, falling back to mirror for 10 min");
+          snap = parseAlerts(await this.getJson(this.o.alertsUrl ?? ALERTS_URL));
+        }
+      } else snap = parseAlerts(await this.getJson(this.o.alertsUrl ?? ALERTS_URL));
       if (!snap) return this.lastAlerts;   // індекс не змінився: лише продовжуємо TTL кешу
 
       const changed = alertsChanged(this.lastAlerts, snap);
