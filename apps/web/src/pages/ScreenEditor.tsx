@@ -13,6 +13,7 @@ const TYPES: { t: W["type"]; label: string; needsDevice: boolean; w: number; h: 
   { t: "battery", label: "Батарея", needsDevice: true, w: 22, h: 20 },
   { t: "grid", label: "Мережа", needsDevice: true, w: 22, h: 18 },
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
+  { t: "flow", label: "Потік енергії", needsDevice: true, w: 30, h: 40 },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
   { t: "runtime", label: "Автономія", needsDevice: true, w: 22, h: 18 },
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
@@ -50,7 +51,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
     const id = `${t.t}-${Math.random().toString(36).slice(2, 7)}`;
     const dev = devices[0]?.id;
     const n = cfg!.widgets.length;
-    const props = t.preset ?? (t.t === "qr" ? { mode: "url", url: "https://instagram.com/", caption: "Ми в Instagram", card: true } : t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : t.t === "alert" ? { overlay: true } : t.t === "outage" ? { hideWhenOk: true, note: "" } : {});
+    const props = t.preset ?? (t.t === "qr" ? { mode: "url", url: "https://instagram.com/", caption: "Ми в Instagram", card: true } : t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : t.t === "alert" ? { overlay: true } : t.t === "outage" ? { hideWhenOk: true, note: "" } : t.t === "flow" ? { skin: "orbit", card: true } : {});
     update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props }] });
     setSel(id);
   };
@@ -120,6 +121,15 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
           {selected.type === "outage" && <>
             <Field label="Коли світло є"><select value={selected.props?.hideWhenOk === false ? "0" : "1"} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, hideWhenOk: e.currentTarget.value === "1" } })}><option value="1">ховати банер</option><option value="0">показувати «Світло є»</option></select></Field>
             <Field label="Примітка під час відключення (необовʼязково)"><input value={String(selected.props?.note ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, note: e.currentTarget.value } })} placeholder="Кава і Wi-Fi працюють як зазвичай" /></Field>
+          </>}
+          {selected.type === "flow" && <>
+            <Field label="Вигляд"><select value={String(selected.props?.skin ?? "orbit")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, skin: e.currentTarget.value } })}>
+              <option value="orbit">схема (як у Deye Cloud)</option><option value="strip">рядок зі стрілками</option><option value="bars">смуги</option></select></Field>
+            <div className="row small">
+              <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, title: e.currentTarget.value } })} placeholder="Потік енергії" /></Field>
+              <Field label="Картка"><select value={selected.props?.card === false ? "0" : "1"} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, card: e.currentTarget.value === "1" } })}><option value="1">з фоном</option><option value="0">без фону</option></select></Field>
+            </div>
+            <p className="muted small">Схемі потрібно місце приблизно 30×40 %, рядку — широка смуга 50×14 %, смугам — 26×24 %.</p>
           </>}
           {selected.type === "weather" && <p className="muted small">Прогноз генерації на завтра зʼявиться, якщо в пристрої вказано потужність панелей (kWp).</p>}
           {selected.type === "chart" && <Field label="Період"><select value={String(selected.props?.hours ?? 24)} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, hours: Number(e.currentTarget.value) } })}><option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>}

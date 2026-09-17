@@ -55,6 +55,7 @@ pnpm db:generate        # drizzle-kit generate після зміни src/db/sche
 pnpm db:migrate && pnpm db:seed
 docker compose -f docker-compose.dev.yml up -d   # postgres+timescale, redis, mosquitto
 cd firmware && pio test -e native && pio run -e d1_mini -t upload
+cd apps/tv && npx vite build --config vite.config.ts --base=/ --outDir /tmp/tvprev preview   # превʼю віджетів на мок-даних (?skin=&scene=&theme=)
 ```
 
 ## Правила

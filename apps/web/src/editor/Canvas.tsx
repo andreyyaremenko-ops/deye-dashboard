@@ -6,7 +6,7 @@ import { useRef, useState, type PointerEvent } from "react";
 import type { ScreenConfig } from "@deye/shared";
 
 type W = ScreenConfig["widgets"][number];
-const LABEL: Record<string, string> = { pv: "Сонце", battery: "Батарея", grid: "Мережа", load: "Споживання", energy_today: "Сьогодні", clock: "Годинник", text: "Меню", chart: "Графік доби", qr: "QR-код", runtime: "Автономія", weather: "Погода", alert: "Тривога", eco: "Еко-статистика", outage: "Банер відключення" };
+const LABEL: Record<string, string> = { pv: "Сонце", battery: "Батарея", grid: "Мережа", load: "Споживання", energy_today: "Сьогодні", clock: "Годинник", text: "Меню", chart: "Графік доби", qr: "QR-код", runtime: "Автономія", weather: "Погода", alert: "Тривога", eco: "Еко-статистика", outage: "Банер відключення", flow: "Потік енергії" };
 
 export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   { widgets: W[]; selected: string | null; onSelect: (id: string | null) => void; onChange: (w: W) => void; theme: "dark" | "light" }) {
