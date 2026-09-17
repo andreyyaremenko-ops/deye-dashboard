@@ -6,7 +6,7 @@
  */
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp } from "../test/helpers.ts";
-import { organizations } from "../src/db/schema.ts";
+import { deviceState, devices, organizations } from "../src/db/schema.ts";
 import { registerDevice } from "../src/devices/service.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -36,7 +36,11 @@ const tick = async () => {
   const sun = Math.max(0, Math.sin(((h - 6) / 13) * Math.PI));
   const pv = Math.round(6200 * sun + Math.random() * 150), load = 1500 + Math.round(Math.random() * 600);
   const bat = Math.round(pv - load - 200), grid = Math.round(-(pv - load - bat));
-  await t.store.set({ deviceId: dev.id, updatedAt: new Date().toISOString(), metrics: { state: "normal", pv_w: pv, load_w: load, bat_w: bat, grid_w: grid, bat_soc: 64, grid_v_l1: 231, grid_v_l2: 230, grid_v_l3: 232, grid_hz: 50, pv_day_kwh: 18.4, load_day_kwh: 22.1, grid_buy_day_kwh: 5.2, grid_sell_day_kwh: 1.3, bat_v: 51.2, inv_temp: 41 } });
+  const metrics = { state: "normal", pv_w: pv, load_w: load, bat_w: bat, grid_w: grid, bat_soc: 64, grid_v_l1: 231, grid_v_l2: 230, grid_v_l3: 232, grid_hz: 50, pv_day_kwh: 18.4, load_day_kwh: 22.1, grid_buy_day_kwh: 5.2, grid_sell_day_kwh: 1.3, bat_v: 51.2, inv_temp: 41 };
+  const now = new Date();
+  await t.store.set({ deviceId: dev.id, updatedAt: now.toISOString(), metrics });
+  await t.db.insert(deviceState).values({ deviceId: dev.id, updatedAt: now, state: metrics }).onConflictDoUpdate({ target: deviceState.deviceId, set: { updatedAt: now, state: metrics } });
+  await t.db.update(devices).set({ online: true, lastSeenAt: now, modelId: "deye-hp3", inverterSerial: "2303123456", fw: "0.2.2" }).where(eq(devices.id, dev.id));
 };
 await tick(); setInterval(() => void tick(), 5000);
 
