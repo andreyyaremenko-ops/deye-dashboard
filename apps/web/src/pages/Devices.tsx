@@ -35,11 +35,11 @@ export function Devices({ org }: { org: Org }) {
     </Card>}
     <Card title="Пристрої">
       <ErrorBox err={unclaim.err ?? rename.err} />
-      {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <p className="muted">Ще немає пристроїв. Введіть код із корпусу вище.</p> :
+      {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <div className="empty">Ще немає пристроїв. Введіть код із корпусу плати або серійник стіка вище.</div> :
       <table className="tbl"><thead><tr><th>Назва</th><th>Стан</th><th>Сонце</th><th>Батарея</th><th>Мережа</th><th>Споживання</th><th>Інвертор</th><th></th></tr></thead>
         <tbody>{list.map((d) => <tr key={d.id}>
           <td data-l="Назва"><Link href={`/o/${org.id}/devices/${d.id}`}><b>{d.name ?? d.id}</b></Link><div className="muted small">{d.id} · {d.hw ?? "?"} {d.fw ?? ""}</div></td>
-          <td data-l="Стан"><span className={`dot ${d.online && !d.stale ? "on" : d.online ? "warn" : "off"}`} /> {d.online ? (d.stale ? "дані застарілі" : "онлайн") : "офлайн"}<div className="muted small">{ago(d.stateUpdatedAt ?? d.lastSeenAt)}</div></td>
+          <td data-l="Стан"><span className="status"><span className={`dot ${d.online && !d.stale ? "on" : d.online ? "warn" : "off"}`} /> {d.online ? (d.stale ? "дані застарілі" : "онлайн") : "офлайн"}</span><div className="muted small">{ago(d.stateUpdatedAt ?? d.lastSeenAt)}</div></td>
           <td data-l="Сонце">{fmtW(d.state?.pv_w)}</td>
           <td data-l="Батарея">{typeof d.state?.bat_soc === "number" ? `${d.state.bat_soc}%` : "—"}</td>
           <td data-l="Мережа">{fmtW(d.state?.grid_w)}</td>

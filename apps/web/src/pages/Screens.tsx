@@ -15,11 +15,11 @@ export function Screens({ org }: { org: Org }) {
   return <Card title="Екрани" actions={canEdit && <Btn kind="primary" onClick={() => create.run(undefined)} disabled={(list?.length ?? 0) >= limit}>+ Новий екран</Btn>}>
     <p className="muted small">Тариф {org.plan.name}: до {limit} екран(ів). Посилання відкривайте в браузері телевізора.</p>
     <ErrorBox err={create.err ?? del.err} />
-    {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <p className="muted">Ще немає екранів.</p> :
+    {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <div className="empty">Ще немає екранів. Створіть перший: «+ Новий екран».</div> :
     <table className="tbl"><thead><tr><th>Назва</th><th>Телевізор</th><th>Віджетів</th><th>Радіо</th><th>Змінено</th><th>Посилання для ТБ</th><th></th></tr></thead>
       <tbody>{list.map((s) => <tr key={s.id}>
         <td data-l="Назва"><Link href={`/o/${org.id}/screens/${s.id}`}><b>{s.name}</b></Link></td>
-        <td data-l="Телевізор">{s.viewers ? <><span className="dot on" /> показується{s.viewers > 1 ? ` (${s.viewers})` : ""}{s.tvs?.map((tv, i) => <div key={i} className="muted small">{tv.device} · {tv.ip} · з {ago(tv.since)}</div>)}</> : s.lastViewedAt ? <span className="muted small">востаннє {ago(s.lastViewedAt)}</span> : <span className="muted small">ще не відкривали</span>}</td>
+        <td data-l="Телевізор">{s.viewers ? <><span className="status"><span className="dot on" /> показується</span>{s.viewers > 1 ? ` (${s.viewers})` : ""}{s.tvs?.map((tv, i) => <div key={i} className="muted small">{tv.device} · {tv.ip} · з {ago(tv.since)}</div>)}</> : s.lastViewedAt ? <span className="muted small">востаннє {ago(s.lastViewedAt)}</span> : <span className="muted small">ще не відкривали</span>}</td>
         <td data-l="Віджетів">{s.config.widgets.length}</td>
         <td data-l="Радіо">{s.config.radioUrl ? "так" : "—"}</td>
         <td data-l="Змінено" className="muted small">{ago(s.updatedAt)}</td>

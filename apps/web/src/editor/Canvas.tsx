@@ -3,11 +3,8 @@
  * Координати округлюються до 0.5%, мінімальний розмір 8×6%.
  */
 import { useRef, useState, type PointerEvent } from "react";
-import type { ScreenConfig } from "@deye/shared";
 import { menuStyle } from "@deye/shared/menu";
-
-type W = ScreenConfig["widgets"][number];
-const LABEL: Record<string, string> = { pv: "Сонце", battery: "Батарея", grid: "Мережа", load: "Споживання", energy_today: "Сьогодні", clock: "Годинник", text: "Меню", chart: "Графік доби", qr: "QR-код", runtime: "Автономія", weather: "Погода", alert: "Тривога", eco: "Еко-статистика", outage: "Банер відключення", flow: "Потік енергії" };
+import { labelOf, type Widget as W } from "./widgetTypes.ts";
 
 export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   { widgets: W[]; selected: string | null; onSelect: (id: string | null) => void; onChange: (w: W) => void; theme: "dark" | "light" }) {
@@ -38,12 +35,26 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
     {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}`}
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
-      <div className="cw-t">{LABEL[w.type] ?? w.type}</div>
-      {w.type === "text" && <MenuPreview props={w.props ?? {}} theme={theme} />}
+      <div className="cw-t">{labelOf(w.type)}</div>
+      {w.type === "text" ? <MenuPreview props={w.props ?? {}} theme={theme} /> : <Mock w={w} />}
       <div className="cw-r" onPointerDown={(e) => down(e, w, "resize")} />
     </div>)}
     {widgets.length === 0 && <div className="canvas-empty">Додайте віджети праворуч</div>}
   </div>;
+}
+
+/** Умовний вміст віджета на полотні, щоб розкладку було видно без ТБ. */
+const MOCK: Partial<Record<W["type"], (p: Record<string, unknown>) => [string, string?]>> = {
+  pv: () => ["4.2 kW", "сьогодні 18.4 kWh"], battery: () => ["64 %", "заряд 1.6 kW"], grid: () => ["0.5 kW", "з мережі · 50.0 Hz"], load: () => ["2.0 kW", "сьогодні 22.1 kWh"],
+  energy_today: () => ["18.4 kWh", "сонце · спожито 22.1"], runtime: () => ["≈ 6 год", "якщо зникне світло"], clock: () => [new Date().toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" }), "сьогодні"],
+  chart: () => ["▁▂▃▅▇█▇▅▃▂▁", "потужність за добу"], weather: () => ["+21°", "сонячно · завтра 17 kWh"], alert: () => ["Тривоги немає", "область зі списку"], eco: () => ["−120 кг CO₂", "цього місяця"],
+  outage: (p) => [p.hideWhenOk === false ? "Світло є" : "Банер при відключенні"], flow: (p) => [p.skin === "strip" ? "☀ → ⌂ → ▭" : "☀ ⌂ ▭ ⚡", "потік енергії"],
+  qr: (p) => ["▦ QR", String(p.caption ?? "")],
+};
+function Mock({ w }: { w: W }) {
+  const m = MOCK[w.type]?.(w.props ?? {});
+  if (!m) return null;
+  return <><div className="cw-big">{m[0]}</div>{m[1] && <div className="cw-sub">{m[1]}</div>}</>;
 }
 
 /** Перші рядки меню у вибраному шрифті й кольорах (масштаб полотна ≈ 1/3 екрана ТБ). */
