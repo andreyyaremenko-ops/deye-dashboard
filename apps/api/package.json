@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch --experimental-strip-types src/index.ts",
+    "dev:mock": "node --experimental-strip-types scripts/dev-mock.ts",
     "start": "node --experimental-strip-types src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

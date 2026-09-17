@@ -6,7 +6,7 @@ import { ZodError } from "zod";
 import type { Auth } from "./auth/create-auth.ts";
 import { authPlugin } from "./auth/plugin.ts";
 import { HttpError } from "./lib/errors.ts";
-import { registerRoutes } from "./routes.ts";
+import { registerRoutes } from "./routes/index.ts";
 import { registerWs } from "./ws.ts";
 import type { StateStore } from "./state/store.ts";
 import type { MonoClient } from "./billing/mono.ts";
