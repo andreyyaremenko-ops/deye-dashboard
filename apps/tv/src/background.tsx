@@ -35,7 +35,10 @@ export function VideoBackground({ src, onFail }: { src: string; onFail?: () => v
   </div>;
 }
 
-/** Кадр із відео з повільним наїздом: для ТБ, які не грають відео і радіо одночасно (Samsung Tizen). */
+/**
+ * Нерухомий кадр з повільним наїздом: фото-фон, або кадр із відео для ТБ, які не грають відео
+ * і радіо одночасно (Samsung Tizen). Поки нове фото вантажиться, лишається попереднє.
+ */
 export function PosterBackground({ src }: { src: string }) {
   return <div class="bg bg-poster"><img src={src} alt="" /></div>;
 }
@@ -53,10 +56,11 @@ export function GradientBackground() {
   return <div class="bg bg-gradient" />;
 }
 
-/** Обгортка: відео з відкатом на градієнт і повторною спробою через 5 хв. */
-export function Background({ src, poster }: { src: string | null; poster?: string | null }) {
+/** Обгортка: фото як кадр; відео з відкатом на кадр/градієнт і повторною спробою через 5 хв. */
+export function Background({ src, image, poster }: { src: string | null; image?: string | null; poster?: string | null }) {
   const [failedAt, setFailedAt] = useState<number | null>(null);
   useEffect(() => { if (failedAt === null) return; const t = setTimeout(() => setFailedAt(null), 5 * 60_000); return () => clearTimeout(t); }, [failedAt]);
+  if (image) return <PosterBackground src={image} />;
   if (!src || failedAt !== null) return poster ? <PosterBackground src={poster} /> : <GradientBackground />;
   return <VideoBackground src={src} onFail={() => setFailedAt(Date.now())} />;
 }

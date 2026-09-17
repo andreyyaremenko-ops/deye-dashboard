@@ -14,6 +14,7 @@ const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () =>
 
 export const orgRole = pgEnum("org_role", ["owner", "admin", "staff"]);
 export const backgroundStatus = pgEnum("background_status", ["uploaded", "processing", "ready", "failed"]);
+export const backgroundKind = pgEnum("background_kind", ["video", "image"]);
 export const jobStatus = pgEnum("job_status", ["queued", "running", "done", "failed"]);
 
 // Таблиці Better Auth (згенеровано: pnpm exec better-auth generate)
@@ -156,6 +157,7 @@ export const backgrounds = pgTable("backgrounds", {
   license: text("license"),
   source: text("source"),
   status: backgroundStatus("status").notNull().default("ready"),
+  kind: backgroundKind("kind").notNull().default("video"),   // image: files = jpg 1080/720, показується як кадр
   files: jsonb("files").$type<Record<"1080" | "720", string>>(),
   preview: text("preview"),
   sourceFile: text("source_file"),          // оригінал у /media до транскодування

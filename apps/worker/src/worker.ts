@@ -1,11 +1,11 @@
 /**
  * Черга транскодування: бере transcode_jobs (queued) по одному, FOR UPDATE SKIP LOCKED,
- * транскодує backgrounds.source_file -> files/preview, ставить status ready|failed.
+ * транскодує backgrounds.source_file -> files/preview (відео -> mp4, фото -> jpg), ставить status ready|failed.
  */
 import postgres from "postgres";
 import { join } from "node:path";
 import { unlink } from "node:fs/promises";
-import { transcode } from "./transcode.ts";
+import { transcode, transcodeImage } from "./transcode.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://deye:deye@localhost:5432/deye";
 const MEDIA_ROOT = process.env.MEDIA_ROOT ?? "/media";
@@ -24,18 +24,20 @@ export async function runOne(): Promise<boolean> {
     return j as { id: string; background_id: string } | undefined;
   });
   if (!job) return false;
-  const [bg] = await sql`select id, source_file from backgrounds where id = ${job.background_id}`;
+  const [bg] = await sql`select id, kind, source_file from backgrounds where id = ${job.background_id}`;
   const t0 = Date.now();
   try {
     if (!bg?.source_file) throw new Error("background has no source_file");
     const input = join(MEDIA_ROOT, bg.source_file as string);
-    const res = await transcode(input, join(MEDIA_ROOT, "bg", bg.id as string), MEDIA_ROOT);
+    const outBase = join(MEDIA_ROOT, "bg", bg.id as string);
+    const res = bg.kind === "image" ? await transcodeImage(input, outBase, MEDIA_ROOT) : await transcode(input, outBase, MEDIA_ROOT);
+    const durationS = bg.kind === "image" ? null : Math.round(res.info.duration);
     await sql.begin(async (tx) => {
-      await tx`update backgrounds set status = 'ready', files = ${tx.json(res.files)}, preview = ${res.preview}, duration_s = ${Math.round(res.info.duration)} where id = ${bg.id}`;
+      await tx`update backgrounds set status = 'ready', files = ${tx.json(res.files)}, preview = ${res.preview}, duration_s = ${durationS} where id = ${bg.id}`;
       await tx`update transcode_jobs set status = 'done', finished_at = now() where id = ${job.id}`;
     });
     if (!KEEP_SOURCE) await unlink(input).catch(() => {});
-    log({ job: job.id, background: bg.id, ok: true, ms: Date.now() - t0, bytes: res.bytes, src: `${res.info.width}x${res.info.height}@${res.info.fps.toFixed(0)} ${res.info.duration.toFixed(1)}s` });
+    log({ job: job.id, background: bg.id, kind: bg.kind, ok: true, ms: Date.now() - t0, bytes: res.bytes, src: bg.kind === "image" ? `${res.info.width}x${res.info.height}` : `${res.info.width}x${res.info.height}@${res.info.fps.toFixed(0)} ${res.info.duration.toFixed(1)}s` });
   } catch (e) {
     const msg = String((e as Error).message ?? e).slice(0, 500);
     await sql.begin(async (tx) => {

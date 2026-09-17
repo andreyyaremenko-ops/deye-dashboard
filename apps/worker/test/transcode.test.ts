@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { probe, transcode } from "../src/transcode.ts";
+import { probe, transcode, transcodeImage } from "../src/transcode.ts";
 
 const dir = mkdtempSync(join(tmpdir(), "deye-tc-"));
 const src = join(dir, "src.mp4");
@@ -35,5 +35,25 @@ describe("transcode", () => {
     const v = join(dir, "vert.mp4");
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=720x1280:rate=25", "-t", "1", "-pix_fmt", "yuv420p", v]);
     await expect(transcode(v, join(dir, "bg", "v"), dir)).rejects.toThrow(/vertical/);
+  });
+});
+
+describe("transcodeImage", () => {
+  it("робить jpg 1080 (не апскейлить), 720 і превʼю з png", async () => {
+    const png = join(dir, "photo.png");
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=1600x900", "-frames:v", "1", png]);
+    const r = await transcodeImage(png, join(dir, "bg", "p"), dir);
+    expect(r.files).toEqual({ "1080": "bg/p-1080.jpg", "720": "bg/p-720.jpg" });
+    expect(r.preview).toBe("bg/p.jpg");
+    expect(r.info.duration).toBe(0);
+    expect((await probe(join(dir, r.files["1080"]))).height).toBe(900); // джерело 900px: не збільшуємо
+    expect((await probe(join(dir, r.files["720"]))).width).toBe(1280);
+    expect((await probe(join(dir, r.preview))).width).toBe(480);
+    expect(r.bytes["-1080.jpg"]).toBeGreaterThan(1000);
+  });
+  it("відхиляє вертикальне фото", async () => {
+    const v = join(dir, "vert.jpg");
+    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=900x1600", "-frames:v", "1", v]);
+    await expect(transcodeImage(v, join(dir, "bg", "pv"), dir)).rejects.toThrow(/vertical/);
   });
 });

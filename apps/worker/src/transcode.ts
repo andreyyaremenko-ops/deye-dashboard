@@ -1,5 +1,6 @@
 /**
- * ffmpeg: будь-яке відео -> H.264 1080p і 720p без звуку + превʼю jpg.
+ * ffmpeg: будь-яке відео -> H.264 1080p і 720p без звуку + превʼю jpg;
+ * фото (jpeg/png/webp) -> jpg 1080p і 720p + превʼю (той самий контракт files/preview).
  * Параметри під старі ТБ-браузери: yuv420p, profile high 4.1, faststart,
  * keyframe кожні 2 с (щоб цикл стартував без провалу), veryfast (2 vCPU / 2 GB).
  */
@@ -44,4 +45,20 @@ export async function transcode(input: string, outBase: string, mediaRoot: strin
   const bytes: Record<string, number> = {};
   for (const s of ["-1080.mp4", "-720.mp4", ".jpg"]) bytes[s] = (await stat(outBase + s)).size;
   return { files: { "1080": rel(`${outBase}-1080.mp4`), "720": rel(`${outBase}-720.mp4`) }, preview: rel(`${outBase}.jpg`), info, bytes };
+}
+
+/** Фото: jpg 1080/720 (без апскейлу) + превʼю 480. Той самий формат результату, що й для відео. */
+export async function transcodeImage(input: string, outBase: string, mediaRoot: string): Promise<TranscodeResult> {
+  const info = await probe(input);
+  if (info.width < info.height) throw new Error("vertical image: TV background must be landscape");
+  await mkdir(dirname(outBase), { recursive: true });
+  const common = ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-frames:v", "1", "-pix_fmt", "yuvj420p"];
+  const scale = (h: number) => `scale=-2:'min(${h},ih)'`;
+  await run("ffmpeg", [...common, "-vf", scale(1080), "-q:v", "3", `${outBase}-1080.jpg`]);
+  await run("ffmpeg", [...common, "-vf", scale(720), "-q:v", "4", `${outBase}-720.jpg`]);
+  await run("ffmpeg", [...common, "-vf", "scale=480:-2", "-q:v", "4", `${outBase}.jpg`]);
+  const rel = (p: string) => p.startsWith(mediaRoot) ? p.slice(mediaRoot.length).replace(/^\/+/, "") : p;
+  const bytes: Record<string, number> = {};
+  for (const s of ["-1080.jpg", "-720.jpg", ".jpg"]) bytes[s] = (await stat(outBase + s)).size;
+  return { files: { "1080": rel(`${outBase}-1080.jpg`), "720": rel(`${outBase}-720.jpg`) }, preview: rel(`${outBase}.jpg`), info: { ...info, duration: 0 }, bytes };
 }

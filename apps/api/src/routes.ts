@@ -287,8 +287,10 @@ export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
     const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
     const file = await req.file({ limits: { fileSize: bgs.MAX_UPLOAD_BYTES, files: 1 } });
     if (!file) throw badRequest("No file", "no_file");
-    const bg = await bgs.startUpload(db, orgId, u.id, file.mimetype, file.filename, file.file, deps.mediaRoot);
-    if (file.file.truncated) { await bgs.deleteBackground(db, orgId, u.id, bg.id, deps.mediaRoot); throw badRequest("File too large (max 300 MB)", "too_large"); }
+    // фото менше за відео: обмеження вужче, ніж ліміт multipart
+    const maxBytes = bgs.kindOf(file.mimetype) === "image" ? bgs.MAX_IMAGE_BYTES : bgs.MAX_UPLOAD_BYTES;
+    const bg = await bgs.startUpload(db, orgId, u.id, file.mimetype, file.filename, file.file, deps.mediaRoot, maxBytes);
+    if (file.file.truncated) { await bgs.deleteBackground(db, orgId, u.id, bg.id, deps.mediaRoot); throw badRequest(`File too large (max ${Math.round(maxBytes / 1024 / 1024)} MB)`, "too_large"); }
     return reply.code(201).send(bg);
   });
   app.patch("/api/orgs/:orgId/backgrounds/:id", async (req) => {

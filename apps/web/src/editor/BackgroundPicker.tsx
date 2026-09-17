@@ -30,20 +30,20 @@ export function BackgroundPicker({ org, value, onChange, canEdit }: { org: Org; 
 
   return <div className="bgp">
     <div className="bgp-grid">
-      <button className={`bgp-item${value === null ? " sel" : ""}`} onClick={() => onChange(null)} disabled={!canEdit}><div className="bgp-thumb bgp-none" /><span>Без відео</span></button>
+      <button className={`bgp-item${value === null ? " sel" : ""}`} onClick={() => onChange(null)} disabled={!canEdit}><div className="bgp-thumb bgp-none" /><span>Без фону</span></button>
       {[...groups.entries()].map(([cat, items]) => <div key={cat} className="bgp-group"><div className="bgp-cat">{cat}</div>
         {items.map((b) => <div key={b.id} className={`bgp-item${value === b.id ? " sel" : ""}${b.status !== "ready" ? " dim" : ""}`}
           onClick={() => canEdit && b.status === "ready" && onChange(b.id)} title={b.attribution ?? ""}>
           <div className="bgp-thumb" style={b.preview ? { backgroundImage: `url(/media/${b.preview})` } : undefined}>{b.status !== "ready" && <em>{STATUS[b.status]}</em>}</div>
-          <span>{b.name}{b.durationS ? <i className="muted"> · {b.durationS}с</i> : null}</span>
+          <span>{b.name}{b.kind === "image" ? <i className="muted"> · фото</i> : b.durationS ? <i className="muted"> · {b.durationS}с</i> : null}</span>
           {b.orgId && canEdit && <button className="bgp-del" onClick={(e) => { e.stopPropagation(); void del.run(b); }} title="Видалити">×</button>}
         </div>)}
       </div>)}
     </div>
     {canEdit && <div className="bgp-upload">
-      <input ref={fileRef} type="file" accept="video/*" hidden onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) void upload.run(f); }} />
-      <Btn onClick={() => fileRef.current?.click()} disabled={!allowUpload || progress !== null}>{progress !== null ? `Завантаження ${progress}%` : "Завантажити своє відео"}</Btn>
-      <span className="muted small">{allowUpload ? "mp4/mov до 300 MB і 90 с, горизонтальне. Після обробки зʼявиться в «Мої»." : "Власні фони доступні в тарифі Pro."}</span>
+      <input ref={fileRef} type="file" accept="video/*,image/jpeg,image/png,image/webp" hidden onChange={(e) => { const f = e.currentTarget.files?.[0]; if (f) void upload.run(f); }} />
+      <Btn onClick={() => fileRef.current?.click()} disabled={!allowUpload || progress !== null}>{progress !== null ? `Завантаження ${progress}%` : "Завантажити відео або фото"}</Btn>
+      <span className="muted small">{allowUpload ? "Відео mp4/mov до 300 MB і 90 с або фото jpg/png/webp до 30 MB, горизонтальні. Після обробки зʼявиться в «Мої»." : "Власні фони доступні в тарифі Pro."}</span>
     </div>}
     <ErrorBox err={upload.err ?? del.err} />
   </div>;

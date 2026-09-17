@@ -36,7 +36,7 @@ export interface Device {
 }
 export interface Screen { id: string; orgId: string; name: string; config: ScreenConfig; viewToken: string; createdAt: string; updatedAt: string; lastViewedAt: string | null; viewers?: number; tvs?: { device: string; ip: string; since: string }[] }
 export interface Background {
-  id: string; orgId: string | null; name: string; category: string | null; status: "uploaded" | "processing" | "ready" | "failed";
+  id: string; orgId: string | null; name: string; category: string | null; status: "uploaded" | "processing" | "ready" | "failed"; kind: "video" | "image";
   files: Record<"1080" | "720", string> | null; preview: string | null; attribution: string | null; license: string | null; durationS: number | null; createdAt: string;
 }
 export type { RadioStation };

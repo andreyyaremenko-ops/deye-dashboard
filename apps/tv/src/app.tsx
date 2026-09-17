@@ -66,10 +66,13 @@ export function App() {
 
   const { screen } = live;
   const files = screen.background?.files;
-  const video = files ? (files["1080"] ?? files["720"]) : null;
+  const isImage = screen.background?.kind === "image";
+  const best = files ? (files["1080"] ?? files["720"]) : null;
+  const video = isImage ? null : best;
   const lite = new URLSearchParams(location.search).has("lite");   // діагностика: без відео і розмиття
   const media = (f: string) => (f.startsWith("http") ? f : `/media/${f}`);
   const preview = screen.background?.preview ? media(screen.background.preview) : null;
+  const image = isImage && best && !lite ? media(best) : null;   // фото-фон: нерухомий кадр, радіо не заважає
   const mode = screen.config.tvVideo ?? "auto";
   // радіо + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
   const posterOnly = !!radioUrl && (mode === "poster" || (mode === "auto" && singleMedia));
@@ -78,7 +81,7 @@ export function App() {
   const overlay = screen.config.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false);
 
   return <div class={`screen theme-${screen.config.theme}${lite ? " lite" : ""}`}>
-    <Background src={src} poster={!lite ? preview : null} />
+    <Background src={src} image={image} poster={!lite ? preview : null} />
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
         <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}

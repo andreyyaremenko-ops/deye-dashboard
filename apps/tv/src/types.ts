@@ -13,7 +13,7 @@ export interface PublicScreen {
   id: string;
   name: string;
   config: ScreenConfig;
-  background: { files: Record<string, string> | null; preview: string | null } | null;
+  background: { kind?: "video" | "image"; files: Record<string, string> | null; preview: string | null } | null;
   deviceIds: string[];
   devices?: { id: string; batteryKwh: number | null; minSoc: number; pvKwp?: number | null }[];
   location?: ScreenLocation | null;

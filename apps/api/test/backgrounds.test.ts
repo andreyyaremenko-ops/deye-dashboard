@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, type TestApp } from "./helpers.ts";
+import { Readable } from "node:stream";
+import { mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { backgrounds, organizations, transcodeJobs } from "../src/db/schema.ts";
+import { startUpload } from "../src/backgrounds/service.ts";
 
 let t: TestApp;
 beforeAll(async () => { t = await makeTestApp(); });
@@ -15,10 +20,10 @@ function multipart(fields: { name: string; filename: string; type: string; data:
 
 describe("бібліотека фонів", () => {
   let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>, other: ReturnType<typeof api>;
-  let orgId: string, otherOrg: string, stdId: string, ownId: string;
+  let orgId: string, otherOrg: string, stdId: string, ownId: string, ownerUserId: string;
 
   beforeAll(async () => {
-    const o = await signUp(t.app, "o@example.com"); owner = api(t.app, o.cookie);
+    const o = await signUp(t.app, "o@example.com"); owner = api(t.app, o.cookie); ownerUserId = o.userId;
     const x = await signUp(t.app, "x@example.com"); other = api(t.app, x.cookie);
     orgId = (await owner.post("/api/orgs", { name: "O" })).json().id;
     otherOrg = (await other.post("/api/orgs", { name: "X" })).json().id;
@@ -43,21 +48,42 @@ describe("бібліотека фонів", () => {
     expect(r.json().error).toBe("plan_limit");
   });
 
-  it("pro: завантаження створює фон у статусі uploaded і джобу; не-відео відхиляється", async () => {
+  it("pro: завантаження створює фон у статусі uploaded і джобу; невідомий тип відхиляється", async () => {
     await t.db.update(organizations).set({ planId: "pro" }).where(eq(organizations.id, orgId));
-    const bad = multipart({ name: "file", filename: "x.png", type: "image/png", data: "png" });
+    const bad = multipart({ name: "file", filename: "x.pdf", type: "application/pdf", data: "pdf" });
     expect((await t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/backgrounds`, headers: { cookie: ownerCookie(), ...bad.headers }, payload: bad.payload })).statusCode).toBe(400);
     const mp = multipart({ name: "file", filename: "cafe evening.mp4", type: "video/mp4", data: "fake-video-bytes" });
     const r = await t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/backgrounds`, headers: { cookie: ownerCookie(), ...mp.headers }, payload: mp.payload });
     expect(r.statusCode).toBe(201);
     ownId = r.json().id;
-    expect(r.json()).toMatchObject({ name: "cafe evening", status: "uploaded", orgId, category: "Мої" });
+    expect(r.json()).toMatchObject({ name: "cafe evening", status: "uploaded", kind: "video", orgId, category: "Мої" });
     expect(r.json().sourceFile).toMatch(/^uploads\/.+\.mp4$/);
     const jobs = await t.db.select().from(transcodeJobs).where(eq(transcodeJobs.backgroundId, ownId));
     expect(jobs).toHaveLength(1);
     expect(jobs[0]!.status).toBe("queued");
     const list = (await owner.get(`/api/orgs/${orgId}/backgrounds`)).json();
     expect(list.map((b: { id: string }) => b.id).sort()).toEqual([stdId, ownId].sort());
+  });
+
+  it("pro: фото завантажується як kind=image з тією ж чергою обробки", async () => {
+    const mp = multipart({ name: "file", filename: "hall.jpg", type: "image/jpeg", data: "fake-jpeg-bytes" });
+    const r = await t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/backgrounds`, headers: { cookie: ownerCookie(), ...mp.headers }, payload: mp.payload });
+    expect(r.statusCode).toBe(201);
+    expect(r.json()).toMatchObject({ name: "hall", status: "uploaded", kind: "image", category: "Мої" });
+    expect(r.json().sourceFile).toMatch(/^uploads\/.+\.jpg$/);
+    const jobs = await t.db.select().from(transcodeJobs).where(eq(transcodeJobs.backgroundId, r.json().id));
+    expect(jobs).toHaveLength(1);
+    const list = (await owner.get(`/api/orgs/${orgId}/backgrounds`)).json();
+    expect(list.find((b: { id: string }) => b.id === r.json().id).kind).toBe("image");
+    expect((await owner.del(`/api/orgs/${orgId}/backgrounds/${r.json().id}`)).statusCode).toBe(204);
+  });
+
+  it("фото понад ліміт обривається: too_large, файл і запис не лишаються", async () => {
+    const mediaRoot = mkdtempSync(join(tmpdir(), "deye-media-"));
+    const stream = Readable.from([Buffer.alloc(8), Buffer.alloc(8)]);
+    await expect(startUpload(t.db, orgId, ownerUserId, "image/jpeg", "big.jpg", stream, mediaRoot, 10)).rejects.toMatchObject({ statusCode: 400, code: "too_large" });
+    expect(readdirSync(join(mediaRoot, "uploads"))).toEqual([]);
+    expect(await t.db.select().from(backgrounds).where(eq(backgrounds.name, "big"))).toHaveLength(0);
   });
 
   it("чужа організація не бачить і не видаляє власний фон; екран не може на нього посилатись", async () => {

@@ -81,12 +81,12 @@ export async function publicScreen(db: Db, token: string) {
   const own = referenced.length
     ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc, pvKwp: devices.pvKwp }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
-  let background: { files: Record<string, string> | null; preview: string | null; attribution: string | null } | null = null;
+  let background: { kind: "video" | "image"; files: Record<string, string> | null; preview: string | null; attribution: string | null } | null = null;
   if (cfg.backgroundId) {
-    const [bg] = await db.select({ files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status, attribution: backgrounds.attribution, orgId: backgrounds.orgId })
+    const [bg] = await db.select({ kind: backgrounds.kind, files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status, attribution: backgrounds.attribution, orgId: backgrounds.orgId })
       .from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
     // стандартний або власний цієї організації
-    if (bg && bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) background = { files: bg.files, preview: bg.preview, attribution: bg.attribution };
+    if (bg && bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) background = { kind: bg.kind, files: bg.files, preview: bg.preview, attribution: bg.attribution };
   }
   return {
     id: row.screen.id,
