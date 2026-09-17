@@ -1,3 +1,4 @@
+import { menuStyle } from "@deye/shared/menu";
 import type { DeviceState } from "./types.ts";
 import { estimateRuntime, fmtHours, gridDown } from "@deye/shared/energy";
 
@@ -28,9 +29,11 @@ interface Props { type: string; state: DeviceState | undefined; props: Record<st
   device?: { batteryKwh: number | null; minSoc: number; pvKwp?: number | null }; socHistory?: [number, number][];
   feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null }
 
+const NO_DEVICE = new Set(["clock", "text", "qr", "alert", "weather"]);
 export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince }: Props) {
   const m = state?.metrics;
-  const stale = !state || state.stale;
+  // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
+  const stale = NO_DEVICE.has(type) ? false : !state || state.stale;
   const outage = !!m && gridDown(m);
   const cls = `w w-${type}${stale ? " stale" : ""}${outage ? " outage" : ""}`;
   switch (type) {
@@ -133,21 +136,28 @@ function Clock({ cls }: { cls: string }) {
   </div>;
 }
 
-/** Текст/меню: багато рядків; рядок "Назва — 65" або "Назва ... 65" ділиться на дві колонки. */
+/**
+ * Текст/меню: багато рядків; рядок "Назва — 65" або "Назва ... 65" ділиться на дві колонки.
+ * Шрифт, розмір (vw), кольори — з props через menuStyle; внутрішні розміри в em від розміру рядка.
+ */
 function MenuText({ cls, props }: { cls: string; props: Record<string, unknown> }) {
   const title = String(props.title ?? "").trim();
-  const size = String(props.size ?? "medium");
   const align = String(props.align ?? "left");
   const plain = props.card === false;
+  const st = menuStyle(props, props.theme === "light" ? "light" : "dark");
   const lines = String(props.text ?? "").split(/\r?\n/);
-  return <div class={`${cls} menu menu-${size} menu-${align}${plain ? " menu-plain" : ""}`}>
-    {title && <div class="menu-title">{title}</div>}
+  const root: Record<string, string> = { fontFamily: st.fontFamily, fontSize: `${st.fontSize}vw` };
+  if (st.color) root.color = st.color;
+  if (st.background && !plain) root.background = st.background;
+  const accent = st.accent ? { color: st.accent } : undefined;
+  return <div class={`${cls} menu menu-${align} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
+    {title && <div class="menu-title" style={accent}>{title}</div>}
     {lines.map((raw, i) => {
       const line = raw.trim();
       if (!line) return <div key={i} class="menu-gap" />;
       if (/^#\s*/.test(line)) return <div key={i} class="menu-sub">{line.replace(/^#\s*/, "")}</div>;
       const m = /^(.*?)\s*(?:[-–—]|\.{2,}|\t)\s*([^\s].{0,12})$/.exec(line);
-      if (m && /\d/.test(m[2]!)) return <div key={i} class="menu-row"><span class="menu-name">{m[1]}</span><span class="menu-dots" /><span class="menu-price">{m[2]}</span></div>;
+      if (m && /\d/.test(m[2]!)) return <div key={i} class="menu-row"><span class="menu-name">{m[1]}</span><span class="menu-dots" /><span class="menu-price" style={accent}>{m[2]}</span></div>;
       return <div key={i} class="menu-line">{line}</div>;
     })}
   </div>;

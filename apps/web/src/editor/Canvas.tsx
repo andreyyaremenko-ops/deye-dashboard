@@ -4,6 +4,7 @@
  */
 import { useRef, useState, type PointerEvent } from "react";
 import type { ScreenConfig } from "@deye/shared";
+import { menuStyle } from "@deye/shared/menu";
 
 type W = ScreenConfig["widgets"][number];
 const LABEL: Record<string, string> = { pv: "Сонце", battery: "Батарея", grid: "Мережа", load: "Споживання", energy_today: "Сьогодні", clock: "Годинник", text: "Меню", chart: "Графік доби", qr: "QR-код", runtime: "Автономія", weather: "Погода", alert: "Тривога", eco: "Еко-статистика", outage: "Банер відключення", flow: "Потік енергії" };
@@ -38,9 +39,19 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
       <div className="cw-t">{LABEL[w.type] ?? w.type}</div>
-      {w.type === "text" && <div className="cw-b">{String(w.props?.title ?? "")}{w.props?.title ? ": " : ""}{String(w.props?.text ?? "").split(/\r?\n/).slice(0, 3).join(" · ")}</div>}
+      {w.type === "text" && <MenuPreview props={w.props ?? {}} theme={theme} />}
       <div className="cw-r" onPointerDown={(e) => down(e, w, "resize")} />
     </div>)}
     {widgets.length === 0 && <div className="canvas-empty">Додайте віджети праворуч</div>}
+  </div>;
+}
+
+/** Перші рядки меню у вибраному шрифті й кольорах (масштаб полотна ≈ 1/3 екрана ТБ). */
+function MenuPreview({ props, theme }: { props: Record<string, unknown>; theme: "dark" | "light" }) {
+  const st = menuStyle(props, theme);
+  const lines = String(props.text ?? "").split(/\r?\n/).filter((l) => l.trim()).slice(0, 4);
+  return <div className="cw-b cw-menu" style={{ fontFamily: st.fontFamily, color: st.color ?? undefined, fontSize: `${st.fontSize * 0.45}rem` }}>
+    {props.title ? <b style={{ color: st.accent ?? undefined }}>{String(props.title)}</b> : null}
+    {lines.map((l, i) => <div key={i}>{l.replace(/^#\s*/, "")}</div>)}
   </div>;
 }

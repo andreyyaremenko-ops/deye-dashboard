@@ -1,6 +1,11 @@
-/** Превʼю віджета потоку на мок-даних: /preview/?skin=orbit&scene=day&theme=dark  (dev-only) */
+/**
+ * Превʼю віджетів на мок-даних (dev-only):
+ *   потік:  /preview/?skin=orbit&scene=day&theme=dark
+ *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
+ */
 import { render } from "preact";
 import "../src/style.css";
+import "../src/fonts.css";
 import { Widget } from "../src/widgets.tsx";
 
 const q = new URLSearchParams(location.search);
@@ -15,8 +20,12 @@ const size: Record<string, [number, number]> = { orbit: [30, 40], strip: [50, 14
 const [w, h] = size[skin] ?? [30, 40];
 const state = { deviceId: "d", updatedAt: new Date().toISOString(), metrics: scene, stale: false };
 
-render(<div class={`screen theme-${q.get("theme") ?? "dark"}`} style={{ background: "radial-gradient(120% 90% at 20% 10%, #3a1b3a 0%, #1a0b1b 55%, #050a12 100%)" }}>
-  <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}>
-    <Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0" }} />
-  </div>
+const theme = q.get("theme") ?? "dark";
+const menuProps = { title: q.get("title") ?? "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95\nТірамісу — 110", theme,
+  font: q.get("font") ?? "system", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
+  align: q.get("align") ?? "left", card: q.get("card") !== "0", size: q.get("size") ?? "" };
+render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradient(120% 90% at 20% 10%, #3a1b3a 0%, #1a0b1b 55%, #050a12 100%)" }}>
+  {q.get("type") === "text"
+    ? <div class="slot" style={{ left: "3%", top: "5%", width: "28%", height: "60%" }}><Widget type="text" state={undefined} props={menuProps} /></div>
+    : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0" }} /></div>}
 </div>, document.getElementById("app")!);

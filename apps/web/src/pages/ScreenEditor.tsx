@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
+import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
 import { api, screenUrl, type Device, type Org, type RadioStation, type Screen } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, useAction } from "../components/ui.tsx";
 import { Canvas } from "../editor/Canvas.tsx";
@@ -51,7 +52,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
     const id = `${t.t}-${Math.random().toString(36).slice(2, 7)}`;
     const dev = devices[0]?.id;
     const n = cfg!.widgets.length;
-    const props = t.preset ?? (t.t === "qr" ? { mode: "url", url: "https://instagram.com/", caption: "Ми в Instagram", card: true } : t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", size: "medium", align: "left", card: true } : t.t === "alert" ? { overlay: true } : t.t === "outage" ? { hideWhenOk: true, note: "" } : t.t === "flow" ? { skin: "orbit", card: true } : {});
+    const props = t.preset ?? (t.t === "qr" ? { mode: "url", url: "https://instagram.com/", caption: "Ми в Instagram", card: true } : t.t === "text" ? { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", font: "system", fontSize: MENU_FONT_SIZE.default, align: "left", card: true } : t.t === "alert" ? { overlay: true } : t.t === "outage" ? { hideWhenOk: true, note: "" } : t.t === "flow" ? { skin: "orbit", card: true } : {});
     update({ widgets: [...cfg!.widgets, { id, type: t.t, x: 3 + (n % 3) * 25, y: 4 + Math.floor(n / 3) * 24, w: t.w, h: t.h, deviceId: t.needsDevice ? dev : undefined, props }] });
     setSel(id);
   };
@@ -133,17 +134,35 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
           </>}
           {selected.type === "weather" && <p className="muted small">Прогноз генерації на завтра зʼявиться, якщо в пристрої вказано потужність панелей (kWp).</p>}
           {selected.type === "chart" && <Field label="Період"><select value={String(selected.props?.hours ?? 24)} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, hours: Number(e.currentTarget.value) } })}><option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>}
-          {selected.type === "text" && <>
-            <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, title: e.currentTarget.value } })} placeholder="Меню" /></Field>
-            <Field label="Рядки (назва — ціна; рядок з # це підзаголовок)">
-              <textarea rows={10} value={String(selected.props?.text ?? "")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, text: e.currentTarget.value } })} />
-            </Field>
-            <div className="row small">
-              <Field label="Розмір"><select value={String(selected.props?.size ?? "medium")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, size: e.currentTarget.value } })}><option value="small">малий</option><option value="medium">середній</option><option value="large">великий</option></select></Field>
-              <Field label="Вирівнювання"><select value={String(selected.props?.align ?? "left")} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, align: e.currentTarget.value } })}><option value="left">ліворуч</option><option value="center">по центру</option></select></Field>
-              <Field label="Картка"><select value={selected.props?.card === false ? "0" : "1"} onChange={(e) => updateWidget({ ...selected, props: { ...selected.props, card: e.currentTarget.value === "1" } })}><option value="1">з фоном</option><option value="0">без фону</option></select></Field>
-            </div>
-          </>}
+          {selected.type === "text" && (() => {
+            const set = (patch: Record<string, unknown>) => updateWidget({ ...selected, props: { ...selected.props, ...patch } });
+            const st = menuStyle(selected.props ?? {}, cfg.theme);
+            const card = selected.props?.card !== false;
+            return <>
+              <Field label="Заголовок"><input value={String(selected.props?.title ?? "")} onChange={(e) => set({ title: e.currentTarget.value })} placeholder="Меню" /></Field>
+              <Field label="Рядки (назва — ціна; рядок з # це підзаголовок)">
+                <textarea rows={10} value={String(selected.props?.text ?? "")} onChange={(e) => set({ text: e.currentTarget.value })} style={{ fontFamily: st.fontFamily }} />
+              </Field>
+              <div className="row small">
+                <Field label="Шрифт"><select value={st.fontId} onChange={(e) => set({ font: e.currentTarget.value })} style={{ fontFamily: st.fontFamily }}>
+                  {MENU_FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
+                </select></Field>
+                <Field label={`Розмір ${st.fontSize.toFixed(1)}`}><input type="range" min={MENU_FONT_SIZE.min} max={MENU_FONT_SIZE.max} step={MENU_FONT_SIZE.step} value={st.fontSize} onChange={(e) => set({ fontSize: +e.currentTarget.value, size: undefined })} /></Field>
+              </div>
+              <div className="row small">
+                <ColorField label="Колір тексту" value={st.color} fallback={cfg.theme === "light" ? "#10203a" : "#ffffff"} onChange={(v) => set({ color: v ?? "" })} />
+                <ColorField label="Заголовок і ціни" value={st.accent} fallback={st.color ?? (cfg.theme === "light" ? "#10203a" : "#ffffff")} onChange={(v) => set({ accent: v ?? "" })} />
+              </div>
+              <div className="row small">
+                <Field label="Вирівнювання"><select value={String(selected.props?.align ?? "left")} onChange={(e) => set({ align: e.currentTarget.value })}><option value="left">ліворуч</option><option value="center">по центру</option></select></Field>
+                <Field label="Картка"><select value={card ? "1" : "0"} onChange={(e) => set({ card: e.currentTarget.value === "1" })}><option value="1">з фоном</option><option value="0">без фону</option></select></Field>
+              </div>
+              {card && <div className="row small">
+                <ColorField label="Колір картки" value={typeof selected.props?.bg === "string" && /^#[0-9a-f]{6}$/i.test(selected.props.bg) ? selected.props.bg : null} fallback={cfg.theme === "light" ? "#ffffff" : "#0a101c"} onChange={(v) => set({ bg: v ?? "" })} />
+                <Field label={`Прозорість картки ${Math.round(bgAlpha(selected.props, cfg.theme))}%`}><input type="range" min={0} max={100} step={5} value={bgAlpha(selected.props, cfg.theme)} onChange={(e) => set({ bgAlpha: +e.currentTarget.value })} /></Field>
+              </div>}
+            </>;
+          })()}
           <div className="row small">
             <Field label="X %"><input type="number" value={selected.x} onChange={(e) => updateWidget({ ...selected, x: +e.currentTarget.value })} /></Field>
             <Field label="Y %"><input type="number" value={selected.y} onChange={(e) => updateWidget({ ...selected, y: +e.currentTarget.value })} /></Field>
@@ -183,4 +202,21 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
       </aside>
     </div>
   </div>;
+}
+
+/** Непрозорість картки меню у %; без власного значення — стандарт теми. */
+function bgAlpha(props: Record<string, unknown> | undefined, theme: "dark" | "light"): number {
+  const v = Number(props?.bgAlpha);
+  return props?.bgAlpha !== undefined && props?.bgAlpha !== "" && Number.isFinite(v) ? v : theme === "light" ? 70 : 55;
+}
+
+/** Вибір кольору з можливістю повернутись до кольору теми (null). */
+function ColorField({ label, value, fallback, onChange }: { label: string; value: string | null; fallback: string; onChange: (v: string | null) => void }) {
+  return <Field label={label}>
+    <span className="colorfield">
+      <input type="color" value={value ?? fallback} onChange={(e) => onChange(e.currentTarget.value)} />
+      <span className="muted small">{value ?? "як у теми"}</span>
+      {value && <button type="button" className="btn btn-ghost btn-xs" onClick={() => onChange(null)} title="Скинути до кольору теми">×</button>}
+    </span>
+  </Field>;
 }

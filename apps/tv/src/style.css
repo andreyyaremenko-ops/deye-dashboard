@@ -54,19 +54,19 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .pair-err { color: #ffb4b8; font-size: 1.4vw; } .pair-foot { font-size: 1.2vw; opacity: .45; }
 
 /* меню закладу */
-.w.menu { justify-content: flex-start; align-items: stretch; gap: 0; padding: 1.2vw 1.6vw; }
+.w.menu { justify-content: flex-start; align-items: stretch; gap: 0; padding: .7em .95em; }
 .w.menu-plain { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-.menu-title { font-size: 2.2vw; font-weight: 700; letter-spacing: .04em; margin-bottom: .6vw; text-transform: uppercase; }
-.menu-sub { font-size: 1.5vw; opacity: .75; margin: .8vw 0 .3vw; text-transform: uppercase; letter-spacing: .06em; }
-.menu-line, .menu-row { font-size: 1.7vw; line-height: 1.5; }
-.menu-row { display: flex; align-items: baseline; gap: .6vw; }
+.menu-title { font-size: 1.3em; font-weight: 700; letter-spacing: .04em; margin-bottom: .35em; }
+.menu-font-system .menu-title, .menu-font-oswald .menu-title, .menu-font-montserrat .menu-title { text-transform: uppercase; }
+.menu-sub { font-size: .88em; opacity: .75; margin: .5em 0 .2em; text-transform: uppercase; letter-spacing: .06em; }
+.menu-font-lobster .menu-sub, .menu-font-caveat .menu-sub, .menu-font-marck .menu-sub { text-transform: none; letter-spacing: 0; }
+.menu-line, .menu-row { font-size: 1em; line-height: 1.5; }
+.menu-row { display: flex; align-items: baseline; gap: .35em; }
 .menu-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.menu-dots { flex: 1; border-bottom: .15vw dotted rgba(255,255,255,.35); margin: 0 .2vw .5vw; min-width: 1vw; }
+.menu-dots { flex: 1; border-bottom: .09em dotted rgba(255,255,255,.35); margin: 0 .1em .3em; min-width: .6em; }
 .theme-light .menu-dots { border-color: rgba(0,0,0,.3); }
 .menu-price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.menu-gap { height: .8vw; }
-.menu-small .menu-line, .menu-small .menu-row { font-size: 1.3vw; } .menu-small .menu-title { font-size: 1.8vw; }
-.menu-large .menu-line, .menu-large .menu-row { font-size: 2.2vw; } .menu-large .menu-title { font-size: 2.8vw; }
+.menu-gap { height: .5em; }
 .menu-center { text-align: center; } .menu-center .menu-row { justify-content: center; } .menu-center .menu-dots { display: none; } .menu-center .menu-price::before { content: "· "; font-weight: 400; }
 
 /* графік доби */

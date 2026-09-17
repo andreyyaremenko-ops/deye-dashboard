@@ -85,3 +85,4 @@ export * from "./chart.ts";
 export * from "./energy.ts";
 export * from "./brand.ts";
 export * from "./feeds.ts";
+export * from "./menu.ts";

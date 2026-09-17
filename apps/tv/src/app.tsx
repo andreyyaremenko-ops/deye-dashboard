@@ -84,7 +84,7 @@ export function App() {
     <Background src={src} image={image} poster={!lite ? preview : null} />
     {screen.config.widgets.map((w) => (
       <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
-        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.props} token={token} deviceId={w.deviceId}
+        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.type === "text" ? { ...w.props, theme: screen.config.theme } : w.props} token={token} deviceId={w.deviceId}
           device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined}
           feeds={live.feeds} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} />
       </div>
