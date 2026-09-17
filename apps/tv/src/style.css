@@ -151,9 +151,10 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fn-c { fill: rgba(10,16,28,.75); stroke-width: 3; }
 .theme-light .fn-c { fill: rgba(255,255,255,.9); }
 .fn-pv .fn-c { stroke: #f2b21b; } .fn-grid .fn-c { stroke: #4f8cff; } .fn-bat .fn-c { stroke: #35c46a; } .fn-load .fn-c { stroke: #ff8a5b; } .fn-inv .fn-c { stroke: rgba(255,255,255,.6); fill: rgba(255,255,255,.12); }
-.fn-grid.off .fn-c { stroke: #e5484d; } .fn-grid.off .fn-i { fill: #ff8a8e; } .fn-bat.low .fn-c { stroke: #e5484d; }
+.fn-grid.off .fn-c { stroke: #e5484d; } .fn-bat.low .fn-c { stroke: #e5484d; }
 .fn.dim .fn-c { stroke-opacity: .45; } .fn.dim .fn-i { opacity: .6; }
-.fn-i { fill: #fff; } .theme-light .fn-i { fill: #10203a; } .fn-inv .fn-i { font-size: 30px; }
+.fn-i { overflow: visible; } .fn-pv { color: #f2b21b; } .fn-grid { color: #4f8cff; } .fn-bat { color: #35c46a; } .fn-load { color: #ff8a5b; } .fn-inv { color: rgba(255,255,255,.85); }
+.theme-light .fn-inv { color: #10203a; } .fn-grid.off, .fn-bat.low { color: #ff8a8e; }
 .fn-l { fill: rgba(255,255,255,.75); font-size: 15px; letter-spacing: .04em; text-transform: uppercase; }
 .fn-v { fill: #fff; font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .theme-light .fn-l { fill: rgba(0,0,0,.6); } .theme-light .fn-v { fill: #10203a; }
@@ -162,11 +163,14 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .flow-strip { justify-content: center; }
 .strip { display: flex; align-items: center; justify-content: space-between; gap: .6vw; flex: 1; }
 .fs-c { display: flex; flex-direction: column; align-items: center; gap: .1vw; min-width: 8vw; text-align: center; }
-.fs-i { font-size: 2.2vw; line-height: 1; } .fs-c.big .fs-i { font-size: 2.8vw; }
+.fs-i { line-height: 0; } .fs-i .ico { width: 2.4vw; height: 2.4vw; } .fs-c.big .fs-i .ico { width: 3vw; height: 3vw; }
+.fs-pv { color: #f2b21b; } .fs-grid { color: #4f8cff; } .fs-bat { color: #35c46a; } .fs-load { color: #ff8a5b; } .fs-grid.off, .fs-bat.low { color: #ff8a8e; }
+.fs-v, .fs-l { color: #fff; } .theme-light .fs-v, .theme-light .fs-l { color: #10203a; }
 .fs-v { font-size: 1.9vw; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; } .fs-c.big .fs-v { font-size: 2.6vw; }
 .fs-l { font-size: 1vw; opacity: .75; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .fs-c.dim { opacity: .55; }
 .fs-pv .fs-v { color: #ffd36b; } .fs-grid .fs-v { color: #8ab4ff; } .fs-bat .fs-v { color: #7ee3a3; } .fs-load .fs-v { color: #ffb08a; }
+.theme-light .fs-pv .fs-v { color: #b8860b; } .theme-light .fs-grid .fs-v { color: #2f6fe0; } .theme-light .fs-bat .fs-v { color: #1f8f4a; } .theme-light .fs-load .fs-v { color: #d9552a; }
 .fs-grid.off .fs-v, .fs-grid.off .fs-l { color: #ff8a8e; opacity: 1; } .fs-bat.low .fs-v { color: #ff8a8e; }
 .fs-a { font-size: 1.8vw; opacity: .9; width: 2.2vw; text-align: center; animation: fsnudge 1.6s ease-in-out infinite; }
 .fs-a.idle { animation: none; opacity: .35; } .fs-a.out { animation-name: fsnudge-out; }
@@ -176,7 +180,9 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 /* bars */
 .bars { display: flex; flex-direction: column; justify-content: space-evenly; flex: 1; gap: .3vw; }
 .fb { display: grid; grid-template-columns: 2.4vw 9vw 1fr 6.5vw; align-items: center; gap: .6vw; font-size: 1.3vw; }
-.fb-i { font-size: 1.8vw; line-height: 1; text-align: center; }
+.fb-i { line-height: 0; text-align: center; } .fb-i .ico { width: 2vw; height: 2vw; }
+.fb-pv { color: #f2b21b; } .fb-grid { color: #4f8cff; } .fb-bat { color: #35c46a; } .fb-load { color: #ff8a5b; } .fb-grid.off, .fb-bat.low { color: #ff8a8e; }
+.fb-l, .fb-v { color: #fff; } .theme-light .fb-l, .theme-light .fb-v { color: #10203a; }
 .fb-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .9; } .fb-l small { opacity: .7; font-size: 1.05vw; }
 .fb-bar { height: .9vw; background: rgba(255,255,255,.12); border-radius: .5vw; overflow: hidden; }
 .theme-light .fb-bar { background: rgba(0,0,0,.1); }
