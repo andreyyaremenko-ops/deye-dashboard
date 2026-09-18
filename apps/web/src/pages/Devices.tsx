@@ -3,6 +3,8 @@ import { Link } from "wouter";
 import { api, type Device, type Org } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, ago, onSubmit, useAction } from "../components/ui.tsx";
 
+/** Адреса сервера для стіка: з build-arg VITE_STICK_HOST (напр. IP), інакше домен, на якому відкрито кабінет. */
+const STICK_HOST = (import.meta.env.VITE_STICK_HOST as string | undefined) || (typeof location !== "undefined" ? location.hostname : "");
 const fmtW = (v: unknown) => (typeof v === "number" ? (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(2)} kW` : `${Math.round(v)} W`) : "—");
 
 export function Devices({ org }: { org: Org }) {
@@ -30,7 +32,7 @@ export function Devices({ org }: { org: Org }) {
       <details className="hint"><summary>Без плати: підключити Solarman-стік напряму</summary>
         <ol className="small">
           <li>У браузері відкрийте <code>http://&lt;IP стіка&gt;/config_hide.html</code> (логін і пароль зазвичай admin / admin).</li>
-          <li>Розділ «Internal server parameters setting»: Protocol <b>TCP-Client</b>, Port <b>10000</b>, Server address <b>193.242.161.21</b>, TCP time out <b>300</b>. Save.</li>
+          <li>Розділ «Internal server parameters setting»: Protocol <b>TCP-Client</b>, Port <b>10000</b>, Server address <b>{STICK_HOST}</b>, TCP time out <b>300</b>. Save.</li>
           <li>Меню Restart. За хвилину стік зʼявиться тут після привʼязки: код = серійник стіка (10 цифр з наліпки або зі сторінки Status).</li>
         </ol>
         <p className="muted small">Застосунок Solarman продовжує працювати. Локальний порт 8899 у цьому режимі стік не обслуговує.</p>

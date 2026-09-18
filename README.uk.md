@@ -12,7 +12,7 @@ SunHunter TV перетворює телевізор на стіні закла�
 
 ## Код безкоштовний, ціна чесна
 
-- **Код відкритий.** Клонуйте репозиторій, запускайте на власному сервері, користуйтесь усім функціоналом.
+- **Код відкритий** за ліцензією [AGPL-3.0](LICENSE). Клонуйте репозиторій, запускайте на власному сервері, користуйтесь усім функціоналом.
 - **У сервісі є безкоштовний тариф назавжди:** один телевізор і один логер інвертора з повним набором можливостей.
 - **Платна підписка свідомо коштує не більше за оренду VDS, який знадобився б для власного сервера:** Pro — 600 ₴ на місяць за пʼять телевізорів і пʼять логерів.
 
@@ -121,16 +121,20 @@ pnpm --filter @deye/api dev
 ```bash
 git clone https://github.com/andreyyaremenko-ops/deye-dashboard.git
 cd deye-dashboard/deploy
-cp .env.example .env                 # задайте POSTGRES_PASSWORD, BETTER_AUTH_SECRET, MQTT_INTERNAL_PASS, PUBLIC_URL
+cp .env.example .env                 # задайте DOMAIN, POSTGRES_PASSWORD, BETTER_AUTH_SECRET, MQTT_INTERNAL_PASS
 docker compose up -d
 ./deploy.sh migrate seed api worker static
 ```
 
-Перед першим запуском замініть `tv.sun-hunter.men` на свій домен у `deploy/Caddyfile`, `deploy/mosquitto/mosquitto.conf` і в команді `certsync` у `deploy/docker-compose.yml`, а також приберіть з Caddyfile сторонній блок `aqua.sun-hunter.men`. Далі Caddy сам отримає сертифікати TLS. Подробиці та експлуатаційні нотатки — у [deploy/README.md](deploy/README.md).
+Домен задається в одному місці — `DOMAIN` у `.env`: Caddy отримує на нього сертифікат TLS, API використовує його як публічну адресу, і той самий сертифікат передається Mosquitto для MQTT через TLS. Речі, специфічні для конкретного сервера (інші сайти за тим самим Caddy, додаткові мережі), кладуться в `deploy/caddy-extra/*.caddy` і `deploy/docker-compose.override.yml`, обидва поза git. Подробиці та експлуатаційні нотатки — у [deploy/README.md](deploy/README.md).
 
 ## Стек
 
 Fastify 5, Drizzle ORM, Postgres з TimescaleDB, Redis, Mosquitto з HTTP-авторизацією, Better Auth, zod 4, Vite, React, Preact, ffmpeg, Caddy, PlatformIO. TypeScript виконується без збірки на Node 24.
+
+## Ліцензія
+
+Copyright © 2026 учасники проєкту SunHunter TV. Ліцензія [GNU Affero General Public License v3.0](LICENSE): код можна вільно використовувати, змінювати й розгортати в себе; якщо ви запускаєте змінену версію як мережевий сервіс, зміни мають бути відкриті під тією ж ліцензією. Шрифти в `apps/tv/public/fonts` — з Google Fonts за ліцензією SIL Open Font License.
 
 ## Посилання
 

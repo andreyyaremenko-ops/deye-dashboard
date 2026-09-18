@@ -1,5 +1,5 @@
 # Старі ТБ без кореневого сертифіката Let's Encrypt: сторінка екрана доступна і по HTTP.
-http://tv.sun-hunter.men {
+http://{$DOMAIN} {
     @tv path /s/* /tv /api/public/* /ws /media/*
     handle @tv {
         handle /api/public/* {
@@ -27,11 +27,11 @@ http://tv.sun-hunter.men {
         }
     }
     handle {
-        redir https://tv.sun-hunter.men{uri} permanent
+        redir https://{$DOMAIN}{uri} permanent
     }
 }
 
-https://tv.sun-hunter.men {
+https://{$DOMAIN} {
     encode zstd gzip
 
     handle /api/* {
@@ -69,7 +69,5 @@ https://tv.sun-hunter.men {
     }
 }
 
-# акваріум переїжджає за проксі (потрібен A-запис aqua -> той самий IP)
-aqua.sun-hunter.men {
-    reverse_proxy aqua:8000
-}
+# Додаткові сайти цього сервера (не частина проєкту): deploy/caddy-extra/*.caddy, у git не потрапляють.
+import /etc/caddy/extra/*.caddy

@@ -42,7 +42,7 @@ export function Pair() {
         <button class="pair-btn" type="submit" disabled={busy || code.replace(/\D/g, "").length !== 6}>{busy ? "…" : "Відкрити"}</button>
       </form>
       {err && <div class="pair-err">{err}</div>}
-      <div class="pair-foot">tv.sun-hunter.men/tv</div>
+      <div class="pair-foot">{location.host}/tv</div>
     </div>
   </div>;
 }

@@ -14,7 +14,7 @@ export function PairCard({ org, screen, canEdit }: { org: Org; screen: Screen; c
   const issue = useAction(async () => { setPair(await api.post(`/api/orgs/${org.id}/screens/${screen.id}/pair-code`)); });
   const url = screenUrl(screen.viewToken);
   return <Card title="Підключити телевізор">
-    <p className="small">На телевізорі відкрийте <b>tv.sun-hunter.men/tv</b> і введіть код:</p>
+    <p className="small">На телевізорі відкрийте <b>{location.host}/tv</b> і введіть код:</p>
     {pair && left > 0
       ? <div className="paircode"><b>{pair.code.slice(0, 3)} {pair.code.slice(3)}</b><span className="muted small">діє ще {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}</span></div>
       : <Btn kind="primary" onClick={() => issue.run(undefined)} disabled={!canEdit || issue.busy}>Код для ТБ</Btn>}

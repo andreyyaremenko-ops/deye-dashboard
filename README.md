@@ -12,7 +12,7 @@ If the venue runs on a Deye hybrid inverter, the same screen also shows the sola
 
 ## Free code, fair price
 
-- **The code is open.** Clone the repository, run it on your own server, use every feature.
+- **The code is open** under [AGPL-3.0](LICENSE). Clone the repository, run it on your own server, use every feature.
 - **The hosted service has a free plan forever:** one TV and one inverter logger with the full feature set.
 - **The paid plan is priced on purpose at no more than the VDS you would rent to self-host:** Pro is 600 UAH per month (about $15) for five TVs and five loggers.
 
@@ -121,16 +121,20 @@ A VDS with 2 vCPU and 2 GB RAM is enough. You need a domain pointing at the serv
 ```bash
 git clone https://github.com/andreyyaremenko-ops/deye-dashboard.git
 cd deye-dashboard/deploy
-cp .env.example .env                 # set POSTGRES_PASSWORD, BETTER_AUTH_SECRET, MQTT_INTERNAL_PASS, PUBLIC_URL
+cp .env.example .env                 # set DOMAIN, POSTGRES_PASSWORD, BETTER_AUTH_SECRET, MQTT_INTERNAL_PASS
 docker compose up -d
 ./deploy.sh migrate seed api worker static
 ```
 
-Before the first start, replace `tv.sun-hunter.men` with your own domain in `deploy/Caddyfile`, `deploy/mosquitto/mosquitto.conf` and the `certsync` command in `deploy/docker-compose.yml`, and delete the unrelated `aqua.sun-hunter.men` block from the Caddyfile. Caddy then obtains TLS certificates on its own. Details and operational notes are in [deploy/README.md](deploy/README.md).
+`DOMAIN` in `.env` is the only place the host name lives: Caddy obtains a TLS certificate for it, the API uses it as its public URL, and the same certificate is handed to Mosquitto for MQTT over TLS. Server-specific extras (other sites behind the same Caddy, extra networks) go into `deploy/caddy-extra/*.caddy` and `deploy/docker-compose.override.yml`, both outside git. Details and operational notes are in [deploy/README.md](deploy/README.md).
 
 ## Tech stack
 
 Fastify 5, Drizzle ORM, Postgres with TimescaleDB, Redis, Mosquitto with HTTP auth, Better Auth, zod 4, Vite, React, Preact, ffmpeg, Caddy, PlatformIO. TypeScript runs without a build step on Node 24.
+
+## License
+
+Copyright © 2026 SunHunter TV contributors. Licensed under the [GNU Affero General Public License v3.0](LICENSE): you may use, modify and self-host the code freely; if you run a modified version as a network service, you must make your changes available under the same license. Fonts in `apps/tv/public/fonts` are from Google Fonts under the SIL Open Font License.
 
 ## Links
 

@@ -8,3 +8,7 @@ __pycache__/
 *.pyc
 .DS_Store
 dist-ssr/
+
+# специфічне для конкретного сервера
+deploy/docker-compose.override.yml
+deploy/caddy-extra/*.caddy
