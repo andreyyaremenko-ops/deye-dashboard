@@ -35,7 +35,10 @@ const tick = async () => {
   const h = new Date().getHours() + new Date().getMinutes() / 60;
   const sun = Math.max(0, Math.sin(((h - 6) / 13) * Math.PI));
   const pv = Math.round(6200 * sun + Math.random() * 150), load = 1500 + Math.round(Math.random() * 600);
-  const bat = Math.round(pv - load - 200), grid = Math.round(-(pv - load - bat));
+  // знаки як у телеметрії: bat > 0 розряд, < 0 заряд; grid > 0 з мережі, < 0 у мережу
+  const surplus = pv - load;
+  const bat = surplus > 200 ? -Math.round(surplus - 200) : surplus > 0 ? 0 : Math.min(1500, -surplus);
+  const grid = surplus > 200 ? -200 : surplus > 0 ? -Math.round(surplus) : Math.round(-surplus - bat);
   const metrics = { state: "normal", pv_w: pv, load_w: load, bat_w: bat, grid_w: grid, bat_soc: 64, grid_v_l1: 231, grid_v_l2: 230, grid_v_l3: 232, grid_hz: 50, pv_day_kwh: 18.4, load_day_kwh: 22.1, grid_buy_day_kwh: 5.2, grid_sell_day_kwh: 1.3, bat_v: 51.2, inv_temp: 41 };
   const now = new Date();
   await t.store.set({ deviceId: dev.id, updatedAt: now.toISOString(), metrics });
