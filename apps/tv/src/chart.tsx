@@ -4,17 +4,24 @@ import { areaPath, fmtPower, hhmm, linePath, niceTicks, scaleLinear } from "@dey
 
 interface Pt { t: string; pv_w?: number; load_w?: number; grid_w?: number }
 
+/** Останні точки за ключем екран|пристрій|період: сцени перемонтовують віджет, і без кешу графік щоразу починав би з «…». */
+const cache = new Map<string, { at: number; pts: Pt[] }>();
+const FRESH_MS = 4 * 60_000;
+
 export function ChartWidget({ token, deviceId, cls, stale, hours }: { token: string; deviceId: string | undefined; cls: string; stale: boolean; hours: number }) {
-  const [pts, setPts] = useState<Pt[] | null>(null);
+  const key = `${token}|${deviceId}|${hours}`;
+  const [pts, setPts] = useState<Pt[] | null>(() => cache.get(key)?.pts ?? null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
     if (!deviceId) return;
     let stop = false;
     const load = () => fetch(`/api/public/screens/${encodeURIComponent(token)}/history?deviceId=${deviceId}&metrics=pv_w,load_w&hours=${hours}&step=${hours > 48 ? "1h" : "15m"}`, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d) => { if (!stop) { setPts(d.points); setErr(null); } })
+      .then((d) => { cache.set(key, { at: Date.now(), pts: d.points }); if (!stop) { setPts(d.points); setErr(null); } })
       .catch((e) => { if (!stop) setErr(e === 409 ? "Історія доступна в тарифі Pro" : "немає даних"); });
-    load();
+    const hit = cache.get(key);
+    if (hit) setPts(hit.pts);
+    if (!hit || Date.now() - hit.at > FRESH_MS) load();   // свіжий кеш: не смикаємо API при кожній зміні сцени
     const t = setInterval(load, 5 * 60_000);
     return () => { stop = true; clearInterval(t); };
   }, [token, deviceId, hours]);
