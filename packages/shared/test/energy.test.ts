@@ -22,6 +22,18 @@ describe("режим відключення", () => {
     expect(r?.method).toBe("load"); expect(r?.hours).toBeCloseTo(2, 5);
     expect(estimateRuntime({ bat_soc: 100, bat_w: 0, load_w: 4000 }, { capacityKwh: 10, minSoc: 20 })).toBeNull();
   });
+  it("продаж у мережу з батареї: автономія від споживання, а не від 30 кВт розряду (Dymer, 2026-09-18)", () => {
+    const m = { bat_soc: 64, bat_w: 29900, load_w: 2044, pv_w: 20, grid_w: -26469, grid_v_l1: 240, grid_v_l2: 243, grid_v_l3: 246 };
+    const r = estimateRuntime(m, { capacityKwh: 100, minSoc: 20, assumeLoad: true });
+    expect(r?.method).toBe("load"); expect(r?.hours).toBeCloseTo(44 / 2.024, 3);        // ≈ 21.7 год, а не 1.5
+    expect(estimateRuntime(m, { capacityKwh: 100, minSoc: 20 })?.hours).toBeCloseTo(44 / 2.024, 3);
+    // без ємності падіння SOC спричинене продажем, прогноз за швидкістю був би хибним
+    const t = Date.now();
+    expect(estimateRuntime(m, { minSoc: 20, socHistory: [[t - 30 * 60_000, 79], [t, 64]] })).toBeNull();
+    // мережі немає: той самий розряд уже справжній, рахуємо від нього
+    const out = { ...m, grid_w: 0, grid_v_l1: 0, grid_v_l2: 0, grid_v_l3: 0, bat_w: 2100 };
+    expect(estimateRuntime(out, { capacityKwh: 100, minSoc: 20 })?.method).toBe("capacity");
+  });
   it("не рахує, коли заряджається або історія коротка", () => {
     expect(estimateRuntime({ bat_soc: 60, bat_w: -800 }, { capacityKwh: 10 })).toBeNull();
     expect(estimateRuntime({ bat_soc: 60, bat_w: 800 }, { socHistory: [[Date.now() - 60_000, 61], [Date.now(), 60]] })).toBeNull();

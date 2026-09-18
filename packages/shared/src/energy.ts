@@ -17,13 +17,23 @@ export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" |
  * capacityKwh відомий -> (soc - minSoc) * capacity / bat_w.
  * Інакше — за швидкістю падіння SOC (socHistory: [epochMs, soc], не менше 5 хв).
  * null, якщо батарея не розряджається або даних замало.
+ * Продаж у мережу: коли мережа є і батарея розряджається В МЕРЕЖУ (grid_w < 0), її поточний розряд і падіння SOC
+ * нічого не кажуть про автономію — при відключенні експорт зупиниться, і батарею витрачатиме лише споживання,
+ * не покрите сонцем. Тому в цьому режимі рахуємо від (load - pv), а метод «за швидкістю» не застосовуємо.
  */
+const EXPORT_W = 200;
 export function estimateRuntime(m: Metrics, opts: { capacityKwh?: number | null; minSoc?: number; socHistory?: [number, number][]; assumeLoad?: boolean } = {}): RuntimeEstimate | null {
   const soc = num(m, "bat_soc"), batW = num(m, "bat_w"), loadW = num(m, "load_w");
   const minSoc = opts.minSoc ?? 20;
   if (soc === null) return null;
   const usablePct = Math.max(0, soc - minSoc);
   const cap = opts.capacityKwh && opts.capacityKwh > 0 ? opts.capacityKwh : null;
+  const gridW = num(m, "grid_w");
+  const selling = !gridDown(m) && gridW !== null && gridW < -EXPORT_W && batW !== null && batW > 50;
+  if (selling) {
+    const drain = loadW === null ? null : Math.max(0, loadW - (num(m, "pv_w") ?? 0));
+    return cap && drain !== null && drain > 50 ? { hours: (usablePct / 100) * cap * 1000 / drain, method: "load" } : null;
+  }
   if (cap && batW !== null && batW > 50) {
     return { hours: (usablePct / 100) * cap * 1000 / batW, method: "capacity" };
   }
