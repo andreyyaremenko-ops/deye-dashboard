@@ -26,6 +26,12 @@ describe("hexToRegs / rangesToTable", () => {
   });
 });
 
+/** Очікування для HP3-дампів за серійником стіка (імʼя файлу <serial>_<час>.json). */
+const HP3: Record<string, { serial: string; ratedW: number; minPvTotalKwh: number }> = {
+  "2763543833": { serial: "2309208317", ratedW: 15000, minPvTotalKwh: 20000 },   // стенд: 15 kW, одна батарея, 2 MPPT
+  "2989852238": { serial: "2407102212", ratedW: 30000, minPvTotalKwh: 7000 },    // Dymer: 30 kW, дві батареї, 4 MPPT
+};
+
 describe("deye-hp3 на реальних дампах", () => {
   const hp3Files = dumpFiles.filter((f) => decodeIdentity(tableFromDump(f)).deviceType === 6);
   expect(hp3Files.length).toBeGreaterThan(0);
@@ -34,10 +40,12 @@ describe("deye-hp3 на реальних дампах", () => {
     const id = decodeIdentity(table);
     const map = mapForDeviceType(id.deviceType!);
 
+    const known = HP3[file.split("_")[0]!];
     it(`${file}: ідентифікація`, () => {
+      expect(known, "додайте очікування для нового HP3-дампа в HP3").toBeDefined();
       expect(id.deviceType).toBe(6);
-      expect(id.inverterSerial).toBe("2309208317");
-      expect(id.ratedW).toBe(15000);
+      expect(id.inverterSerial).toBe(known!.serial);
+      expect(id.ratedW).toBe(known!.ratedW);
       expect(map?.id).toBe("deye-hp3");
     });
 
@@ -58,10 +66,33 @@ describe("deye-hp3 на реальних дампах", () => {
         expect(m[k]).toBeGreaterThan(180);
         expect(m[k]).toBeLessThan(260);
       }
-      expect(m.pv_total_kwh).toBeGreaterThan(20000); // 32-бітний лічильник, high word = 4
-      expect(m.pv_w).toBe((m.pv1_w as number) + (m.pv2_w as number));
+      expect(m.pv_total_kwh).toBeGreaterThan(known!.minPvTotalKwh); // 32-бітний лічильник (у стенда high word = 4)
+      expect(m.pv_w).toBe((m.pv1_w as number) + (m.pv2_w as number) + (m.pv3_w as number) + (m.pv4_w as number));
+      expect(m.bat_w).toBe((m.bat1_w as number) + (m.bat2_w as number));
     });
   }
+});
+
+describe("deye-hp3 30 kW з двома батареями (Dymer): потужність DC у десятках ват", () => {
+  const table = tableFromDump("2989852238_20260918T171200Z.json");
+  const m = decode(mapForDeviceType(6)!, table);
+  it("кожна батарея: P = raw x 10 і збігається з U x I", () => {
+    expect(m.bat1_w).toBe(14970); expect(m.bat2_w).toBe(14980);
+    expect(Math.abs((m.bat_v as number) * (m.bat1_a as number) - (m.bat1_w as number))).toBeLessThan(150);
+    expect(Math.abs((m.bat2_v as number) * (m.bat2_a as number) - (m.bat2_w as number))).toBeLessThan(150);
+    expect(m.bat_soc).toBe(74); expect(m.bat2_soc).toBe(74);
+  });
+  it("сумарна батарея і баланс DC -> AC: сонце + батарея ≈ вихід інвертора (втрати до 8 %)", () => {
+    expect(m.bat_w).toBe(29950);
+    expect(m.bat_a).toBeCloseTo(47.43, 2);
+    const dc = (m.pv_w as number) + (m.bat_w as number), ac = m.inv_w as number;
+    expect(ac).toBeLessThan(dc); expect(ac / dc).toBeGreaterThan(0.92);
+    expect((m.grid_w as number) + ac).toBe(m.load_w);           // -26775 + 28555 = 1780: батареї продають у мережу
+  });
+  it("чотири входи панелей: увечері майже нуль, pv_w = сума чотирьох", () => {
+    expect(m.pv3_w).toBe(10); expect(m.pv4_w).toBe(0); expect(m.pv_w).toBe(10);
+    expect(m.pv3_v).toBe(165.4);
+  });
 });
 
 describe("deye-lp1 (однофазний 6 kW, ON-Coffe) на реальному кадрі", () => {
@@ -114,9 +145,10 @@ describe("deye-lp3 (трифазний LV 12 kW, Stiklyashka) на реальн�
 
 describe("signed / words / offset", () => {
   it("знакові значення і температура з offset", () => {
-    const t = new Map<number, number>([[590, 0xfc18], [540, 1250], [516, 7750], [517, 1]]);
+    const t = new Map<number, number>([[590, 0xfc18], [595, 0], [540, 1250], [516, 7750], [517, 1]]);
     const m = decode(maps["deye-hp3"]!, t);
-    expect(m.bat_w).toBe(-1000);
+    expect(m.bat1_w).toBe(-10000);   // HV: регістр у десятках ват, знак мінус — заряд
+    expect(m.bat_w).toBe(-10000);    // сума двох батарей, друга відсутня
     expect(m.temp_dc_c).toBe(25);
     expect(m.bat_charge_total_kwh).toBe(7328.6);
   });

@@ -87,7 +87,7 @@ export function decode(map: RegisterMap, table: Map<number, number>): Metrics {
   for (const d of map.derived ?? []) {
     if (d.sum) {
       const parts = d.sum.map((k) => out[k]).filter((v): v is number => typeof v === "number");
-      if (parts.length === d.sum.length) out[d.key] = parts.reduce((a, b) => a + b, 0);
+      if (parts.length === d.sum.length) out[d.key] = Math.round(parts.reduce((a, b) => a + b, 0) * 1000) / 1000;
     }
   }
   return out;

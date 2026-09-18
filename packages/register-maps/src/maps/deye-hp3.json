@@ -22,8 +22,12 @@
     { "key": "bat_temp_c", "reg": 586, "scale": 0.1, "offset": -100, "unit": "C" },
     { "key": "bat_v", "reg": 587, "scale": 0.1, "unit": "V" },
     { "key": "bat_soc", "reg": 588, "unit": "%" },
-    { "key": "bat_w", "reg": 590, "signed": true, "unit": "W" },
-    { "key": "bat_a", "reg": 591, "scale": 0.01, "signed": true, "unit": "A" },
+    { "key": "bat2_soc", "reg": 589, "unit": "%" },
+    { "key": "bat1_w", "reg": 590, "signed": true, "scale": 10, "unit": "W" },
+    { "key": "bat1_a", "reg": 591, "scale": 0.01, "signed": true, "unit": "A" },
+    { "key": "bat2_v", "reg": 593, "scale": 0.1, "unit": "V" },
+    { "key": "bat2_a", "reg": 594, "scale": 0.01, "signed": true, "unit": "A" },
+    { "key": "bat2_w", "reg": 595, "signed": true, "scale": 10, "unit": "W" },
     { "key": "grid_v_l1", "reg": 598, "scale": 0.1, "unit": "V" },
     { "key": "grid_v_l2", "reg": 599, "scale": 0.1, "unit": "V" },
     { "key": "grid_v_l3", "reg": 600, "scale": 0.1, "unit": "V" },
@@ -56,13 +60,21 @@
     { "key": "load_hz", "reg": 655, "scale": 0.01, "unit": "Hz" },
     { "key": "pv1_w", "reg": 672, "scale": 10, "unit": "W" },
     { "key": "pv2_w", "reg": 673, "scale": 10, "unit": "W" },
+    { "key": "pv3_w", "reg": 674, "scale": 10, "unit": "W" },
+    { "key": "pv4_w", "reg": 675, "scale": 10, "unit": "W" },
     { "key": "pv1_v", "reg": 676, "scale": 0.1, "unit": "V" },
     { "key": "pv1_a", "reg": 677, "scale": 0.1, "unit": "A" },
     { "key": "pv2_v", "reg": 678, "scale": 0.1, "unit": "V" },
-    { "key": "pv2_a", "reg": 679, "scale": 0.1, "unit": "A" }
+    { "key": "pv2_a", "reg": 679, "scale": 0.1, "unit": "A" },
+    { "key": "pv3_v", "reg": 680, "scale": 0.1, "unit": "V" },
+    { "key": "pv3_a", "reg": 681, "scale": 0.1, "unit": "A" },
+    { "key": "pv4_v", "reg": 682, "scale": 0.1, "unit": "V" },
+    { "key": "pv4_a", "reg": 683, "scale": 0.1, "unit": "A" }
   ],
   "derived": [
-    { "key": "pv_w", "sum": ["pv1_w", "pv2_w"], "unit": "W" }
+    { "key": "pv_w", "sum": ["pv1_w", "pv2_w", "pv3_w", "pv4_w"], "unit": "W" },
+    { "key": "bat_w", "sum": ["bat1_w", "bat2_w"], "unit": "W" },
+    { "key": "bat_a", "sum": ["bat1_a", "bat2_a"], "unit": "A" }
   ],
-  "_notes": "pv1_w/pv2_w scale 10 підтверджено непрямо (V*A ≈ 684 W при raw 71); перевірити вдень. Знак bat_w перевірити при розряді."
+  "_notes": "Потужності DC у HV-моделей у десятках ват: pv1..pv4_w і bat1/bat2_w мають scale 10 (підтверджено V*A на чотирьох інверторах і балансом DC≈AC на дампі 2989852238). Інвертори 25-50 kW мають два порти батареї (589, 593-595) і чотири MPPT (674, 675, 680-683); у менших ці регістри 0. bat_w > 0 — розряд. bat_w і bat_a — сума двох батарей."
 }
