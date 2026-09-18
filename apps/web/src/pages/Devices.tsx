@@ -39,17 +39,27 @@ export function Devices({ org }: { org: Org }) {
     <Card title="Пристрої">
       <ErrorBox err={unclaim.err ?? rename.err} />
       {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <div className="empty">Ще немає пристроїв. Введіть код із корпусу плати або серійник стіка вище.</div> :
-      <table className="tbl"><thead><tr><th>Назва</th><th>Стан</th><th>Сонце</th><th>Батарея</th><th>Мережа</th><th>Споживання</th><th>Інвертор</th><th></th></tr></thead>
-        <tbody>{list.map((d) => <tr key={d.id}>
-          <td data-l="Назва"><Link href={`/o/${org.id}/devices/${d.id}`}><b>{d.name ?? d.id}</b></Link><div className="muted small">{d.id} · {d.hw ?? "?"} {d.fw ?? ""}</div></td>
-          <td data-l="Стан"><span className="status"><span className={`dot ${d.online && !d.stale ? "on" : d.online ? "warn" : "off"}`} /> {d.online ? (d.stale ? "дані застарілі" : "онлайн") : "офлайн"}</span><div className="muted small">{ago(d.stateUpdatedAt ?? d.lastSeenAt)}</div></td>
-          <td data-l="Сонце">{fmtW(d.state?.pv_w)}</td>
-          <td data-l="Батарея">{typeof d.state?.bat_soc === "number" ? `${d.state.bat_soc}%` : "—"}</td>
-          <td data-l="Мережа">{fmtW(d.state?.grid_w)}</td>
-          <td data-l="Споживання">{fmtW(d.state?.load_w)}</td>
-          <td data-l="Інвертор" className="small">{d.modelId ?? "не визначено"}<div className="muted">{d.inverterSerial ?? ""}</div></td>
-          <td className="actions">{canEdit && <Btn kind="ghost" onClick={() => rename.run(d)}>Назва</Btn>}{org.role === "owner" && <Btn kind="ghost" onClick={() => unclaim.run(d.id)}>Відвʼязати</Btn>}</td>
-        </tr>)}</tbody></table>}
+      <div className="dev-grid">{list.map((d) => {
+        const live = d.online && !d.stale;
+        return <article key={d.id} className={`dev-card${live ? " is-live" : ""}`}>
+          <header>
+            <div><Link href={`/o/${org.id}/devices/${d.id}`} className="dev-name">{d.name ?? d.id}</Link><div className="mono muted">{d.id} · {d.hw ?? "?"} {d.fw ?? ""}</div></div>
+            <span className={`pill ${live ? "pill-ok" : d.online ? "pill-warn" : "pill-off"}`}><span className={`dot ${live ? "on" : d.online ? "warn" : "off"}`} />{d.online ? (d.stale ? "дані застарілі" : "онлайн") : "офлайн"}</span>
+          </header>
+          <div className="dev-stats">
+            <div><small>Сонце</small><b className="c-amber">{fmtW(d.state?.pv_w)}</b></div>
+            <div><small>Батарея</small><b className="c-cyan">{typeof d.state?.bat_soc === "number" ? `${d.state.bat_soc} %` : "—"}</b></div>
+            <div><small>Мережа</small><b>{fmtW(d.state?.grid_w)}</b></div>
+            <div><small>Споживання</small><b>{fmtW(d.state?.load_w)}</b></div>
+          </div>
+          <footer>
+            <span className="muted small">{d.modelId ?? "модель не визначено"}{d.inverterSerial ? ` · ${d.inverterSerial}` : ""} · {ago(d.stateUpdatedAt ?? d.lastSeenAt)}</span>
+            <span className="grow" />
+            <Link href={`/o/${org.id}/devices/${d.id}`} className="btn btn-sm">Графіки</Link>
+            {canEdit && <Btn kind="ghost" onClick={() => rename.run(d)}>Назва</Btn>}{org.role === "owner" && <Btn kind="ghost" onClick={() => unclaim.run(d.id)}>Відвʼязати</Btn>}
+          </footer>
+        </article>;
+      })}</div>}
     </Card>
   </>;
 }

@@ -1,3 +1,4 @@
+import { Logo } from "../components/Logo.tsx";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { api, type Me } from "../api.ts";
@@ -32,11 +33,11 @@ export function Admin({ me }: { me: Me }) {
   return <div className="layout">
     <header className="top">
       <div className="top-row">
-        <div className="brand">☀ SunHunter TV · адмін</div>
+        <Link href="/" className="brand"><Logo />SunHunter TV · адмін</Link>
         <div className="grow" /><span className="muted hide-m">{me.user.email}</span>
         <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }}>Вийти</button>
       </div>
-      <nav className="top-nav">{(["orgs", "devices", "screens", "payments"] as const).map((k) => <button key={k} className={`tab${tab === k ? " on" : ""}`} onClick={() => setTab(k)} style={{ background: tab === k ? "#23304a" : "transparent", border: 0, color: "inherit", cursor: "pointer", font: "inherit" }}>{{ orgs: "Заклади", devices: "Пристрої", screens: "Екрани", payments: "Платежі" }[k]}</button>)}<Link href="/app" className="tab">Кабінет</Link></nav>
+      <nav className="top-nav">{(["orgs", "devices", "screens", "payments"] as const).map((k) => <button key={k} className={`tab${tab === k ? " on" : ""}`} onClick={() => setTab(k)}>{{ orgs: "Заклади", devices: "Пристрої", screens: "Екрани", payments: "Платежі" }[k]}</button>)}<Link href="/app" className="tab">Кабінет</Link></nav>
     </header>
     <main className="content">
       {T && <div className="kpis">

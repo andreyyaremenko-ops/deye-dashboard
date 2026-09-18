@@ -1,19 +1,21 @@
+/** Каркас кабінету: на десктопі бокова панель (бренд, заклад, навігація, користувач), на мобільному — шапка з табами. */
 import { Link, useLocation } from "wouter";
 import type { ReactNode } from "react";
 import type { Me } from "../api.ts";
 import { authClient } from "../auth.ts";
 import { PRODUCT_NAME } from "@deye/shared";
 import { Logo } from "./Logo.tsx";
+import { Icon, type IconName } from "./Icon.tsx";
 
 const ROLE: Record<string, string> = { owner: "власник", admin: "адмін", staff: "персонал" };
+const NAV: [string, string, IconName][] = [["devices", "Пристрої", "devices"], ["screens", "Екрани", "screens"], ["members", "Учасники", "members"], ["settings", "Налаштування", "settings"]];
+
 export function Layout({ me, orgId, children }: { me: Me; orgId: string; children: ReactNode }) {
   const [loc, navigate] = useLocation();
   const org = me.orgs.find((o) => o.id === orgId);
-  const tab = (path: string, label: string) => {
-    const href = `/o/${orgId}/${path}`;
-    return <Link href={href} className={loc.startsWith(href) ? "tab on" : "tab"}>{label}</Link>;
-  };
-  return <div className="layout">
+  const signOut = async () => { await authClient.signOut(); location.href = "/"; };
+  return <div className="layout with-side">
+    <div className="app-bg" aria-hidden="true" />
     <header className="top">
       <div className="top-row">
         <Link href="/" className="brand" title="На головну"><Logo />{PRODUCT_NAME}</Link>
@@ -22,11 +24,14 @@ export function Layout({ me, orgId, children }: { me: Me; orgId: string; childre
           <option value="__new">+ Нова організація…</option>
         </select>
         <div className="grow" />
-        {me.user.isSuperadmin && <Link href="/admin" className="tab hide-m">Адмін</Link>}
-        <span className="user hide-m" title={me.user.email}><span className="avatar">{(me.user.name || me.user.email).slice(0, 1).toUpperCase()}</span>{me.user.email}{org ? ` · ${ROLE[org.role] ?? org.role}` : ""}</span>
-        <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/"; }} title="Вийти">Вийти</button>
+        {org && <Link href={`/o/${orgId}/settings`} className={`plan-chip plan-${org.planId}`} title="Тариф закладу">{org.planId}</Link>}
+        <span className="user" title={me.user.email}><span className="avatar">{(me.user.name || me.user.email).slice(0, 1).toUpperCase()}</span><span className="user-t"><b>{me.user.name || me.user.email.split("@")[0]}</b><small>{org ? ROLE[org.role] ?? org.role : me.user.email}</small></span></span>
+        <button className="btn btn-ghost logout" onClick={signOut} title="Вийти"><Icon name="logout" /><span>Вийти</span></button>
       </div>
-      <nav className="top-nav">{tab("devices", "Пристрої")}{tab("screens", "Екрани")}{tab("members", "Учасники")}{tab("settings", "Налаштування")}{me.user.isSuperadmin && <Link href="/admin" className="tab show-m">Адмін</Link>}</nav>
+      <nav className="top-nav">
+        {NAV.map(([path, label, icon]) => { const href = `/o/${orgId}/${path}`; return <Link key={path} href={href} className={loc.startsWith(href) ? "tab on" : "tab"}><Icon name={icon} />{label}</Link>; })}
+        {me.user.isSuperadmin && <Link href="/admin" className="tab"><Icon name="admin" />Адмін</Link>}
+      </nav>
     </header>
     <main className="content">{children}</main>
   </div>;

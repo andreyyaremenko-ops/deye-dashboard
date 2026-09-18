@@ -16,15 +16,27 @@ export function Screens({ org }: { org: Org }) {
     <p className="muted small">Тариф {org.plan.name}: до {limit} екран(ів). Посилання відкривайте в браузері телевізора.</p>
     <ErrorBox err={create.err ?? del.err} />
     {list === null ? <p className="muted">Завантаження…</p> : list.length === 0 ? <div className="empty">Ще немає екранів. Створіть перший: «+ Новий екран».</div> :
-    <table className="tbl"><thead><tr><th>Назва</th><th>Телевізор</th><th>Віджетів</th><th>Радіо</th><th>Змінено</th><th>Посилання для ТБ</th><th></th></tr></thead>
-      <tbody>{list.map((s) => <tr key={s.id}>
-        <td data-l="Назва"><Link href={`/o/${org.id}/screens/${s.id}`}><b>{s.name}</b></Link></td>
-        <td data-l="Телевізор">{s.viewers ? <><span className="status"><span className="dot on" /> показується</span>{s.viewers > 1 ? ` (${s.viewers})` : ""}{s.tvs?.map((tv, i) => <div key={i} className="muted small">{tv.device} · {tv.ip} · з {ago(tv.since)}</div>)}</> : s.lastViewedAt ? <span className="muted small">востаннє {ago(s.lastViewedAt)}</span> : <span className="muted small">ще не відкривали</span>}</td>
-        <td data-l="Віджетів">{s.config.widgets.length}</td>
-        <td data-l="Радіо">{s.config.radioUrl ? "так" : "—"}</td>
-        <td data-l="Змінено" className="muted small">{ago(s.updatedAt)}</td>
-        <td data-l="Посилання"><a href={screenUrl(s.viewToken)} target="_blank" rel="noreferrer" className="small">{screenUrl(s.viewToken).replace(/^https?:\/\//, "").slice(0, 34)}…</a></td>
-        <td className="actions"><Link href={`/o/${org.id}/screens/${s.id}`} className="btn btn-ghost">Редагувати</Link>{canEdit && <Btn kind="ghost" onClick={() => del.run(s)}>Видалити</Btn>}</td>
-      </tr>)}</tbody></table>}
+    <div className="scr-grid">{list.map((s) => {
+      const href = `/o/${org.id}/screens/${s.id}`;
+      return <article key={s.id} className="scr-card">
+        <Link href={href} className={`scr-prev theme-${s.config.theme ?? "dark"}`} title="Редагувати">
+          {s.config.widgets.map((w) => <i key={w.id} style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }} />)}
+          {s.config.widgets.length === 0 && <span>порожній екран</span>}
+        </Link>
+        <div className="scr-body">
+          <header><Link href={href} className="dev-name">{s.name}</Link>
+            {s.viewers ? <span className="pill pill-ok"><span className="dot on" />показується{s.viewers > 1 ? ` · ${s.viewers}` : ""}</span> : <span className="pill pill-off">{s.lastViewedAt ? `востаннє ${ago(s.lastViewedAt)}` : "ще не відкривали"}</span>}
+          </header>
+          {s.tvs?.map((tv, i) => <div key={i} className="muted small">{tv.device} · {tv.ip} · з {ago(tv.since)}</div>)}
+          <div className="muted small">{s.config.widgets.length} віджет(ів){s.config.radioUrl ? " · радіо" : ""} · змінено {ago(s.updatedAt)}</div>
+          <footer>
+            <a href={screenUrl(s.viewToken)} target="_blank" rel="noreferrer" className="btn btn-sm">Відкрити ↗</a>
+            <Link href={href} className="btn btn-sm">Редагувати</Link>
+            <span className="grow" />
+            {canEdit && <Btn kind="ghost" onClick={() => del.run(s)}>Видалити</Btn>}
+          </footer>
+        </div>
+      </article>;
+    })}</div>}
   </Card>;
 }

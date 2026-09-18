@@ -63,7 +63,7 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
       </div>
       <ErrorBox err={saveBat.err} />
     </Card>
-    {!allowed ? <Card title="Історія"><p className="muted">Графіки та історія доступні в тарифі Pro.</p></Card> : <>
+    {!allowed ? <Card title="Історія"><p className="muted">Графіки та історія не входять у ваш тариф.</p></Card> : <>
       <Card title="Потужність" actions={<div className="seg">{PERIODS.map((p) => <button key={p.id} className={p.id === period.id ? "on" : ""} onClick={() => setPeriod(p)}>{p.label}</button>)}</div>}>
         <ErrorBox err={err instanceof ApiError ? err : null} />
         <Legend series={POWER} />
