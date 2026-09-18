@@ -64,7 +64,10 @@ https://{$DOMAIN} {
     # кабінет і лендінг; /en -> en/index.html (окремий пререндерений документ), решта шляхів SPA -> index.html
     handle {
         root * /srv/web
-        try_files {path} {path}/index.html /index.html
+        # SPA-фолбек лише для шляхів без розширення. Відсутній sitemap.xml/robots.txt/asset має давати 404,
+        # а не index.html з кодом 200: інакше пошуковик отримує HTML замість XML («не вдалося обробити sitemap»).
+        @page not path_regexp \.[A-Za-z0-9]{2,5}$
+        try_files @page {path} {path}/index.html /index.html
         file_server
     }
 }

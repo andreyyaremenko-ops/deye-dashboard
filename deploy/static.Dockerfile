@@ -21,4 +21,7 @@ RUN pnpm --filter @deye/tv build && pnpm --filter @deye/web build
 FROM alpine:3
 COPY --from=build /repo/apps/tv/dist /out/tv
 COPY --from=build /repo/apps/web/dist /out/web
-CMD sh -c "rm -rf /srv/tv/* /srv/web/* && cp -r /out/tv/. /srv/tv/ && cp -r /out/web/. /srv/web/ && echo static deployed && ls /srv/tv /srv/web"
+# Оновлення без «дірки»: спершу копіюємо нову збірку поверх старої, і лише потім прибираємо файли, яких у ній уже немає.
+# Раніше тут було rm -rf і потім cp: кілька секунд сайт лишався без sitemap.xml/index.html (а при двох деплоях одночасно — хвилини).
+COPY deploy/static-sync.sh /static-sync.sh
+CMD ["sh", "/static-sync.sh"]
