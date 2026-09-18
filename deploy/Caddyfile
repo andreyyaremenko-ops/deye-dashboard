@@ -66,9 +66,15 @@ https://{$DOMAIN} {
         root * /srv/web
         # SPA-фолбек лише для шляхів без розширення. Відсутній sitemap.xml/robots.txt/asset має давати 404,
         # а не index.html з кодом 200: інакше пошуковик отримує HTML замість XML («не вдалося обробити sitemap»).
-        # (без квантифікатора у фігурних дужках: Caddy сприймає {…} як плейсхолдер)
-        @page not path_regexp \.[A-Za-z0-9]+$
-        try_files @page {path} {path}/index.html /index.html
+        # try_files не приймає матчер, тому розгорнута форма: rewrite + матчер file.
+        # У регулярці немає {n,m}: Caddy сприймає фігурні дужки як плейсхолдер.
+        @page {
+            not path_regexp \.[A-Za-z0-9]+$
+            file {
+                try_files {path} {path}/index.html /index.html
+            }
+        }
+        rewrite @page {file_match.relative}
         file_server
     }
 }
