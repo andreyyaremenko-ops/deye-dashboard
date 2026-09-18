@@ -29,7 +29,7 @@ export function Login({ mode }: { mode: "login" | "signup" }) {
 
   return <div className="auth">
     <div className="auth-box">
-      <h1><Logo />{PRODUCT_NAME}</h1>
+      <h1><Link href="/" className="brand" title="На головну"><Logo />{PRODUCT_NAME}</Link></h1>
       <p className="muted">{mode === "login" ? "Вхід у кабінет" : "Реєстрація"}</p>
       <form onSubmit={onSubmit(() => pw.run(undefined))}>
         {mode === "signup" && <Field label="Імʼя"><input value={name} onChange={(e) => setName(e.currentTarget.value)} /></Field>}
@@ -45,6 +45,7 @@ export function Login({ mode }: { mode: "login" | "signup" }) {
       <ErrorBox err={magic.err} />
       <p className="muted small">
         {mode === "login" ? <>Немає акаунта? <Link href="/signup">Зареєструватися</Link></> : <>Уже є акаунт? <Link href="/login">Увійти</Link></>}
+        {" · "}<Link href="/">На головну</Link>
       </p>
     </div>
   </div>;

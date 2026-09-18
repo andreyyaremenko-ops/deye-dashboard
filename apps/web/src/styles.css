@@ -17,7 +17,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 /* ---------- каркас ---------- */
 .layout { min-height: 100vh; display: flex; flex-direction: column; }
 .top { position: sticky; top: 0; z-index: 20; background: rgba(18,25,37,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-.brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; letter-spacing: -.01em; }
+.brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; letter-spacing: -.01em; color: var(--fg); } .brand:hover { text-decoration: none; color: var(--fg); }
 .brand .logo { width: 22px; height: 22px; color: var(--warn); flex: 0 0 auto; }
 .orgsel, select, input:not([type=range]):not([type=checkbox]):not([type=color]) { background: var(--input); color: var(--fg); border: 1px solid var(--line); border-radius: var(--radius-s); padding: .5rem .7rem; font: inherit; min-height: 2.4rem; transition: border-color .15s, box-shadow .15s; }
 input:not([type=range]):focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-bg); }

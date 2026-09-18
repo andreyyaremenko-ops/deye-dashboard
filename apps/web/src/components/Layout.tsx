@@ -22,7 +22,7 @@ export function Layout({ me, orgId, children }: { me: Me; orgId: string; childre
   return <div className="layout">
     <header className="top">
       <div className="top-row">
-        <div className="brand"><Logo />{PRODUCT_NAME}</div>
+        <Link href="/" className="brand" title="На головну"><Logo />{PRODUCT_NAME}</Link>
         <select className="orgsel" value={orgId} onChange={(e) => { const v = e.currentTarget.value; navigate(v === "__new" ? "/new-org" : `/o/${v}/devices`); }}>
           {me.orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           <option value="__new">+ Нова організація…</option>
@@ -30,7 +30,7 @@ export function Layout({ me, orgId, children }: { me: Me; orgId: string; childre
         <div className="grow" />
         {me.user.isSuperadmin && <Link href="/admin" className="tab hide-m">Адмін</Link>}
         <span className="user hide-m" title={me.user.email}><span className="avatar">{(me.user.name || me.user.email).slice(0, 1).toUpperCase()}</span>{me.user.email}{org ? ` · ${ROLE[org.role] ?? org.role}` : ""}</span>
-        <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/login"; }} title="Вийти">Вийти</button>
+        <button className="btn btn-ghost" onClick={async () => { await authClient.signOut(); location.href = "/"; }} title="Вийти">Вийти</button>
       </div>
       <nav className="top-nav">{tab("devices", "Пристрої")}{tab("screens", "Екрани")}{tab("members", "Учасники")}{tab("settings", "Налаштування")}{me.user.isSuperadmin && <Link href="/admin" className="tab show-m">Адмін</Link>}</nav>
     </header>
