@@ -141,6 +141,13 @@ textarea { background: var(--input); color: var(--fg); border: 1px solid var(--l
 .editor { display: flex; flex-direction: column; gap: .8rem; }
 .editor-top { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; position: sticky; top: 0; z-index: 10; background: rgba(6,8,15,.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: .6rem 0; margin-top: -.6rem; }
 .editor-top .name { font: 700 1.05rem var(--display); min-width: 220px; }
+.scene-tabs { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.scene-list { display: flex; gap: .4rem; flex-wrap: wrap; min-width: 0; } .scene-ops { display: flex; gap: .1rem; flex-wrap: wrap; }
+.scene-tab { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .8rem .4rem .45rem; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+.scene-tab:hover { color: var(--fg); background: var(--panel-2); } .scene-tab.on { color: var(--fg); border-color: rgba(34,211,238,.55); background: rgba(34,211,238,.1); }
+.scene-tab small { font: 500 .66rem var(--mono); letter-spacing: .06em; opacity: .75; } .scene-tab:disabled { opacity: .4; cursor: default; }
+.scene-n { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(255,255,255,.08); font: 600 .72rem var(--mono); } .scene-tab.on .scene-n { background: var(--cyan); color: #04121a; }
+.scene-add { padding-left: .8rem; border-style: dashed; color: var(--cyan); }
 .editor-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1rem; align-items: start; }
 @media (max-width: 1100px) { .editor-body { grid-template-columns: 1fr; } }
 @media (min-width: 1101px) { .editor-body > .canvas { position: sticky; top: 4.6rem; } }   /* полотно лишається на місці, поки гортається панель властивостей */

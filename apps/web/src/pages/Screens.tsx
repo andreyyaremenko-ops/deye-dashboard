@@ -28,7 +28,7 @@ export function Screens({ org }: { org: Org }) {
             {s.viewers ? <span className="pill pill-ok"><span className="dot on" />показується{s.viewers > 1 ? ` · ${s.viewers}` : ""}</span> : <span className="pill pill-off">{s.lastViewedAt ? `востаннє ${ago(s.lastViewedAt)}` : "ще не відкривали"}</span>}
           </header>
           {s.tvs?.map((tv, i) => <div key={i} className="muted small">{tv.device} · {tv.ip} · з {ago(tv.since)}</div>)}
-          <div className="muted small">{s.config.widgets.length} віджет(ів){s.config.radioUrl ? " · радіо" : ""} · змінено {ago(s.updatedAt)}</div>
+          <div className="muted small">{(s.config.scenes?.length ?? 1) > 1 ? `${s.config.scenes!.length} сцен(и) · ` : ""}{s.config.scenes?.length ? s.config.scenes.reduce((n, sc) => n + sc.widgets.length, 0) : s.config.widgets.length} віджет(ів){s.config.radioUrl ? " · радіо" : ""} · змінено {ago(s.updatedAt)}</div>
           <footer>
             <a href={screenUrl(s.viewToken)} target="_blank" rel="noreferrer" className="btn btn-sm">Відкрити ↗</a>
             <Link href={href} className="btn btn-sm">Редагувати</Link>

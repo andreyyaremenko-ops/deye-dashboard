@@ -31,7 +31,7 @@ export async function allScreens(db: Db) {
     id: screens.id, name: screens.name, orgId: screens.orgId, orgName: organizations.name, planId: organizations.planId,
     updatedAt: screens.updatedAt, lastViewedAt: screens.lastViewedAt, config: screens.config,
   }).from(screens).innerJoin(organizations, eq(screens.orgId, organizations.id)).orderBy(desc(screens.lastViewedAt))
-    .then((rows) => rows.map(({ config, ...r }) => ({ ...r, widgets: config.widgets.length, radio: !!config.radioUrl, background: !!config.backgroundId })));
+    .then((rows) => rows.map(({ config, ...r }) => ({ ...r, widgets: config.scenes?.length ? config.scenes.reduce((n, sc) => n + sc.widgets.length, 0) : config.widgets.length, scenes: config.scenes?.length || 1, radio: !!config.radioUrl, background: !!config.backgroundId })));
 }
 
 /** Коротка назва пристрою з User-Agent браузера ТБ. */

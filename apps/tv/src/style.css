@@ -10,6 +10,10 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 @keyframes kenburns { from { transform: scale(1) translate(0, 0); } to { transform: scale(1.08) translate(-1.5%, 1%); } }
 .bg-gradient { background: radial-gradient(120% 90% at 20% 10%, #1b3a5c 0%, #0b1a2b 55%, #050a12 100%); }
 
+/* сцена: шар віджетів; нова сцена (key) плавно проявляється */
+.scene { position: absolute; inset: 0; z-index: 2; animation: scenein .9s ease both; }
+@keyframes scenein { from { opacity: 0; } to { opacity: 1; } }
+.lite .scene { animation: none; }
 .slot { position: absolute; z-index: 2; }
 .w { min-height: 100%; width: 100%; padding: 1vw 1.4vw; border-radius: 1.2vw;
      background: rgba(10, 16, 28, .55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);

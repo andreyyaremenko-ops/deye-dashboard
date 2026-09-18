@@ -9,11 +9,14 @@ export interface DeviceState {
   metrics: Record<string, number | string | boolean>;
   stale: boolean;
 }
+export interface PublicBackground { kind?: "video" | "image"; files: Record<string, string> | null; preview: string | null }
 export interface PublicScreen {
   id: string;
   name: string;
   config: ScreenConfig;
-  background: { kind?: "video" | "image"; files: Record<string, string> | null; preview: string | null } | null;
+  background: PublicBackground | null;
+  /** фони всіх сцен за id (API зі сценами); у старої відповіді немає */
+  backgrounds?: Record<string, PublicBackground>;
   deviceIds: string[];
   devices?: { id: string; batteryKwh: number | null; minSoc: number; pvKwp?: number | null }[];
   location?: ScreenLocation | null;

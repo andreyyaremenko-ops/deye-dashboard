@@ -5,6 +5,8 @@ import { Background, GradientBackground, isSingleMediaTv, rememberSingleMedia } 
 import { Plaque } from "./plaque.tsx";
 import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
 import { AlertOverlay } from "./feeds.tsx";
+import { gridDown } from "@deye/shared/energy";
+import { scenesOf, useActiveScene } from "./scenes.ts";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -26,6 +28,10 @@ export function App() {
   const audio = useRef<HTMLAudioElement>(null);
 
   useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
+
+  // сцени: відключення світла на будь-якому пристрої екрана закріплює сцену з позначкою «при відключенні»
+  const outage = !!live?.screen && live.screen.deviceIds.some((id) => { const st = live.states.get(id); return !!st && !st.stale && gridDown(st.metrics); });
+  const scene = useActiveScene(live?.screen?.config, outage);
 
   const radioUrl = live?.screen?.config.radioUrl ?? null;
   const radioVolume = live?.screen?.config.radioVolume ?? 0.6;
@@ -65,30 +71,35 @@ export function App() {
   if (!live?.screen) return <Msg>{live?.error ?? "Завантаження…"}</Msg>;
 
   const { screen } = live;
-  const files = screen.background?.files;
-  const isImage = screen.background?.kind === "image";
+  if (!scene) return <Msg>Екран порожній</Msg>;
+  const bg = scene.backgroundId ? (screen.backgrounds?.[scene.backgroundId] ?? (scene.backgroundId === screen.config.backgroundId ? screen.background : null)) : null;
+  const files = bg?.files;
+  const isImage = bg?.kind === "image";
   const best = files ? (files["1080"] ?? files["720"]) : null;
   const video = isImage ? null : best;
   const lite = new URLSearchParams(location.search).has("lite");   // діагностика: без відео і розмиття
   const media = (f: string) => (f.startsWith("http") ? f : `/media/${f}`);
-  const preview = screen.background?.preview ? media(screen.background.preview) : null;
+  const preview = bg?.preview ? media(bg.preview) : null;
   const image = isImage && best && !lite ? media(best) : null;   // фото-фон: нерухомий кадр, радіо не заважає
   const mode = screen.config.tvVideo ?? "auto";
   // радіо + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
   const posterOnly = !!radioUrl && (mode === "poster" || (mode === "auto" && singleMedia));
   const src = !lite && !posterOnly && video ? media(video) : null;
-  // повноекранний банер тривоги, якщо є віджет тривоги і в нього не вимкнено оверлей
-  const overlay = screen.config.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false);
+  // повноекранний банер тривоги, якщо в будь-якій сцені є віджет тривоги з увімкненим оверлеєм
+  const overlay = scenesOf(screen.config).some((sc) => sc.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false));
 
-  return <div class={`screen theme-${screen.config.theme}${lite ? " lite" : ""}`}>
+  return <div class={`screen theme-${scene.theme}${lite ? " lite" : ""}`}>
+    {/* однаковий фон у сусідніх сцен не перезапускається: Background тримається за src */}
     <Background src={src} image={image} poster={!lite ? preview : null} />
-    {screen.config.widgets.map((w) => (
-      <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
-        <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.type === "text" ? { ...w.props, theme: screen.config.theme } : w.props} token={token} deviceId={w.deviceId}
-          device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined}
-          feeds={live.feeds} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} />
-      </div>
-    ))}
+    <div class="scene" key={scene.id}>
+      {scene.widgets.map((w) => (
+        <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
+          <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.type === "text" ? { ...w.props, theme: scene.theme } : w.props} token={token} deviceId={w.deviceId}
+            device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined}
+            feeds={live.feeds} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} />
+        </div>
+      ))}
+    </div>
     {overlay && <AlertOverlay feed={live.feeds.alert} />}
     {radioUrl && <audio ref={audio} preload="none" />}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}

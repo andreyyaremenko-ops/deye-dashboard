@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { organizations, plans, screens } from "../src/db/schema.ts";
+import { backgrounds, organizations, plans, screens } from "../src/db/schema.ts";
 // тест-тариф без радіо/фонів/історії: перевіряємо самі перевірки, бо Free тепер має все на 1 екран/логер
 const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } };
 
@@ -41,6 +41,35 @@ describe("екрани, тарифні ліміти, публічний токе
       name: "Чужий", config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [{ id: "w", type: "pv", x: 0, y: 0, w: 10, h: 10, deviceId, props: {} }] },
     });
     expect(foreign.statusCode).toBe(400);
+  });
+
+  it("сцени: кілька на один екран; перевіряються пристрої та фони кожної; публічний екран віддає все потрібне", async () => {
+    const [std] = await t.db.insert(backgrounds).values({ name: "Камін", category: "Вогонь", status: "ready", files: { "1080": "bg/a-1080.mp4", "720": "bg/a-720.mp4" }, preview: "bg/a.jpg" }).returning();
+    const clock = { id: "c1", type: "clock", x: 0, y: 0, w: 20, h: 10, props: {} };
+    const scenes = [
+      { id: "power", name: "Енергія", durationS: 20, onOutage: true, widgets: [{ id: "w1", type: "pv", x: 0, y: 0, w: 30, h: 20, deviceId, props: {} }] },
+      { id: "menu", name: "Меню", durationS: 40, backgroundId: std!.id, theme: "light", schedule: { from: "08:00", to: "12:00" }, widgets: [clock] },
+    ];
+    const r = await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [], rotation: "random", scenes } });
+    expect(r.statusCode).toBe(200);
+    expect(r.json().config.scenes.map((x: { id: string }) => x.id)).toEqual(["power", "menu"]);
+    expect(r.json().config.widgets.map((w: { id: string }) => w.id)).toEqual(["w1"]); // верхній рівень дзеркалить першу сцену
+    expect(r.json().config.rotation).toBe("random");
+
+    const pub = (await t.app.inject({ method: "GET", url: `/api/public/screens/${token}` })).json();
+    expect(pub.config.scenes).toHaveLength(2);
+    expect(pub.deviceIds).toEqual([deviceId]);
+    expect(Object.keys(pub.backgrounds)).toEqual([std!.id]);
+    expect(pub.backgrounds[std!.id].files["1080"]).toBe("bg/a-1080.mp4");
+    expect(pub.background).toBeNull(); // у першої сцени фону немає
+
+    // чужий пристрій у другій сцені, дублікати id, неіснуючий фон
+    const bad = (sc: unknown[]) => other.post(`/api/orgs/${otherOrg}/screens`, { name: "X", config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [], scenes: sc } });
+    expect((await bad([{ id: "a", widgets: [clock] }, { id: "b", widgets: [{ id: "w", type: "pv", x: 0, y: 0, w: 10, h: 10, deviceId, props: {} }] }])).statusCode).toBe(400);
+    expect((await bad([{ id: "a", widgets: [] }, { id: "a", widgets: [] }])).statusCode).toBe(400);
+    expect((await bad([{ id: "a", widgets: [], backgroundId: "00000000-0000-4000-8000-000000000000" }])).statusCode).toBe(400);
+    // повертаємо одну сцену, щоб наступні тести бачили той самий віджет
+    await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [], scenes: [scenes[0]] } });
   });
 
   it("pro дозволяє радіо зі списку станцій, гучність за замовчуванням 0.6", async () => {

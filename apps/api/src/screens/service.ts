@@ -9,23 +9,34 @@ import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
-export const defaultConfig: ScreenConfig = { backgroundId: null, location: null, widgets: [], radioUrl: null, radioVolume: 0.6, tvVideo: "auto", theme: "dark" };
+export const defaultConfig: ScreenConfig = screenConfigSchema.parse({ backgroundId: null, location: null, widgets: [], radioUrl: null, radioVolume: 0.6, tvVideo: "auto", theme: "dark" });
+
+/** Старі рядки в БД без scenes -> єдиний вигляд зі сценами; зіпсований конфіг не валить екран. */
+function normalized(config: unknown): ScreenConfig {
+  const r = screenConfigSchema.safeParse(config);
+  return r.success ? r.data : defaultConfig;
+}
+const deviceIdsOf = (cfg: ScreenConfig) => [...new Set(cfg.scenes.flatMap((sc) => sc.widgets.map((w) => w.deviceId)).filter((x): x is string => !!x))];
+const backgroundIdsOf = (cfg: ScreenConfig) => [...new Set(cfg.scenes.map((sc) => sc.backgroundId).filter((x): x is string => !!x))];
 
 async function validateConfig(db: Db, orgId: string, input: unknown): Promise<ScreenConfig> {
   const parsed = screenConfigSchema.safeParse(input);
   if (!parsed.success) throw badRequest("Bad screen config: " + parsed.error.issues.map((i) => i.path.join(".") + " " + i.message).join("; "));
   const cfg = parsed.data;
-  // віджети можуть посилатись лише на пристрої цієї організації
-  const ids = [...new Set(cfg.widgets.map((w) => w.deviceId).filter((x): x is string => !!x))];
+  if (new Set(cfg.scenes.map((sc) => sc.id)).size !== cfg.scenes.length) throw badRequest("Scene ids must be unique");
+  // віджети всіх сцен можуть посилатись лише на пристрої цієї організації
+  const ids = deviceIdsOf(cfg);
   if (ids.length) {
     const own = await db.select({ id: devices.id }).from(devices).where(and(eq(devices.orgId, orgId), inArray(devices.id, ids)));
     if (own.length !== ids.length) throw badRequest("Widget references a device not in this organization");
   }
   const { plan } = await getOrgWithPlan(db, orgId);
   if (cfg.radioUrl && !plan.limits.radio) throw conflict("Radio is not included in the plan", "plan_limit");
-  if (cfg.backgroundId) {
-    const [bg] = await db.select({ orgId: backgrounds.orgId }).from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
-    if (!bg || (bg.orgId !== null && bg.orgId !== orgId)) throw badRequest("Background not available", "bad_background");
+  const bgIds = backgroundIdsOf(cfg);
+  if (bgIds.length) {
+    const rows = await db.select({ id: backgrounds.id, orgId: backgrounds.orgId }).from(backgrounds).where(inArray(backgrounds.id, bgIds));
+    const ok = rows.filter((bg) => bg.orgId === null || bg.orgId === orgId);
+    if (ok.length !== bgIds.length) throw badRequest("Background not available", "bad_background");
   }
   return cfg;
 }
@@ -75,24 +86,28 @@ export async function publicScreen(db: Db, token: string) {
     .innerJoin(plans, eq(organizations.planId, plans.id))
     .where(eq(screens.viewToken, token));
   if (!row) throw notFound("Screen not found");
-  const cfg = row.screen.config;
-  const referenced = [...new Set(cfg.widgets.map((w) => w.deviceId).filter((x): x is string => !!x))];
+  const cfg = normalized(row.screen.config);
+  const referenced = deviceIdsOf(cfg);
   // лише пристрої, що досі належать цій організації
   const own = referenced.length
     ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc, pvKwp: devices.pvKwp }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
-  let background: { kind: "video" | "image"; files: Record<string, string> | null; preview: string | null; attribution: string | null } | null = null;
-  if (cfg.backgroundId) {
-    const [bg] = await db.select({ kind: backgrounds.kind, files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status, attribution: backgrounds.attribution, orgId: backgrounds.orgId })
-      .from(backgrounds).where(eq(backgrounds.id, cfg.backgroundId));
-    // стандартний або власний цієї організації
-    if (bg && bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) background = { kind: bg.kind, files: bg.files, preview: bg.preview, attribution: bg.attribution };
+  // фони всіх сцен: стандартні або власні цієї організації, лише готові
+  type Bg = { kind: "video" | "image"; files: Record<string, string> | null; preview: string | null; attribution: string | null };
+  const bgMap: Record<string, Bg> = {};
+  const bgIds = backgroundIdsOf(cfg);
+  if (bgIds.length) {
+    const rows = await db.select({ id: backgrounds.id, kind: backgrounds.kind, files: backgrounds.files, preview: backgrounds.preview, status: backgrounds.status, attribution: backgrounds.attribution, orgId: backgrounds.orgId })
+      .from(backgrounds).where(inArray(backgrounds.id, bgIds));
+    for (const bg of rows) if (bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) bgMap[bg.id] = { kind: bg.kind, files: bg.files, preview: bg.preview, attribution: bg.attribution };
   }
+  const background = cfg.backgroundId ? bgMap[cfg.backgroundId] ?? null : null;   // перша сцена: для старих бандлів ТБ
   return {
     id: row.screen.id,
     name: row.screen.name,
     config: cfg,
     background,
+    backgrounds: bgMap,
     deviceIds: own.map((d) => d.id),
     devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp })),
     location: cfg.location ?? null,

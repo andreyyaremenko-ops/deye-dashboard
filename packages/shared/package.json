@@ -12,7 +12,8 @@
     "./brand": "./src/brand.ts",
     "./feeds": "./src/feeds.ts",
     "./menu": "./src/menu.ts",
-    "./flow": "./src/flow.ts"
+    "./flow": "./src/flow.ts",
+    "./scenes": "./src/scenes.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

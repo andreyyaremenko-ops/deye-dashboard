@@ -59,7 +59,23 @@ export const screenLocationSchema = z.object({
 });
 export type ScreenLocation = z.infer<typeof screenLocationSchema>;
 
-export const screenConfigSchema = z.object({
+const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+/** Сцена: повний вигляд екрана (фон, тема, віджети) + скільки секунд показувати і коли. */
+export const sceneSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().max(60).default(""),
+  durationS: z.number().int().min(5).max(3600).default(30),
+  backgroundId: z.string().uuid().nullable().default(null),
+  theme: z.enum(["dark", "light"]).default("dark"),
+  widgets: z.array(widgetSchema).default([]),
+  /** показувати лише в ці години (локальний час ТБ); null — завжди */
+  schedule: z.object({ from: hhmm, to: hhmm }).nullable().default(null),
+  /** під час відключення світла показувати лише такі сцени */
+  onOutage: z.boolean().default(false),
+});
+export type Scene = z.infer<typeof sceneSchema>;
+
+const screenConfigBase = z.object({
   backgroundId: z.string().uuid().nullable(),
   location: screenLocationSchema.nullable().default(null),
   widgets: z.array(widgetSchema),
@@ -68,6 +84,19 @@ export const screenConfigSchema = z.object({
   /** Samsung Tizen грає лише один медіаелемент: auto — визначати, poster — кадр замість відео при радіо, always — завжди відео */
   tvVideo: z.enum(["auto", "always", "poster"]).default("auto"),
   theme: z.enum(["dark", "light"]).default("dark"),
+  /** Кілька сцен на один телевізор (одне посилання). Порожньо у старих екранів -> одна сцена з полів верхнього рівня. */
+  scenes: z.array(sceneSchema).max(10).default([]),
+  rotation: z.enum(["sequence", "random"]).default("sequence"),
+});
+/**
+ * Після розбору сцени є завжди, а backgroundId/theme/widgets верхнього рівня дзеркалять першу сцену:
+ * старі читачі (закешований бандл ТБ, лічильники в адмінці) і далі бачать коректний екран.
+ */
+export const screenConfigSchema = screenConfigBase.transform((cfg) => {
+  const scenes = cfg.scenes.length ? cfg.scenes
+    : [{ id: "main", name: "", durationS: 30, backgroundId: cfg.backgroundId, theme: cfg.theme, widgets: cfg.widgets, schedule: null, onOutage: false } satisfies Scene];
+  const first = scenes[0]!;
+  return { ...cfg, scenes, backgroundId: first.backgroundId, theme: first.theme, widgets: first.widgets };
 });
 export type ScreenConfig = z.infer<typeof screenConfigSchema>;
 
@@ -90,3 +119,4 @@ export * from "./brand.ts";
 export * from "./feeds.ts";
 export * from "./menu.ts";
 export * from "./flow.ts";
+export * from "./scenes.ts";
