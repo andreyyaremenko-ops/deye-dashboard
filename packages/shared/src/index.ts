@@ -71,8 +71,11 @@ export const screenConfigSchema = z.object({
 });
 export type ScreenConfig = z.infer<typeof screenConfigSchema>;
 
+/** Ліміти тарифу. Free і Pro мають однаковий функціонал, різниця лише в кількості екранів і логерів. */
 export const planLimitsSchema = z.object({
   screens: z.number().int(),
+  /** пристроїв (стіків/плат) на організацію */
+  devices: z.number().int().default(1),
   custom_backgrounds: z.boolean(),
   history_days: z.number().int(),
   radio: z.boolean(),

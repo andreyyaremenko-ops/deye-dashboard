@@ -5,7 +5,10 @@ import { Readable } from "node:stream";
 import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { backgrounds, organizations, transcodeJobs } from "../src/db/schema.ts";
+import { backgrounds, organizations, plans, transcodeJobs } from "../src/db/schema.ts";
+// тест-тариф без радіо/фонів/історії: перевіряємо самі перевірки, бо Free тепер має все на 1 екран/логер
+const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } };
+
 import { startUpload } from "../src/backgrounds/service.ts";
 
 let t: TestApp;
@@ -40,7 +43,9 @@ describe("бібліотека фонів", () => {
     expect(list[0].attribution).toBe("Someone / Pexels");
   });
 
-  it("free: завантаження власного відео відхиляється тарифом; staff — правами", async () => {
+  it("тариф без власних фонів: завантаження відхиляється; staff — правами", async () => {
+    await t.db.insert(plans).values(LITE);
+    await t.db.update(organizations).set({ planId: "lite" }).where(eq(organizations.id, orgId));
     const mp = multipart({ name: "file", filename: "cafe.mp4", type: "video/mp4", data: "fake" });
     expect((await t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/backgrounds`, headers: { cookie: (await signUp(t.app, "tmp@example.com")).cookie, ...mp.headers }, payload: mp.payload })).statusCode).toBe(403);
     const r = await t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/backgrounds`, headers: { cookie: ownerCookie(), ...mp.headers }, payload: mp.payload });

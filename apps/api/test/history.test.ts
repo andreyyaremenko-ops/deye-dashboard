@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { organizations, telemetry } from "../src/db/schema.ts";
+import { organizations, plans, telemetry } from "../src/db/schema.ts";
+// тест-тариф без радіо/фонів/історії: перевіряємо самі перевірки, бо Free тепер має все на 1 екран/логер
+const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } };
+
 import { runRetention } from "../src/history/service.ts";
 
 let t: TestApp;
@@ -30,7 +33,9 @@ describe("історія і ретенція за тарифом", () => {
     token = s.viewToken;
   });
 
-  it("free: історія недоступна (403 plan_limit), і публічно теж", async () => {
+  it("тариф без історії: 409 plan_limit, і публічно теж", async () => {
+    await t.db.insert(plans).values(LITE);
+    await t.db.update(organizations).set({ planId: "lite" }).where(eq(organizations.id, orgId));
     const r = await owner.get(`/api/orgs/${orgId}/devices/${D}/history`);
     expect(r.statusCode).toBe(409); expect(r.json().error).toBe("plan_limit");
     expect((await t.app.inject({ method: "GET", url: `/api/public/screens/${token}/history?deviceId=${D}` })).statusCode).toBe(409);
@@ -56,9 +61,11 @@ describe("історія і ретенція за тарифом", () => {
     expect((await owner.get(`/api/orgs/${orgId}/devices/${D}/history?metrics=pv_w;drop&step=1h`)).statusCode).toBe(400);
   });
 
-  it("ретенція: pro лишає 365 днів, free — 2 доби", async () => {
+  it("ретенція: pro і free лишають 365 днів, тариф без історії — 2 доби", async () => {
     expect(await runRetention(t.db)).toBe(0); // pro: 10-денний рядок у межах 365
     await t.db.update(organizations).set({ planId: "free" }).where(eq(organizations.id, orgId));
+    expect(await runRetention(t.db)).toBe(0); // free тепер теж з історією за рік
+    await t.db.update(organizations).set({ planId: "lite" }).where(eq(organizations.id, orgId));
     const deleted = await runRetention(t.db);
     expect(deleted).toBe(1); // лише 10-денний рядок, 48 год лишаються
   });

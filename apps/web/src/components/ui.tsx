@@ -18,7 +18,7 @@ export function ErrorBox({ err }: { err: unknown }) {
 }
 function humanize(e: ApiError): string {
   const map: Record<string, string> = {
-    plan_limit: "Не входить у ваш тариф",
+    plan_limit: "Ліміт тарифу: більше екранів чи логерів доступно в Pro",
     already_claimed: "Пристрій уже привʼязаний до іншої організації",
     not_found: e.message.includes("code") ? "Пристрій з таким кодом не знайдено" : "Не знайдено",
     last_owner: "Це останній власник, його не можна прибрати",

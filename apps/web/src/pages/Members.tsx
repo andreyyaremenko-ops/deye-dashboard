@@ -89,7 +89,7 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
       <p><b>{org.name}</b></p>
       <p>Тариф: <b>{org.plan.name}</b>{b?.planUntil && <span className="muted"> · оплачено до {fmtDate(b.planUntil)}</span>}</p>
       <ul className="muted">
-        <li>Екранів: {L.screens}</li><li>Власні фони: {L.custom_backgrounds ? "так" : "ні"}</li>
+        <li>Телевізорів (екранів): {L.screens}</li><li>Логерів (пристроїв): {L.devices}</li><li>Власні фони: {L.custom_backgrounds ? "так" : "ні"}</li>
         <li>Історія: {L.history_days ? `${L.history_days} днів` : "ні"}</li><li>Радіо: {L.radio ? "так" : "ні"}</li>
         <li>Брендинг на екрані: {L.branding ? "так" : "ні"}</li>
       </ul>
@@ -97,7 +97,7 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
     <Card title={org.plan.id === "pro" ? "Продовжити Pro" : "Перейти на Pro"}>
       {result && <div className={result.startsWith("Оплата пройшла") ? "ok" : "error"}>{result}</div>}
       {!b ? <p className="muted">Завантаження…</p> : !b.enabled ? <p className="muted">Онлайн-оплата ще не підключена. Напишіть нам, щоб активувати Pro.</p> : <>
-        <p className="small muted">Pro: до 5 екранів, власні відеофони, радіо, історія і графіки, без брендингу. {pro?.priceMonth ? `${uah(pro.priceMonth)} на місяць` : ""}. Оплата карткою через monobank, термін додається до поточного.</p>
+        <p className="small muted">Pro: той самий функціонал на 5 телевізорів і 5 логерів, без брендингу на екрані. {pro?.priceMonth ? `${uah(pro.priceMonth)} на місяць` : ""}. Оплата карткою через monobank, термін додається до поточного.</p>
         <div className="row">
           <Field label="Період"><select value={months} onChange={(e) => setMonths(Number(e.currentTarget.value))}>{b.options.map((o) => <option key={o.months} value={o.months}>{o.months} міс.{o.freeMonths ? ` (${o.freeMonths} у подарунок)` : ""}</option>)}</select></Field>
           <div className="price-tag">{uah(price)}{opt?.freeMonths ? <span className="muted small"> замість {uah((pro?.priceMonth ?? 0) * months)}</span> : null}</div>

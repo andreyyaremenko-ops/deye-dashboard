@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, makeSuperadmin, type TestApp } from "./helpers.ts";
-import { organizations, screens } from "../src/db/schema.ts";
+import { organizations, plans, screens } from "../src/db/schema.ts";
+// тест-тариф без радіо/фонів/історії: перевіряємо самі перевірки, бо Free тепер має все на 1 екран/логер
+const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } };
+
 
 let t: TestApp;
 beforeAll(async () => { t = await makeTestApp(); });
@@ -23,7 +26,9 @@ describe("екрани, тарифні ліміти, публічний токе
     await t.store.set({ deviceId, updatedAt: new Date().toISOString(), metrics: { pv_w: 710, bat_soc: 96 } });
   });
 
-  it("free: один екран, радіо недоступне, віджет на чужий пристрій відхиляється", async () => {
+  it("один екран на тарифі, радіо поза тарифом недоступне, віджет на чужий пристрій відхиляється", async () => {
+    await t.db.insert(plans).values(LITE);
+    await t.db.update(organizations).set({ planId: "lite" }).where(eq(organizations.id, orgId));
     const res = await owner.post(`/api/orgs/${orgId}/screens`, {
       name: "Зал", config: { backgroundId: null, radioUrl: null, theme: "dark", widgets: [{ id: "w1", type: "pv", x: 0, y: 0, w: 30, h: 20, deviceId, props: {} }] },
     });

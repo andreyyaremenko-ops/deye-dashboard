@@ -1,9 +1,9 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, count, eq, isNull } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { devices, deviceState } from "../db/schema.ts";
 import { hashSecret, normalizeClaimCode, randomClaimCode, randomToken, sha256 } from "../lib/crypto.ts";
 import { conflict, notFound } from "../lib/errors.ts";
-import { requireRole } from "../orgs/service.ts";
+import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
@@ -27,12 +27,16 @@ export async function registerDevice(db: Db, id: string, opts: { secret?: string
 /** Claim by code: привʼязка до організації, якщо пристрій ще нічий. Для стіка в TCP-Client режимі код = його серійник. */
 export async function claimDevice(db: Db, orgId: string, actorId: string, code: string, name?: string) {
   await requireRole(db, orgId, actorId, "admin");
+  const { plan } = await getOrgWithPlan(db, orgId);
   const hash = sha256(normalizeClaimCode(code));
   return db.transaction(async (tx) => {
     const [d] = await tx.select().from(devices).where(eq(devices.claimCodeHash, hash)).for("update");
     if (!d) throw notFound("No device with this code");
     if (d.orgId && d.orgId !== orgId) throw conflict("Device already claimed by another organization", "already_claimed");
     if (d.orgId === orgId) return d;
+    // ліміт логерів тарифу (Free — 1, Pro — 5)
+    const [{ n }] = await tx.select({ n: count() }).from(devices).where(eq(devices.orgId, orgId)) as [{ n: number }];
+    if (Number(n) >= (plan.limits.devices ?? 1)) throw conflict(`Plan allows ${plan.limits.devices ?? 1} device(s)`, "plan_limit");
     const [upd] = await tx.update(devices)
       .set({ orgId, claimedAt: new Date(), name: name ?? d.name ?? `Інвертор ${d.id.slice(-4)}` })
       .where(and(eq(devices.id, d.id), isNull(devices.orgId))).returning();

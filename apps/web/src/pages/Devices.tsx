@@ -9,6 +9,8 @@ export function Devices({ org }: { org: Org }) {
   const [list, setList] = useState<Device[] | null>(null);
   const [code, setCode] = useState(""); const [name, setName] = useState("");
   const canEdit = org.role !== "staff";
+  const limit = org.plan.limits.devices;
+  const full = (list?.length ?? 0) >= limit;
   const load = async () => setList(await api.get<Device[]>(`/api/orgs/${org.id}/devices`));
   useEffect(() => { void load(); const t = setInterval(load, 10_000); return () => clearInterval(t); }, [org.id]);
 
@@ -21,8 +23,9 @@ export function Devices({ org }: { org: Org }) {
       <form className="row" onSubmit={onSubmit(() => claim.run(undefined))}>
         <Field label="Код з корпусу плати або серійник стіка"><input required value={code} onChange={(e) => setCode(e.currentTarget.value)} placeholder="2QTB-UR3N або 2763543833" style={{ textTransform: "uppercase" }} /></Field>
         <Field label="Назва (необовʼязково)"><input value={name} onChange={(e) => setName(e.currentTarget.value)} placeholder="Інвертор у залі" /></Field>
-        <Btn type="submit" kind="primary" disabled={claim.busy}>Привʼязати</Btn>
+        <Btn type="submit" kind="primary" disabled={claim.busy || full}>Привʼязати</Btn>
       </form>
+      <p className="muted small">Тариф {org.plan.name}: до {limit} логер(ів).{full ? " Ліміт вичерпано — більше логерів у тарифі Pro." : ""}</p>
       <ErrorBox err={claim.err} />
       <details className="hint"><summary>Без плати: підключити Solarman-стік напряму</summary>
         <ol className="small">

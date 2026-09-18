@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { eq } from "drizzle-orm";
+import { organizations } from "../src/db/schema.ts";
 import { makeTestApp, signUp, api, makeSuperadmin, INTERNAL, type TestApp } from "./helpers.ts";
 import { ACC, mqttAclCheck } from "../src/mqtt/acl.ts";
 
@@ -41,6 +43,16 @@ describe("реєстрація, claim, ACL брокера", () => {
     const list = await staffA.get(`/api/orgs/${orgA}/devices`);
     expect(list.json()).toHaveLength(1);
     expect(list.json()[0].stale).toBe(true);
+  });
+
+  it("free: другий логер не привʼязується (409 plan_limit); після переходу на pro — так", async () => {
+    const reg2 = (await admin.post("/api/admin/devices", { id: "3494546462e7" })).json();
+    const r = await ownerA.post(`/api/orgs/${orgA}/devices/claim`, { code: reg2.claimCode });
+    expect(r.statusCode).toBe(409); expect(r.json().error).toBe("plan_limit");
+    await t.db.update(organizations).set({ planId: "pro" }).where(eq(organizations.id, orgA));
+    expect((await ownerA.post(`/api/orgs/${orgA}/devices/claim`, { code: reg2.claimCode })).statusCode).toBe(201);
+    expect((await ownerA.post(`/api/orgs/${orgA}/devices/${reg2.deviceId}/unclaim`)).statusCode).toBe(204);
+    await t.db.update(organizations).set({ planId: "free" }).where(eq(organizations.id, orgA));
   });
 
   it("чужа організація не може забрати привʼязаний пристрій; невірний код -> 404", async () => {
