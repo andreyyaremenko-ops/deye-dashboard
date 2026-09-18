@@ -2,7 +2,7 @@
 
 **Digital menu boards and signage for cafés, shops and offices — on any Smart TV, with live solar-power widgets on top.**
 
-[Website](https://tv.sun-hunter.men) · [Live demo screen](https://tv.sun-hunter.men/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8) · [Українською](README.uk.md)
+[Website](https://tv.sun-hunter.men/en) · [Live demo screen](https://tv.sun-hunter.men/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8) · [Українською](README.uk.md)
 
 ![Menu board with energy widgets over a fireplace video](docs/screenshots/tv-menu-energy.jpg)
 
@@ -138,7 +138,7 @@ Copyright © 2026 SunHunter TV contributors. Licensed under the [GNU Affero Gene
 
 ## Links
 
-- Website and hosted service: https://tv.sun-hunter.men
+- Website and hosted service: https://tv.sun-hunter.men/en
 - Live demo screen: https://tv.sun-hunter.men/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8
 - Contact: onkofe227@gmail.com
 
