@@ -2,6 +2,9 @@ User-agent: *
 Allow: /$
 Allow: /landing
 Allow: /landing/
+Allow: /en$
+# шрифти лендінгу лежать поруч з бандлом ТБ
+Allow: /s/fonts/
 Disallow: /app
 Disallow: /o/
 Disallow: /admin

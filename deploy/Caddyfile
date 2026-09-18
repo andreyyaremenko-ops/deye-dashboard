@@ -61,10 +61,10 @@ https://{$DOMAIN} {
         rewrite * /index.html
         file_server
     }
-    # кабінет
+    # кабінет і лендінг; /en -> en/index.html (окремий пререндерений документ), решта шляхів SPA -> index.html
     handle {
         root * /srv/web
-        try_files {path} /index.html
+        try_files {path} {path}/index.html /index.html
         file_server
     }
 }

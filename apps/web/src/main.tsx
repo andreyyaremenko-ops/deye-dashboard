@@ -3,7 +3,10 @@ import { App } from "./app.tsx";
 import "./styles.css";
 import "./fonts.css";
 
-// Лендінг пререндерений у dist/index.html (prerender.tsx): на "/" гідруємо готову розмітку, інакше рендеримо з нуля
+import { isPublicPath } from "./seo.ts";
+
+// Лендінг пререндерений (prerender.tsx): "/" у dist/index.html, "/en" у dist/en/index.html — там гідруємо готову розмітку.
+// "/landing" віддає українську розмітку, тож теж гідрується; решта шляхів рендериться з нуля.
 const root = document.getElementById("root")!;
-if (root.firstElementChild && location.pathname === "/") hydrateRoot(root, <App />);
+if (root.firstElementChild && isPublicPath(location.pathname)) hydrateRoot(root, <App />);
 else createRoot(root).render(<App />);

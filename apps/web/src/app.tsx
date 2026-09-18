@@ -13,6 +13,7 @@ import { Landing } from "./pages/Landing.tsx";
 import { Admin } from "./pages/Admin.tsx";
 import { flushPending, pageView } from "./analytics.ts";
 import { isPublicPath, titleFor } from "./seo.ts";
+import { CONTENT, langOfPath } from "./landing/content.ts";
 
 const LAST_ORG = "deye.lastOrg";
 
@@ -27,6 +28,7 @@ export function App() {
   // SEO/аналітика: заголовок, noindex для кабінету, page_view при зміні маршруту
   useEffect(() => {
     document.title = titleFor(loc);
+    document.documentElement.lang = isPublicPath(loc) ? CONTENT[langOfPath(loc)].htmlLang : "uk";
     let m = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
     if (!m) { m = document.createElement("meta"); m.name = "robots"; document.head.appendChild(m); }
     m.content = isPublicPath(loc) ? "index, follow" : "noindex, nofollow";
@@ -34,7 +36,7 @@ export function App() {
   }, [loc]);
 
   // лендінг не чекає /api/me: пререндерена розмітка гідрується одразу, кнопка «Кабінет» зʼявиться після відповіді
-  if (isPublicPath(loc)) return <Landing me={me ?? null} />;
+  if (isPublicPath(loc)) return <Landing me={me ?? null} lang={langOfPath(loc)} />;
   if (me === undefined) return <div className="auth"><p className="muted">Завантаження…</p></div>;
   const isAuthPage = loc.startsWith("/login") || loc.startsWith("/signup");
   if (!me) {

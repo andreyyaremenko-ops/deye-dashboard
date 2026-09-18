@@ -14,8 +14,9 @@ export function WidgetSettings({ widget, devices, theme, onChange }: { widget: W
   const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme };
   const pos = (k: "x" | "y" | "w" | "h") => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...widget, [k]: +e.currentTarget.value });
   return <>
-    {kindOf(widget.type)?.needsDevice && <Field label="Пристрій">
-      <select value={widget.deviceId ?? ""} onChange={(e) => onChange({ ...widget, deviceId: e.currentTarget.value })}>
+    {(kindOf(widget.type)?.needsDevice || (kindOf(widget.type)?.optionalDevice && devices.length > 0)) && <Field label="Пристрій">
+      <select value={widget.deviceId ?? ""} onChange={(e) => onChange({ ...widget, deviceId: e.currentTarget.value || undefined })}>
+        {kindOf(widget.type)?.optionalDevice && <option value="">без пристрою</option>}
         {devices.map((d) => <option key={d.id} value={d.id}>{d.name ?? d.id}</option>)}
       </select></Field>}
     {SETTINGS[widget.type]?.(ctx)}

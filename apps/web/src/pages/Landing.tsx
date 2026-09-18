@@ -1,154 +1,147 @@
+/** Лендінг: перш за все електронне меню / digital signage, сонячна станція — додаток. Тексти двома мовами в landing/content.ts. */
 import { Link } from "wouter";
 import type { Me } from "../api.ts";
 import { PRODUCT_NAME } from "@deye/shared";
 import { track } from "../analytics.ts";
 import { Logo } from "../components/Logo.tsx";
+import { CONTENT, pathOf, type Lang } from "../landing/content.ts";
 
 const cta = (place: string) => () => track("cta_click", { place });
-
-export const FAQ: [string, string][] = [
-  ["Які інвертори підтримуються?", "Гібридні інвертори Deye: однофазні SG0xLP1, трифазні низьковольтні SG04LP3 і високовольтні SG01HP3. Дані читаються через Wi-Fi-стік Solarman, який уже є в інверторі. Інші бренди підключаємо за запитом у тарифі Max."],
-  ["Чи потрібно купувати додаткове обладнання?", "Ні. Достатньо телевізора з браузером і Wi-Fi-стіка інвертора. Плату ESP можна поставити за бажанням, прошивка відкрита."],
-  ["Чи продовжить працювати застосунок Solarman?", "Так. У стіку задається другий сервер, перший лишається без змін, тож Solarman оновлюється як і раніше."],
-  ["Що бачить персонал під час відключення світла?", "Червоний банер «світла немає з 14:20», залишок батареї у відсотках і прогноз «вистачить ≈ 3 год 20 хв при поточному споживанні». Увімкнули гриль — прогноз перерахувався одразу."],
-  ["Які телевізори підходять?", "Будь-який Smart TV з браузером: Samsung, LG, Android TV, або приставка. На телевізорі відкриваєте tv.sun-hunter.men/tv і вводите шестизначний код із кабінету."],
-  ["Скільки це коштує?", "Тариф Free безкоштовний назавжди і має весь функціонал: один телевізор і один логер, усі віджети, власні відеофони й фото, радіо, історія за рік. Pro — 600 ₴ на місяць: те саме на 5 телевізорів і 5 логерів, без брендингу на екрані. Оплата карткою через monobank."],
-];
-
 const CONTACT = "mailto:onkofe227@gmail.com";
-/** Плитки на 2 колонки, щоб bento-сітка 3×4 закривалась без дірок (велика 2 + 8 малих + 2 широкі = 12). */
-const WIDE = new Set(["Повітряна тривога", "Погода і сонце на завтра"]);
+const REPO = "https://github.com/andreyyaremenko-ops/deye-dashboard";
+const DEMO = "/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8";
+const CHIP_POS = ["hchip-a", "hchip-b", "hchip-c"];
+const ICON_TONE = ["n-red", "n-amber", "n-cyan"];
 
-export function Landing({ me }: { me: Me | null }) {
-  return <div className="land">
+export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
+  const t = CONTENT[lang];
+  const other: Lang = lang === "uk" ? "en" : "uk";
+  return <div className="land" lang={t.htmlLang}>
     <div className="land-bg" aria-hidden="true" />
     <header className="land-top">
-      <Link href="/" className="brand"><Logo />{PRODUCT_NAME}</Link>
+      <Link href={pathOf(lang)} className="brand"><Logo />{PRODUCT_NAME}</Link>
       <nav>
-        <a href="#outage">Відключення</a><a href="#how">Як це працює</a><a href="#features">Можливості</a><a href="#pricing">Тарифи</a><a href="#faq">Питання</a>
-        {me ? <Link href="/app" className="btn btn-primary">Кабінет</Link> : <><Link href="/login" className="btn btn-ghost">Увійти</Link><Link href="/signup" className="btn btn-primary" onClick={cta("header")}>Спробувати безкоштовно</Link></>}
+        <a href="#signage">{t.nav.signage}</a><a href="#how">{t.nav.how}</a><a href="#features">{t.nav.features}</a><a href="#energy">{t.nav.energy}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a>
+        {/* повне перезавантаження: інша мова — окремий пререндерений документ зі своїм <head> */}
+        <a href={pathOf(other)} hrefLang={other} className="lang-switch" onClick={cta(`lang_${other}`)}>{t.nav.otherLang}</a>
+        {me ? <Link href="/app" className="btn btn-primary">{t.nav.cabinet}</Link> : <><Link href="/login" className="btn btn-ghost">{t.nav.login}</Link><Link href="/signup" className="btn btn-primary" onClick={cta("header")}>{t.nav.tryFree}</Link></>}
       </nav>
     </header>
 
     <section className="hero">
       <div className="hero-text">
-        <span className="eyebrow"><i />Працює з Deye · Solarman-стік · без додаткового обладнання</span>
-        <h1>Ваша сонячна станція наживо на <em>телевізорі в залі</em></h1>
-        <p>Один екран у залі кафе, магазину чи офісу замість дзвінків власнику: під час відключень світла персонал сам бачить залишок батареї і скільки годин заклад протримається. Гості бачать, що кава зварена на сонці. Плюс меню, погода, повітряна тривога, радіо і QR-коди. Працює з інверторами Deye через Solarman-стік без додаткового обладнання; інші бренди — за запитом.</p>
+        <span className="eyebrow"><i />{t.hero.eyebrow}</span>
+        <h1>{t.hero.h1a} <em>{t.hero.h1em}</em></h1>
+        <p>{t.hero.lead}</p>
         <div className="hero-cta">
-          <Link href="/signup" className="btn btn-primary big" onClick={cta("hero")}>Підключити заклад</Link>
-          <a href="#how" className="btn big">Як це працює</a>
+          <Link href="/signup" className="btn btn-primary big" onClick={cta("hero")}>{t.hero.cta}</Link>
+          <a href="#how" className="btn big">{t.hero.how}</a>
         </div>
-        <p className="hero-notes"><span>Безкоштовний тариф назавжди</span><span>Налаштування 10 хвилин</span></p>
+        <p className="hero-notes">{t.hero.notes.map((n) => <span key={n}>{n}</span>)}</p>
       </div>
       <div className="hero-shot">
         <div className="orbit" aria-hidden="true" />
         <div className="tvframe">
-          <div className="tvbar"><span>SunHunter TV · Зал</span><span className="mono"><i className="live" />LIVE · оновлення 10 с</span></div>
+          <div className="tvbar"><span>{t.hero.tvBar}</span><span className="mono"><i className="live" />{t.hero.live}</span></div>
           {/* запис реального екрана; постер і <img> лишаються для пошуковиків і для режиму без анімації */}
-          <video className="hero-video" autoPlay muted loop playsInline preload="metadata" poster="/landing/screen.jpg" width={1280} height={720}
-            aria-label="Екран SunHunter TV на телевізорі в кафе: відеофон, показники сонячної станції Deye, заряд батареї, меню закладу, тривога">
+          <video className="hero-video" autoPlay muted loop playsInline preload="metadata" poster="/landing/screen.jpg" width={1280} height={720} aria-label={t.hero.videoAlt}>
             <source src="/landing/hero.webm" type="video/webm" />
             <source src="/landing/hero.mp4" type="video/mp4" />
           </video>
-          <img className="hero-img" src="/landing/screen.jpg" width={1280} height={720} alt="Екран SunHunter TV на телевізорі в кафе: відеофон з каміном, показники сонячної станції Deye, заряд батареї, меню закладу" />
+          <img className="hero-img" src="/landing/screen.jpg" width={1280} height={720} alt={t.hero.imgAlt} />
         </div>
-        <span className="hchip hchip-a"><b>🔋 64 %</b> вистачить ≈ 6 год</span>
-        <span className="hchip hchip-b"><b>🛡</b> Тривога: спокійно</span>
-        <span className="hchip hchip-c"><b>🌱</b> CO₂ −120 кг за місяць</span>
-        <a className="hero-live" href="/s/7ksxpmqDtpPBasCOB0xm-ydyqo1DvdywJZS2SSy-tN8" target="_blank" rel="noreferrer" onClick={cta("hero_live")}>▶ Подивитись наживо</a>
+        {t.hero.chips.map(([i, text], k) => <span key={text} className={`hchip ${CHIP_POS[k]}`}><b>{i}</b> {text}</span>)}
+        <a className="hero-live" href={DEMO} target="_blank" rel="noreferrer" onClick={cta("hero_live")}>{t.hero.watchLive}</a>
       </div>
     </section>
 
-    <section id="outage" className="land-sec outage-sec">
-      <span className="kicker kicker-red">Автономність і спокій</span>
-      <h2>Коли вимкнули світло</h2>
-      <p className="lead">Власнику більше не дзвонять із питанням «скільки ще протримаємось». Екран відповідає сам.</p>
+    <section id="signage" className="land-sec">
+      <span className="kicker">{t.signage.kicker}</span>
+      <h2>{t.signage.title}</h2>
+      <p className="lead">{t.signage.lead}</p>
       <div className="steps">
-        <div className="step"><span className="n n-red">⚡</span><h3>Мережі немає — екран покаже одразу</h3><p>Віджет мережі стає червоним: «світло вимкнено, працюємо від батареї». Персонал бачить це з бару, не заходячи в застосунки.</p></div>
-        <div className="step"><span className="n n-amber">🔋</span><h3>Скільки годин лишилось</h3><p>Залишок батареї і прогноз «≈ 3 год 20 хв при поточному споживанні». Впав нижче 40% — жовтий, наближається до мінімуму — червоний.</p></div>
-        <div className="step"><span className="n n-cyan">🍳</span><h3>Що можна вмикати</h3><p>Споживання наживо: увімкнули гриль чи бойлер — цифра і прогноз змінились тут же. Персонал сам вирішує, що відкласти до світла.</p></div>
+        {t.signage.cards.map(([i, h, p]) => <div key={h} className="step"><span className="n">{i}</span><h3>{h}</h3><p>{p}</p></div>)}
       </div>
     </section>
 
     <section id="how" className="land-sec">
-      <span className="kicker">Швидкий старт</span>
-      <h2>Як це працює</h2>
+      <span className="kicker">{t.how.kicker}</span>
+      <h2>{t.how.title}</h2>
       <div className="steps how">
-        <div className="step"><span className="num">01</span><h3>Стік дивиться на наш сервер</h3><p>На прихованій сторінці Solarman-стіка вписуєте три поля. Застосунок Solarman продовжує працювати як раніше.</p></div>
-        <div className="step"><span className="num">02</span><h3>Збираєте екран у кабінеті</h3><p>Обираєте відеофон, розставляєте віджети, додаєте меню, радіо і QR. Зміни зʼявляються на телевізорі одразу.</p></div>
-        <div className="step"><span className="num">03</span><h3>Телевізор відкриває tv.sun-hunter.men/tv</h3><p>Вводите 6-значний код із кабінету. Далі телевізор памʼятає екран сам, навіть після вимкнення.</p></div>
+        {t.how.steps.map(([h, p], i) => <div key={h} className="step"><span className="num">0{i + 1}</span><h3>{h}</h3><p>{p}</p></div>)}
       </div>
     </section>
 
     <section id="features" className="land-sec">
-      <span className="kicker">Можливості та віджети</span>
-      <h2>Що на екрані</h2>
+      <span className="kicker">{t.features.kicker}</span>
+      <h2>{t.features.title}</h2>
       <div className="feats">
         <div className="feat feat-big">
-          <span className="tag">Головний модуль</span>
-          <h3>Показники наживо</h3>
-          <p>Сонце, батарея, мережа, споживання і підсумок дня. Оновлення кожні 10 секунд, чесна позначка, якщо дані застаріли.</p>
-          <div className="stats"><span><small>Сонце</small><b className="c-amber">4.2 kW</b></span><span><small>Батарея</small><b className="c-cyan">64 %</b></span><span><small>Споживання</small><b>1.8 kW</b></span></div>
+          <span className="tag">{t.features.bigTag}</span>
+          <h3>{t.features.bigTitle}</h3>
+          <p>{t.features.bigText}</p>
+          <div className="stats">{t.features.stats.map(([k, v], i) => <span key={k}><small>{k}</small><b className={i === 0 ? "c-amber" : i === 1 ? "c-cyan" : ""}>{v}</b></span>)}</div>
         </div>
-        {[
-          ["🎞", "Відеофони", "Камін, водоспад, акваріум, дощ за вікном: понад 30 кліпів з ліцензією для закладів, або власні відео та фото."],
-          ["📻", "Онлайн-радіо", "14 українських станцій одним кліком у кабінеті, перемикання без перезавантаження телевізора."],
-          ["🧾", "Меню закладу", "Багаторядкове меню з розділами і цінами, шрифти й кольори на вибір. Оновили в кабінеті — оновилось на ТБ."],
-          ["📈", "Графіки", "Крива генерації і споживання за добу на екрані, історія за рік у кабінеті."],
-          ["🔲", "QR-коди", "Wi-Fi для гостей одним сканом, меню, Instagram чи відгуки. Просто вставте посилання або пароль."],
-          ["🚨", "Повітряна тривога", "Стан вашої області на екрані і банер на весь телевізор під час тривоги. Без ключів і налаштувань, лише виберіть область."],
-          ["🌤", "Погода і сонце на завтра", "Температура, вітер, захід сонця і прогноз генерації на завтра у кВт·год для вашої станції."],
-          ["🌱", "Еко-статистика", "Скільки кВт·год від сонця за місяць і скільки CO₂ не потрапило в повітря. Аргумент для гостей і для соцмереж."],
-        ].map(([i, h, p]) => <div key={h} className={`feat${WIDE.has(h!) ? " feat-wide" : ""}`}><div className="ico">{i}</div><h3>{h}</h3><p>{p}</p></div>)}
+        {t.features.cards.map(([i, h, p]) => <div key={h} className={`feat${t.features.wide.includes(h) ? " feat-wide" : ""}`}><div className="ico">{i}</div><h3>{h}</h3><p>{p}</p></div>)}
+      </div>
+    </section>
+
+    <section id="energy" className="land-sec outage-sec">
+      <span className="kicker kicker-red">{t.energy.kicker}</span>
+      <h2>{t.energy.title}</h2>
+      <p className="lead">{t.energy.lead}</p>
+      <div className="steps">
+        {t.energy.cards.map(([i, h, p], k) => <div key={h} className="step"><span className={`n ${ICON_TONE[k]}`}>{i}</span><h3>{h}</h3><p>{p}</p></div>)}
       </div>
     </section>
 
     <section id="pricing" className="land-sec">
-      <span className="kicker">Прозорі тарифи</span>
-      <h2>Тарифи</h2>
+      <span className="kicker">{t.pricing.kicker}</span>
+      <h2>{t.pricing.title}</h2>
+      <p className="lead">{t.pricing.lead}</p>
       <div className="plans plans-3">
         <div className="plan">
-          <h3>Free</h3><div className="price">0 ₴<span className="per"> / назавжди</span></div>
-          <ul><li>1 телевізор і 1 логер</li><li>Увесь функціонал: усі віджети, власні відеофони й фото, радіо</li><li>Історія та графіки за рік</li><li>Невеликий напис {PRODUCT_NAME} і плашка з QR раз на 10 хвилин</li></ul>
-          <Link href="/signup" className="btn" onClick={cta("pricing_free")}>Почати</Link>
+          <h3>Free</h3><div className="price">0 ₴<span className="per">{t.pricing.forever}</span></div>
+          <ul>{t.pricing.free.map((x) => <li key={x}>{x}</li>)}</ul>
+          <Link href="/signup" className="btn" onClick={cta("pricing_free")}>{t.pricing.start}</Link>
         </div>
         <div className="plan pro">
-          <span className="badge">Найпопулярніший</span>
-          <h3>Pro</h3><div className="price">600 ₴<span className="per"> / міс</span></div>
-          <p className="muted small mono">Пів року — 3000 ₴ (місяць у подарунок), рік — 6000 ₴ (два місяці у подарунок)</p>
-          <ul><li>До 5 телевізорів і 5 логерів</li><li>Увесь функціонал, як у Free</li><li>Без брендингу на екрані</li><li>Пріоритетна підтримка</li></ul>
-          <Link href="/signup" className="btn btn-primary" onClick={cta("pricing_pro")}>Підключити Pro</Link>
-          <p className="muted small" style={{ marginTop: ".5rem" }}>Оплата карткою в кабінеті через monobank</p>
+          <span className="badge">{t.pricing.badge}</span>
+          <h3>Pro</h3><div className="price">600 ₴<span className="per">{t.pricing.perMonth}</span></div>
+          <p className="muted small mono">{t.pricing.proNote}</p>
+          <ul>{t.pricing.pro.map((x) => <li key={x}>{x}</li>)}</ul>
+          <Link href="/signup" className="btn btn-primary" onClick={cta("pricing_pro")}>{t.pricing.goPro}</Link>
+          <p className="muted small" style={{ marginTop: ".5rem" }}>{t.pricing.payNote}</p>
         </div>
         <div className="plan">
-          <h3>Max</h3><div className="price">за домовленістю</div>
-          <ul><li>Мережа закладів: до 50 телевізорів і логерів</li><li>Інші бренди інверторів</li><li>Персональні віджети й брендування</li><li>Пріоритетна підтримка</li></ul>
-          <a href={CONTACT} className="btn" onClick={cta("pricing_max")}>Обговорити</a>
+          <h3>Max</h3><div className="price">{t.pricing.onRequest}</div>
+          <ul>{t.pricing.max.map((x) => <li key={x}>{x}</li>)}</ul>
+          <a href={CONTACT} className="btn" onClick={cta("pricing_max")}>{t.pricing.discuss}</a>
         </div>
       </div>
     </section>
 
     <section id="faq" className="land-sec">
-      <span className="kicker">Часті запитання</span>
-      <h2>Все, що треба знати перед підключенням</h2>
+      <span className="kicker">{t.faq.kicker}</span>
+      <h2>{t.faq.title}</h2>
       <div className="faq">
-        {FAQ.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
+        {t.faq.items.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}
       </div>
     </section>
 
     <section className="land-sec diy">
-      <h2>Для інсталяторів і DIY</h2>
-      <p className="muted">Протокол відкритий: стік напряму, або власний пристрій на ESP8266/ESP32 із відкритою прошивкою, самореєстрацією і підписаними оновленнями. Документація в репозиторії <a href="https://github.com/andreyyaremenko-ops/deye-dashboard" target="_blank" rel="noreferrer">deye-dashboard</a>.</p>
+      <h2>{t.diy.title}</h2>
+      <p className="muted">{t.diy.text} <a href={REPO} target="_blank" rel="noreferrer">{t.diy.repo}</a>.</p>
     </section>
 
     <footer className="land-foot">
       <span className="brand"><Logo />{PRODUCT_NAME}</span>
       <span className="mono">© {new Date().getFullYear()} · tv.sun-hunter.men</span>
       <span className="grow" />
-      <a href={CONTACT}>Контакт</a>
-      <a href="https://github.com/andreyyaremenko-ops/deye-dashboard" target="_blank" rel="noreferrer">GitHub</a>
-      <span className="mono">Зроблено в Україні 🇺🇦</span>
+      <a href={CONTACT}>{t.foot.contact}</a>
+      <a href={REPO} target="_blank" rel="noreferrer">GitHub</a>
+      <a href={pathOf(other)} hrefLang={other}>{t.nav.otherLang}</a>
+      <span className="mono">{t.foot.made}</span>
     </footer>
   </div>;
 }

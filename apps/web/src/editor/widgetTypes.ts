@@ -9,6 +9,8 @@ export interface WidgetKind {
   t: WidgetType;
   label: string;
   needsDevice: boolean;
+  /** пристрій не обовʼязковий, але корисний (погода: прогноз генерації за kWp станції) */
+  optionalDevice?: boolean;
   w: number; h: number;
   /** кілька кнопок одного типу (QR / Wi-Fi) — унікальний ключ */
   key?: string;
@@ -27,7 +29,7 @@ export const WIDGET_KINDS: WidgetKind[] = [
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
   { t: "outage", label: "Банер відключення", needsDevice: true, w: 44, h: 14, props: { hideWhenOk: true, note: "" } },
   { t: "eco", label: "Еко-статистика", needsDevice: true, w: 22, h: 26 },
-  { t: "weather", label: "Погода", needsDevice: true, w: 24, h: 26, needsLocation: true },
+  { t: "weather", label: "Погода", needsDevice: false, optionalDevice: true, w: 24, h: 26, needsLocation: true },
   { t: "alert", label: "Тривога", needsDevice: false, w: 22, h: 16, needsLocation: true, props: { overlay: true } },
   { t: "qr", label: "QR-код", needsDevice: false, w: 14, h: 30, props: { mode: "url", url: "https://instagram.com/", caption: "Ми в Instagram", card: true } },
   { t: "qr", label: "Wi-Fi для гостей", needsDevice: false, w: 14, h: 32, key: "wifi", props: { mode: "wifi", ssid: "", password: "", auth: "WPA", caption: "Wi-Fi для гостей", card: true, showPassword: true } },
@@ -41,5 +43,5 @@ export const labelOf = (t: WidgetType) => kindOf(t)?.label ?? t;
 /** Новий віджет: розкладка сіткою 3 у ряд, щоб нові не лягали один на одного. */
 export function newWidget(kind: WidgetKind, index: number, deviceId?: string): Widget {
   const id = `${kind.t}-${Math.random().toString(36).slice(2, 7)}`;
-  return { id, type: kind.t, x: 3 + (index % 3) * 25, y: 4 + Math.floor(index / 3) * 24, w: kind.w, h: kind.h, deviceId: kind.needsDevice ? deviceId : undefined, props: { ...(kind.props ?? {}) } };
+  return { id, type: kind.t, x: 3 + (index % 3) * 25, y: 4 + Math.floor(index / 3) * 24, w: kind.w, h: kind.h, deviceId: kind.needsDevice || kind.optionalDevice ? deviceId : undefined, props: { ...(kind.props ?? {}) } };
 }
