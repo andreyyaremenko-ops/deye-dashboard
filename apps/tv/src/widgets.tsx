@@ -106,8 +106,11 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       const est = m && outage ? estimateRuntime(m, { capacityKwh: device?.batteryKwh, minSoc: device?.minSoc ?? 20, socHistory }) : null;
       return <OutageWidget cls={cls} outage={outage && !stale} since={outageSince} hours={est?.hours ?? null} soc={num(m, "bat_soc")} props={props} />;
     }
-    case "flow":
-      return <FlowWidget cls={cls} state={m} props={props} stale={stale} />;
+    case "flow": {
+      // автономія в підсумковому рядку: лише коли відома ємність батареї
+      const est = m && device?.batteryKwh ? estimateRuntime(m, { capacityKwh: device.batteryKwh, minSoc: device.minSoc ?? 20, socHistory, assumeLoad: true }) : null;
+      return <FlowWidget cls={cls} state={m} props={props} stale={stale} runtime={est ? fmtHours(est.hours) : null} />;
+    }
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

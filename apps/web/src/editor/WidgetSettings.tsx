@@ -85,9 +85,9 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     <Text ctx={ctx} k="note" label="Примітка під час відключення (необовʼязково)" placeholder="Кава і Wi-Fi працюють як зазвичай" />
   </>,
   flow: (ctx) => <>
-    <Select ctx={ctx} k="skin" label="Вигляд" fallback="orbit" options={[["orbit", "схема (як у Deye Cloud)"], ["strip", "рядок зі стрілками"], ["bars", "смуги"]]} />
+    <Select ctx={ctx} k="skin" label="Вигляд" fallback="orbit" options={[["orbit", "схема: вузли навколо інвертора"], ["gauge", "кільце: звідки береться споживання"], ["sankey", "потоки: стрічки джерело → споживач"], ["strip", "рядок зі стрілками"], ["bars", "смуги"]]} />
     <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Потік енергії" />{Card(ctx)}</div>
-    <Hint>Схемі потрібно місце приблизно 30×40 %, рядку — широка смуга 50×14 %, смугам — 26×24 %.</Hint>
+    <Hint>Орієнтовний розмір: схема 30×42 %, кільце 26×46 %, потоки 38×30 %, рядок 50×14 %, смуги 26×24 %. Автономія в підсумку зʼявиться, якщо в пристрої вказано ємність батареї.</Hint>
   </>,
   weather: () => <Hint>Прогноз генерації на завтра зʼявиться, якщо в пристрої вказано потужність панелей (kWp).</Hint>,
   chart: (ctx) => <Field label="Період"><select value={String(ctx.p.hours ?? 24)} onChange={(e) => ctx.set({ hours: Number(e.currentTarget.value) })}>

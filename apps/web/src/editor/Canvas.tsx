@@ -48,7 +48,7 @@ const MOCK: Partial<Record<W["type"], (p: Record<string, unknown>) => [string, s
   pv: () => ["4.2 kW", "сьогодні 18.4 kWh"], battery: () => ["64 %", "заряд 1.6 kW"], grid: () => ["0.5 kW", "з мережі · 50.0 Hz"], load: () => ["2.0 kW", "сьогодні 22.1 kWh"],
   energy_today: () => ["18.4 kWh", "сонце · спожито 22.1"], runtime: () => ["≈ 6 год", "якщо зникне світло"], clock: () => [new Date().toLocaleTimeString("uk-UA", { hour: "2-digit", minute: "2-digit" }), "сьогодні"],
   chart: () => ["▁▂▃▅▇█▇▅▃▂▁", "потужність за добу"], weather: () => ["+21°", "сонячно · завтра 17 kWh"], alert: () => ["Тривоги немає", "область зі списку"], eco: () => ["−120 кг CO₂", "цього місяця"],
-  outage: (p) => [p.hideWhenOk === false ? "Світло є" : "Банер при відключенні"], flow: (p) => [p.skin === "strip" ? "☀ → ⌂ → ▭" : "☀ ⌂ ▭ ⚡", "потік енергії"],
+  outage: (p) => [p.hideWhenOk === false ? "Світло є" : "Банер при відключенні"], flow: (p) => [p.skin === "strip" ? "☀ → ⌂ → ▭" : p.skin === "gauge" ? "◯ 2.0 kW" : p.skin === "sankey" ? "☀ ≋ ⌂" : "☀ ⌂ ▭ ⚡", `потік енергії · ${({ orbit: "схема", gauge: "кільце", sankey: "потоки", strip: "рядок", bars: "смуги" } as Record<string, string>)[String(p.skin ?? "orbit")] ?? "схема"}`],
   qr: (p) => ["▦ QR", String(p.caption ?? "")],
 };
 function Mock({ w }: { w: W }) {

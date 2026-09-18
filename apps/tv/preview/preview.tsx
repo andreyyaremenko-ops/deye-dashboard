@@ -16,7 +16,7 @@ const scenes: Record<string, Record<string, number | string>> = {
 };
 const scene = scenes[q.get("scene") ?? "day"] ?? scenes.day!;
 const skin = q.get("skin") ?? "orbit";
-const size: Record<string, [number, number]> = { orbit: [30, 40], strip: [50, 14], bars: [26, 24] };
+const size: Record<string, [number, number]> = { orbit: [30, 42], gauge: [26, 46], sankey: [38, 30], strip: [50, 14], bars: [26, 24] };
 const [w, h] = size[skin] ?? [30, 40];
 const state = { deviceId: "d", updatedAt: new Date().toISOString(), metrics: scene, stale: false };
 
@@ -27,5 +27,5 @@ const menuProps = { title: q.get("title") ?? "Меню", text: "Еспресо �
 render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradient(120% 90% at 20% 10%, #3a1b3a 0%, #1a0b1b 55%, #050a12 100%)" }}>
   {q.get("type") === "text"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "28%", height: "60%" }}><Widget type="text" state={undefined} props={menuProps} /></div>
-    : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0" }} /></div>}
+    : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0" }} device={{ batteryKwh: 15, minSoc: 20, pvKwp: 10 }} /></div>}
 </div>, document.getElementById("app")!);

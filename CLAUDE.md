@@ -58,7 +58,7 @@ pnpm db:migrate && pnpm db:seed
 docker compose -f docker-compose.dev.yml up -d   # postgres+timescale, redis, mosquitto
 pnpm --filter @deye/api dev:mock                 # API без Docker: PGlite + демо-організація (demo@example.com), далі pnpm --filter @deye/web dev
 cd firmware && pio test -e native && pio run -e d1_mini -t upload
-cd apps/tv && npx vite build --config vite.config.ts --base=/ --outDir /tmp/tvprev preview   # превʼю віджетів на мок-даних (?skin=&scene=&theme=)
+cd apps/tv && npx vite build --config vite.config.ts --base=/ --outDir /tmp/tvprev preview   # превʼю віджетів на мок-даних (?skin=orbit|gauge|sankey|strip|bars&scene=day|evening|outage&theme=, ?type=text)
 ```
 
 ## Правила
