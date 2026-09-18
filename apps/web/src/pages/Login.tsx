@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { authClient } from "../auth.ts";
 import { Btn, ErrorBox, Field, onSubmit, useAction } from "../components/ui.tsx";
 import { PRODUCT_NAME } from "@deye/shared";
-import { Logo } from "../components/Layout.tsx";
+import { Logo } from "../components/Logo.tsx";
 
 export function Login({ mode }: { mode: "login" | "signup" }) {
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [name, setName] = useState("");
