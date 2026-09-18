@@ -2,6 +2,17 @@
 
 Код: `~/deye-dashboard` (git clone, `git pull` для оновлення). Секрети: `deploy/.env` (не в git).
 
+Оновлення: `git pull`, далі скрипт (відвʼязано від SSH, бо збірка вантажить сервер і сесія може обірватись;
+`flock` усередині не дає запустити два деплої одночасно):
+
+```bash
+cd ~/deye-dashboard && git pull
+nohup deploy/deploy.sh api static > /tmp/deploy.log 2>&1 &    # цілі: api worker static migrate seed
+tail -f /tmp/deploy.log                                        # у кінці DEPLOY-DONE або DEPLOY-FAILED
+```
+
+Вручну:
+
 ```bash
 cd ~/deye-dashboard/deploy
 docker compose up -d                      # усе
