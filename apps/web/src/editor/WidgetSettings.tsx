@@ -90,6 +90,17 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Потік енергії" />{Card(ctx)}</div>
     <Hint>Орієнтовний розмір: схема 30×42 %, кільце 26×46 %, потоки 38×30 %, рядок 50×14 %, смуги 26×24 %. Автономія в підсумку зʼявиться, якщо в пристрої вказано ємність батареї.</Hint>
   </>,
+  mppt: (ctx) => {
+    const names = Array.isArray(ctx.p.names) ? (ctx.p.names as unknown[]).map(String) : [];
+    return <>
+      <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Стрінги" />{Card(ctx)}</div>
+      <Toggle ctx={ctx} k="showVA" label="Вольти й ампери" on="показувати" off="лише кіловати" />
+      <Field label="Назви входів (по одній на рядок, у порядку MPPT 1…4)">
+        <textarea rows={4} value={names.join("\n")} onChange={(e) => ctx.set({ names: e.currentTarget.value.split(/\r?\n/) })} placeholder={"Дах південь\nДах захід"} />
+      </Field>
+      <Hint>Генерація кожного входу панелей окремо. Входи, яких немає або не підключені, ховаються. Орієнтовний розмір 34×26 %.</Hint>
+    </>;
+  },
   weather: () => <Hint>Прогноз генерації на завтра зʼявиться, якщо в пристрої вказано потужність панелей (kWp).</Hint>,
   chart: (ctx) => <Field label="Період"><select value={String(ctx.p.hours ?? 24)} onChange={(e) => ctx.set({ hours: Number(e.currentTarget.value) })}>
     <option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>,

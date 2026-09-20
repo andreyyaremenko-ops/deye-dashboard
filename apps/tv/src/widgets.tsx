@@ -21,6 +21,7 @@ function isNight(m: M | undefined): boolean {
 
 import { ChartWidget } from "./chart.tsx";
 import { FlowWidget } from "./flow.tsx";
+import { MpptWidget } from "./mppt.tsx";
 import { QrWidget } from "./qr.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
 import type { Feeds } from "./types.ts";
@@ -111,6 +112,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       const est = m && device?.batteryKwh ? estimateRuntime(m, { capacityKwh: device.batteryKwh, minSoc: device.minSoc ?? 20, socHistory, assumeLoad: true }) : null;
       return <FlowWidget cls={cls} state={m} props={props} stale={stale} runtime={est ? fmtHours(est.hours) : null} />;
     }
+    case "mppt":
+      return <MpptWidget cls={cls} state={m} props={props} stale={stale} night={isNight(m)} />;
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

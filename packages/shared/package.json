@@ -13,6 +13,7 @@
     "./feeds": "./src/feeds.ts",
     "./menu": "./src/menu.ts",
     "./flow": "./src/flow.ts",
+    "./strings": "./src/strings.ts",
     "./scenes": "./src/scenes.ts"
   },
   "scripts": {
