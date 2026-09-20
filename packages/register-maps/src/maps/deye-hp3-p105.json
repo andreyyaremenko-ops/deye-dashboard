@@ -1,0 +1,58 @@
+{
+  "id": "deye-hp3-p105",
+  "name": "Deye three-phase hybrid HV, протокол 1.05 (лічильники енергії в kWh)",
+  "deviceType": 6,
+  "protocolMin": 261,
+  "extends": "deye-hp3",
+  "overrides": [
+    {
+      "key": "bat_charge_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "bat_discharge_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "bat_charge_total_kwh",
+      "scale": 1
+    },
+    {
+      "key": "bat_discharge_total_kwh",
+      "scale": 1
+    },
+    {
+      "key": "grid_buy_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "grid_sell_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "grid_buy_total_kwh",
+      "scale": 1
+    },
+    {
+      "key": "grid_sell_total_kwh",
+      "scale": 1
+    },
+    {
+      "key": "load_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "load_total_kwh",
+      "scale": 1
+    },
+    {
+      "key": "pv_day_kwh",
+      "scale": 1
+    },
+    {
+      "key": "pv_total_kwh",
+      "scale": 1
+    }
+  ],
+  "_notes": "Той самий HP3, але прошивка з протоколом 0x0105 (регістр 2) віддає всі лічильники енергії в цілих kWh, а не в 0.1 kWh: підтверджено на Dymer 2407102212 — добовий лічильник сонця 19.09.2026 закінчив добу на 69, приріст лічильника 'всього' за ту саму добу 70, інтеграл pv_w за нашою телеметрією 69.5 kWh. Потужності (DC x10) не змінюються."
+}

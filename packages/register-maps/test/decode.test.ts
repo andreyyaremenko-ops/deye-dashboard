@@ -27,9 +27,9 @@ describe("hexToRegs / rangesToTable", () => {
 });
 
 /** Очікування для HP3-дампів за серійником стіка (імʼя файлу <serial>_<час>.json). */
-const HP3: Record<string, { serial: string; ratedW: number; minPvTotalKwh: number }> = {
-  "2763543833": { serial: "2309208317", ratedW: 15000, minPvTotalKwh: 20000 },   // стенд: 15 kW, одна батарея, 2 MPPT
-  "2989852238": { serial: "2407102212", ratedW: 30000, minPvTotalKwh: 7000 },    // Dymer: 30 kW, дві батареї, 4 MPPT
+const HP3: Record<string, { serial: string; ratedW: number; minPvTotalKwh: number; mapId: string }> = {
+  "2763543833": { serial: "2309208317", ratedW: 15000, minPvTotalKwh: 20000, mapId: "deye-hp3" },       // стенд: 15 kW, одна батарея, 2 MPPT
+  "2989852238": { serial: "2407102212", ratedW: 30000, minPvTotalKwh: 70000, mapId: "deye-hp3-p105" },  // Dymer: 30 kW, дві батареї, 4 MPPT, протокол 1.05
 };
 
 describe("deye-hp3 на реальних дампах", () => {
@@ -38,7 +38,7 @@ describe("deye-hp3 на реальних дампах", () => {
   for (const file of hp3Files) {
     const table = tableFromDump(file);
     const id = decodeIdentity(table);
-    const map = mapForDeviceType(id.deviceType!);
+    const map = mapForDeviceType(id.deviceType!, id.protocol);
 
     const known = HP3[file.split("_")[0]!];
     it(`${file}: ідентифікація`, () => {
@@ -46,7 +46,7 @@ describe("deye-hp3 на реальних дампах", () => {
       expect(id.deviceType).toBe(6);
       expect(id.inverterSerial).toBe(known!.serial);
       expect(id.ratedW).toBe(known!.ratedW);
-      expect(map?.id).toBe("deye-hp3");
+      expect(map?.id).toBe(known!.mapId);
     });
 
     it(`${file}: баланс мережа + інвертор = навантаження`, () => {
@@ -75,7 +75,7 @@ describe("deye-hp3 на реальних дампах", () => {
 
 describe("deye-hp3 30 kW з двома батареями (Dymer): потужність DC у десятках ват", () => {
   const table = tableFromDump("2989852238_20260918T171200Z.json");
-  const m = decode(mapForDeviceType(6)!, table);
+  const m = decode(mapForDeviceType(6, decodeIdentity(table).protocol)!, table);
   it("кожна батарея: P = raw x 10 і збігається з U x I", () => {
     expect(m.bat1_w).toBe(14970); expect(m.bat2_w).toBe(14980);
     expect(Math.abs((m.bat_v as number) * (m.bat1_a as number) - (m.bat1_w as number))).toBeLessThan(150);
@@ -92,6 +92,40 @@ describe("deye-hp3 30 kW з двома батареями (Dymer): потужн�
   it("чотири входи панелей: увечері майже нуль, pv_w = сума чотирьох", () => {
     expect(m.pv3_w).toBe(10); expect(m.pv4_w).toBe(0); expect(m.pv_w).toBe(10);
     expect(m.pv3_v).toBe(165.4);
+  });
+});
+
+describe("deye-hp3-p105: прошивка 1.05 рахує енергію в цілих kWh", () => {
+  const table = tableFromDump("2989852238_20260918T171200Z.json");
+  const id = decodeIdentity(table);
+
+  it("варіант береться за протоколом з регістра 2, інакше — базова карта", () => {
+    expect(id.protocol).toBe(0x0105);
+    expect(mapForDeviceType(6, id.protocol)?.id).toBe("deye-hp3-p105");
+    expect(mapForDeviceType(6, 0x0104)?.id).toBe("deye-hp3");
+    expect(mapForDeviceType(6)?.id).toBe("deye-hp3");
+    expect(mapForDeviceType(5, id.protocol)?.id).toBe("deye-lp3");   // варіант не чіпає інші типи
+  });
+
+  it("лічильники в kWh (x10 до базової карти), потужності без змін", () => {
+    const m = decode(maps["deye-hp3-p105"]!, table);
+    const base = decode(maps["deye-hp3"]!, table);
+    // Dymer 18.09.2026 17:12: добові лічильники за сонячний день, а не десяті частки
+    expect(m.pv_day_kwh).toBe(182);            expect(base.pv_day_kwh).toBe(18.2);
+    expect(m.grid_sell_day_kwh).toBe(59);      expect(m.grid_buy_day_kwh).toBe(0);
+    expect(m.bat_charge_day_kwh).toBe(146);    expect(m.load_day_kwh).toBe(13);
+    expect(m.pv_total_kwh).toBe(70145);        expect(base.pv_total_kwh).toBe(7014.5);
+    for (const k of Object.keys(m).filter((k) => k.endsWith("_kwh"))) {
+      expect(m[k] as number, k).toBeCloseTo((base[k] as number) * 10, 6);
+    }
+    // потужності (DC x10) і все інше лишаються такими ж, як у базовій карті
+    for (const k of Object.keys(m).filter((k) => !k.endsWith("_kwh"))) expect(m[k], k).toEqual(base[k]);
+  });
+
+  it("добовий баланс лічильників: сонце ≈ продаж + заряд + споживання", () => {
+    const m = decode(maps["deye-hp3-p105"]!, table);
+    const out = (m.grid_sell_day_kwh as number) + (m.bat_charge_day_kwh as number) + (m.load_day_kwh as number);
+    expect(Math.abs((m.pv_day_kwh as number) - out)).toBeLessThan(0.2 * (m.pv_day_kwh as number));
   });
 });
 

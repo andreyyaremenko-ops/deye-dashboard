@@ -3,6 +3,7 @@
  * Пристрій шле сирі регістри, уся інтерпретація тут (і в БД inverter_models).
  */
 import deyeHp3 from "./maps/deye-hp3.json" with { type: "json" };
+import deyeHp3P105 from "./maps/deye-hp3-p105.json" with { type: "json" };
 import deyeLp1 from "./maps/deye-lp1.json" with { type: "json" };
 import deyeLp3 from "./maps/deye-lp3.json" with { type: "json" };
 
@@ -29,6 +30,33 @@ export interface RegisterMap {
   fields: RegisterField[];
   /** похідні метрики, обчислюються після основних */
   derived?: { key: string; sum?: string[]; unit?: string }[];
+  /** варіант прошивки: береться, якщо протокол пристрою (регістр 2) не менший */
+  protocolMin?: number;
+}
+
+/** Варіант карти: та сама база, але частина полів перевизначена (інша прошивка). */
+interface RegisterMapVariant {
+  id: string;
+  name: string;
+  deviceType: number;
+  protocolMin: number;
+  extends: string;
+  overrides: (Partial<RegisterField> & { key: string })[];
+}
+
+function buildVariant(v: RegisterMapVariant, base: RegisterMap): RegisterMap {
+  const byKey = new Map(v.overrides.map((o) => [o.key, o]));
+  for (const key of byKey.keys()) {
+    if (!base.fields.some((f) => f.key === key)) throw new Error(`${v.id}: немає поля ${key} у ${base.id}`);
+  }
+  return {
+    ...base,
+    id: v.id,
+    name: v.name,
+    deviceType: v.deviceType,
+    protocolMin: v.protocolMin,
+    fields: base.fields.map((f) => (byKey.has(f.key) ? { ...f, ...byKey.get(f.key)! } : f)),
+  };
 }
 
 export type Metrics = Record<string, number | string>;
@@ -38,10 +66,19 @@ export const maps: Record<string, RegisterMap> = {
   [deyeLp1.id]: deyeLp1 as unknown as RegisterMap,
   [deyeLp3.id]: deyeLp3 as unknown as RegisterMap,
 };
+maps[deyeHp3P105.id] = buildVariant(deyeHp3P105 as unknown as RegisterMapVariant, maps[deyeHp3.id]!);
 
-/** Вибір карти за reg 0 (тип пристрою). Повертає undefined, якщо не знаємо такий. */
-export function mapForDeviceType(deviceType: number): RegisterMap | undefined {
-  return Object.values(maps).find((m) => m.deviceType === deviceType);
+/**
+ * Вибір карти за reg 0 (тип пристрою) і, якщо відомий, протоколом з reg 2:
+ * серед карт одного типу перемагає найспецифічніший варіант прошивки.
+ * Повертає undefined, якщо не знаємо такий тип.
+ */
+export function mapForDeviceType(deviceType: number, protocol?: number): RegisterMap | undefined {
+  const same = Object.values(maps).filter((m) => m.deviceType === deviceType);
+  const variant = protocol === undefined ? undefined
+    : same.filter((m) => m.protocolMin !== undefined && protocol >= m.protocolMin)
+          .sort((a, b) => b.protocolMin! - a.protocolMin!)[0];
+  return variant ?? same.find((m) => m.protocolMin === undefined);
 }
 
 /** hex-рядок з пристрою -> масив uint16 */
@@ -93,9 +130,10 @@ export function decode(map: RegisterMap, table: Map<number, number>): Metrics {
   return out;
 }
 
-/** Ідентифікація з діапазону 0..21: тип, серійник інвертора, номінал */
+/** Ідентифікація з діапазону 0..21: тип, протокол, серійник інвертора, номінал */
 export function decodeIdentity(table: Map<number, number>) {
   const t = table.get(0);
+  const protocol = table.get(2);
   const sn = [3, 4, 5, 6, 7].map((r) => table.get(r));
   const serial = sn.every((v) => v !== undefined)
     ? sn.map((v) => String.fromCharCode(v! >> 8, v! & 0xff)).join("").replace(/\0/g, "")
@@ -103,6 +141,7 @@ export function decodeIdentity(table: Map<number, number>) {
   const lo = table.get(20), hi = table.get(21);
   return {
     deviceType: t,
+    protocol,
     inverterSerial: serial,
     ratedW: lo !== undefined && hi !== undefined ? (hi * 65536 + lo) / 10 : undefined,
   };

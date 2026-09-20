@@ -63,7 +63,7 @@ export async function handleTelemetry(deps: IngestDeps, deviceId: string, raw: B
     updates.inverterType = ident.deviceType;
     if (ident.inverterSerial) updates.inverterSerial = ident.inverterSerial;
     if (!modelId) {
-      const map = mapForDeviceType(ident.deviceType);
+      const map = mapForDeviceType(ident.deviceType, ident.protocol);
       if (map) {
         modelId = map.id;
         updates.modelId = map.id;
