@@ -22,7 +22,7 @@ const scenes: Record<string, Record<string, number | string>> = {
 };
 const scene = scenes[q.get("scene") ?? "day"] ?? scenes.day!;
 const skin = q.get("skin") ?? "orbit";
-const size: Record<string, [number, number]> = { orbit: [30, 42], gauge: [26, 46], sankey: [38, 30], strip: [50, 14], bars: [26, 24] };
+const size: Record<string, [number, number]> = { orbit: [30, 42], cards: [34, 44], gauge: [26, 46], sankey: [38, 30], strip: [50, 14], bars: [26, 24] };
 const [w, h] = size[skin] ?? [30, 40];
 const state = { deviceId: "d", updatedAt: new Date().toISOString(), metrics: scene, stale: false };
 

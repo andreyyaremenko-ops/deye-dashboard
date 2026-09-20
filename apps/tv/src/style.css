@@ -183,6 +183,19 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fl-src-grid { color: #8ab4ff; background: rgba(79,140,255,.12); border-color: rgba(79,140,255,.35); } .fl-src-bad { color: #ffb4b8; background: rgba(229,72,77,.16); border-color: rgba(229,72,77,.5); }
 .theme-light .fl-src-ok, .theme-light .fl-src-bat { color: #1f8f4a; } .theme-light .fl-src-grid { color: #2f6fe0; } .theme-light .fl-src-bad { color: #c0262c; }
 .fl-sum.outage { border-top-color: rgba(229,72,77,.45); } .fl-sum.outage .fl-run b { color: #ffd98a; }
+/* cards (концепт зі Stitch): картки джерел угорі, споживачів унизу, інвертор посередині */
+.cards { width: 100%; flex: 1 1 0; height: 0; min-height: 0; display: block; }
+.fc-box { fill: rgba(255,255,255,.055); stroke: rgba(255,255,255,.12); stroke-width: 1; }
+.theme-light .fc-box { fill: rgba(0,0,0,.04); stroke: rgba(0,0,0,.1); }
+.fc-edge { fill: currentColor; opacity: .85; }
+.fc-ico { color: currentColor; overflow: visible; }
+.fc-l { fill: rgba(255,255,255,.72); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; }
+.fc-l.sm { font-size: 9px; letter-spacing: .05em; }
+.theme-light .fc-l { fill: rgba(0,0,0,.6); }
+.fc-n { fill: currentColor; font: 700 11px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; opacity: .9; }
+.fc-v { fill: currentColor; font: 700 25px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; letter-spacing: -.5px; }
+.fc.dim .fc-box { stroke-opacity: .5; } .fc.dim .fc-edge { opacity: .3; } .fc.dim .fc-v { opacity: .5; } .fc.dim .fc-ico { opacity: .5; }
+
 /* gauge */
 .gauge { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: .5vw; }
 .gauge-ring { flex: 1 1 0; min-height: 0; height: 0; width: 100%; display: block; }

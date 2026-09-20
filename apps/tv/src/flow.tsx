@@ -2,7 +2,8 @@
  * Потік енергії, як у Deye Cloud: сонце, батарея, мережа, споживання навколо інвертора.
  * Знаки метрик: bat_w > 0 розряд, < 0 заряд; grid_w > 0 з мережі, < 0 у мережу; pv_w і load_w ≥ 0.
  * Скіни: orbit (вузли навколо інвертора, вигнуті лінії зі світінням, товщина за потужністю), gauge (кільце: звідки береться
- * споживання), sankey (стрічки джерело → споживач), strip (компактний рядок стрілок), bars (смуги з часткою від навантаження).
+ * споживання), sankey (стрічки джерело → споживач), cards (картки джерел угорі й споживачів унизу), strip (компактний
+ * рядок стрілок), bars (смуги з часткою від навантаження).
  * Дизайн orbit/gauge/sankey — за концептами зі Stitch. Без SVG-фільтрів: світіння — ширший напівпрозорий дублікат лінії (старі ТБ).
  */
 import { gridDown } from "@deye/shared/energy";
@@ -43,10 +44,10 @@ export function FlowWidget({ cls, state, props, stale, runtime }: { cls: string;
   const plain = props.card === false;
   const c = `${cls} w-flow flow-${skin}${plain ? " flow-plain" : ""}`;
   const title = String(props.title ?? "Потік енергії");
-  const rich = skin === "orbit" || skin === "gauge" || skin === "sankey";
+  const rich = skin === "orbit" || skin === "gauge" || skin === "sankey" || skin === "cards";
   return <div class={c}>
     {!plain && <div class="title"><span>{rich && <i class="fl-live" />}{title}</span>{stale && <span class="badge">дані застарілі</span>}</div>}
-    {skin === "strip" ? <Strip f={f} /> : skin === "bars" ? <Bars f={f} /> : skin === "gauge" ? <Gauge f={f} /> : skin === "sankey" ? <Sankey f={f} /> : <Orbit f={f} />}
+    {skin === "strip" ? <Strip f={f} /> : skin === "bars" ? <Bars f={f} /> : skin === "gauge" ? <Gauge f={f} /> : skin === "sankey" ? <Sankey f={f} /> : skin === "cards" ? <Cards f={f} /> : <Orbit f={f} />}
     {rich && <Summary f={f} runtime={runtime ?? null} />}
   </div>;
 }
@@ -119,6 +120,59 @@ function Node({ n, kind, soc, label, value, dim }: { n: { x: number; y: number }
       : <Icon kind={kind} soc={soc} cls="ico" x={-15} y={-15} size={30} />}
     <text class="fn-v" y={R + 28} text-anchor="middle">{value}</text>
     <text class="fn-l" y={R + 45} text-anchor="middle">{label}</text>
+  </g>;
+}
+
+/* ---------- cards: картки джерел угорі, споживачів унизу, інвертор посередині ---------- */
+const CD = { w: 124, h: 64, top: 6, bot: 230, hub: { x: 200, y: 150 }, xs: [4, 138, 272] };
+/** З’єднувач: вертикальна S-крива від центру картки до хаба (або навпаки). */
+const link = (x: number, y0: number, y1: number) => `M${x},${y0} C${x},${(y0 + y1) / 2} ${CD.hub.x},${(y0 + y1) / 2} ${CD.hub.x},${y1}`;
+
+function Cards({ f }: { f: Flows }) {
+  const imp = f.outage ? 0 : Math.max(0, f.grid ?? 0);          // з мережі
+  const exp = f.outage ? 0 : Math.max(0, -(f.grid ?? 0));       // у мережу
+  const dis = Math.max(0, f.bat ?? 0);                          // розряд батареї
+  const chg = Math.max(0, -(f.bat ?? 0));                       // заряд батареї
+  const soc = f.soc === null ? "" : `${f.soc}%`;
+  const low = f.soc !== null && f.soc <= 30;
+
+  const src = [
+    { kind: "pv", label: "Сонце", w: f.pv ?? 0, note: "" },
+    { kind: f.outage ? "grid off" : "grid", label: f.outage ? "Мережі немає" : "З мережі", w: imp, note: "" },
+    { kind: `bat${low ? " low" : ""}`, label: "Батарея", w: dis, note: soc },
+  ];
+  const sink = [
+    { kind: "load", label: "Споживання", w: f.load ?? 0, note: "" },
+    { kind: `bat${low ? " low" : ""}`, label: "Заряд", w: chg, note: soc },
+    { kind: f.outage ? "grid off" : "grid", label: "У мережу", w: exp, note: "" },
+  ];
+
+  return <svg class="cards" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+    {src.map((s, i) => <Line key={`s${i}`} d={link(CD.xs[i]! + CD.w / 2, CD.top + CD.h, CD.hub.y - 26)}
+      dir={s.w >= DEAD ? 1 : 0} w={s.w} kind={s.kind.split(" ")[0]!} />)}
+    {sink.map((s, i) => <Line key={`k${i}`} d={link(CD.xs[i]! + CD.w / 2, CD.bot, CD.hub.y + 26)}
+      dir={s.w >= DEAD ? -1 : 0} w={s.w} kind={s.kind.split(" ")[0]!} />)}
+    <g class="fh" transform={`translate(${CD.hub.x},${CD.hub.y})`}>
+      <rect class="fh-glow" x="-32" y="-32" width="64" height="64" rx="18" />
+      <rect class="fh-box" x="-26" y="-26" width="52" height="52" rx="14" />
+      <InverterIcon x={-13} y={-13} width={26} height={26} class="ico" />
+    </g>
+    {src.map((s, i) => <Tile key={`ts${i}`} x={CD.xs[i]!} y={CD.top} {...s} soc={f.soc} />)}
+    {sink.map((s, i) => <Tile key={`tk${i}`} x={CD.xs[i]!} y={CD.bot} {...s} soc={f.soc} />)}
+  </svg>;
+}
+
+/** Картка: підпис, велика цифра, крапка стану; неактивна (нуль) — приглушена. */
+function Tile({ x, y, kind, label, w, note, soc }: { x: number; y: number; kind: string; label: string; w: number; note: string; soc: number | null }) {
+  const idle = w < DEAD;
+  const off = kind.includes("off");
+  return <g class={`fc fn-${kind}${idle ? " dim" : ""}`}>
+    <rect class="fc-box" x={x} y={y} width={CD.w} height={CD.h} rx="12" />
+    <rect class="fc-edge" x={x} y={y + 12} width="3" height={CD.h - 24} rx="1.5" />
+    <Icon kind={kind} soc={soc} cls="ico fc-ico" x={x + 12} y={y + 11} size={15} />
+    <text class={`fc-l${label.length > 9 ? " sm" : ""}`} x={x + 33} y={y + 23}>{label}</text>
+    <text class="fc-v" x={x + 12} y={y + 50}>{off ? "—" : fmtW(w)}</text>
+    {note && <text class="fc-n" x={x + CD.w - 11} y={y + 50} text-anchor="end">{note}</text>}
   </g>;
 }
 
