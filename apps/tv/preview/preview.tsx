@@ -1,7 +1,7 @@
 /**
  * Превʼю віджетів на мок-даних (dev-only):
  *   потік:  /preview/?skin=orbit&scene=day&theme=dark
- *   стрінги: /preview/?type=mppt&scene=day&names=Дах%20південь,Дах%20захід
+ *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
  */
 import { render } from "preact";
@@ -15,6 +15,8 @@ const scenes: Record<string, Record<string, number | string>> = {
             pv1_w: 1850, pv1_v: 412, pv1_a: 4.5, pv2_w: 1520, pv2_v: 398, pv2_a: 3.8, pv3_w: 830, pv3_v: 305, pv3_a: 2.7, pv4_w: 0, pv4_v: 0, pv4_a: 0 },
   evening:{ state: "standby", pv_w: 0, load_w: 2430, bat_w: 235, grid_w: 2195, bat_soc: 48, grid_v_l1: 229, grid_v_l2: 230, grid_v_l3: 231,
             pv1_w: 0, pv1_v: 0, pv1_a: 0, pv2_w: 0, pv2_v: 0, pv2_a: 0 },
+  hv:     { state: "normal", pv_w: 46200, load_w: 3120, bat_w: -24800, grid_w: -18200, bat_soc: 64, grid_v_l1: 231, grid_v_l2: 232, grid_v_l3: 230,
+            pv1_w: 16600, pv1_v: 720, pv1_a: 20.0, pv2_w: 16700, pv2_v: 721, pv2_a: 20.0, pv3_w: 12900, pv3_v: 629, pv3_a: 19.5, pv4_w: 0, pv4_v: 0, pv4_a: 0 },
   outage: { state: "normal", pv_w: 120, load_w: 1760, bat_w: 1640, grid_w: 0, bat_soc: 27, grid_v_l1: 0, grid_v_l2: 0, grid_v_l3: 0,
             pv1_w: 90, pv1_v: 260, pv1_a: 0.4, pv2_w: 30, pv2_v: 180, pv2_a: 0.2 },
 };

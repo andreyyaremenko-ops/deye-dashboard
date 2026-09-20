@@ -244,23 +244,20 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fb-v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fb.idle { opacity: .5; } .fb-grid.off { opacity: 1; } .fb-grid.off .fb-l, .fb-grid.off .fb-v { color: #ff8a8e; }
 
-/* Стрінги (MPPT): рядок на кожен вхід панелей — назва, смуга, вати, вольти·ампери */
+/* Стрінги (MPPT): на кожен вхід — підпис і потужність зліва, смуга й вольти·ампери справа.
+   Числа в різних рядках-блоках, тому довгі значення (16.6 kW, 720 V · 20.0 A) не налазять. */
 .w-mppt .title { margin-bottom: .2vw; }
 .mppt-total { text-transform: none; letter-spacing: 0; font-weight: 700; color: #ffd36b; opacity: 1; font-variant-numeric: tabular-nums; }
-/* фіксовані ширини колонок, а не grid: старі ТБ-браузери (Chromium 38+) не вміють subgrid/display:contents,
-   а окремий grid на кожен рядок не вирівняв би смуги між рядками */
 .mppt-rows { display: flex; flex-direction: column; flex: 1; justify-content: space-evenly; gap: .5vw; margin-top: .4vw; }
-.mppt-row { display: flex; align-items: center; gap: .6vw; }
-.mppt-bar { flex: 1; min-width: 5vw; }
-.mppt-name { flex: none; width: 7.4vw; overflow: hidden; text-overflow: ellipsis; }
-.mppt-w { flex: none; width: 5.2vw; text-align: right; }
-.mppt-va { flex: none; width: 6vw; text-align: right; }
+.mppt-row { display: flex; align-items: center; gap: 1vw; }
 .mppt-row.off { opacity: .45; }
-.mppt-name { font-size: 1.15vw; opacity: .8; white-space: nowrap; }
+.mppt-head { flex: none; width: 8.4vw; display: flex; flex-direction: column; }
+.mppt-name { font-size: 1.05vw; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mppt-w { font-size: 1.6vw; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; line-height: 1.15; }
+.mppt-right { flex: 1; min-width: 6vw; display: flex; flex-direction: column; gap: .3vw; }
 .mppt-bar { height: .9vw; border-radius: .45vw; background: rgba(255,255,255,.14); overflow: hidden; }
 .mppt-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #f2b21b, #ffd36b); transition: width 1s; }
-.mppt-w { font-size: 1.5vw; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.mppt-va { font-size: 1vw; opacity: .6; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mppt-va { font-size: 1vw; opacity: .6; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 .w-mppt.mppt-plain { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .theme-light .mppt-bar { background: rgba(0,0,0,.12); }
 .theme-light .mppt-total { color: #a8620a; }

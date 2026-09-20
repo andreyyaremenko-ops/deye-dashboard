@@ -24,7 +24,7 @@ export const WIDGET_KINDS: WidgetKind[] = [
   { t: "grid", label: "Мережа", needsDevice: true, w: 22, h: 18 },
   { t: "load", label: "Споживання", needsDevice: true, w: 22, h: 18 },
   { t: "flow", label: "Потік енергії", needsDevice: true, w: 30, h: 42, props: { skin: "orbit", card: true } },
-  { t: "mppt", label: "Стрінги (MPPT)", needsDevice: true, w: 34, h: 26, props: { showVA: true } },
+  { t: "mppt", label: "Стрінги (MPPT)", needsDevice: true, w: 34, h: 30, props: { showVA: true } },
   { t: "energy_today", label: "Підсумок дня", needsDevice: true, w: 22, h: 26 },
   { t: "runtime", label: "Автономія", needsDevice: true, w: 22, h: 18 },
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },

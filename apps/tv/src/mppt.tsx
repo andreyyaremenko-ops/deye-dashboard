@@ -28,11 +28,16 @@ export function MpptWidget({ cls, state: m, props, stale, night }: Props) {
         ? <div class="big">ніч</div>
         : <div class="mppt-rows">{used.map((r) => {
           const w = r.w ?? 0;
+          const va = `${r.v !== null ? `${Math.round(r.v)} V` : ""}${r.v !== null && r.a !== null ? " · " : ""}${r.a !== null ? `${r.a.toFixed(1)} A` : ""}`;
           return <div key={r.i} class={`mppt-row${w <= 0 ? " off" : ""}`}>
-            <span class="mppt-name">{names[r.i - 1]?.trim() || `MPPT ${r.i}`}</span>
-            <span class="mppt-bar"><span class="mppt-fill" style={{ width: `${Math.round((w / scale) * 100)}%` }} /></span>
-            <b class="mppt-w">{fmtW(w)}</b>
-            {showVA && <span class="mppt-va">{r.v !== null ? `${Math.round(r.v)} V` : ""}{r.v !== null && r.a !== null ? " · " : ""}{r.a !== null ? `${r.a.toFixed(1)} A` : ""}</span>}
+            <span class="mppt-head">
+              <span class="mppt-name">{names[r.i - 1]?.trim() || `MPPT ${r.i}`}</span>
+              <b class="mppt-w">{fmtW(w)}</b>
+            </span>
+            <span class="mppt-right">
+              <span class="mppt-bar"><span class="mppt-fill" style={{ width: `${Math.round((w / scale) * 100)}%` }} /></span>
+              {showVA && va && <span class="mppt-va">{va}</span>}
+            </span>
           </div>;
         })}</div>}
   </div>;
