@@ -298,6 +298,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@deye/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       postgres:
         specifier: ^3.4.0
         version: 3.4.9

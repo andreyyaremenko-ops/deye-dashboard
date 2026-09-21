@@ -9,6 +9,7 @@ COPY apps/api/package.json apps/api/
 COPY apps/tv/package.json apps/tv/
 COPY apps/web/package.json apps/web/
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @deye/worker
+COPY packages/shared ./packages/shared
 COPY apps/worker ./apps/worker
 WORKDIR /repo/apps/worker
 CMD ["node", "--experimental-strip-types", "src/worker.ts"]

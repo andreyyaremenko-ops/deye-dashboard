@@ -131,5 +131,6 @@ export * from "./brand.ts";
 export * from "./feeds.ts";
 export * from "./menu.ts";
 export * from "./menu-data.ts";
+export * from "./menu-ai.ts";
 export * from "./flow.ts";
 export * from "./scenes.ts";

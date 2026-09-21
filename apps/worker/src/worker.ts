@@ -1,11 +1,13 @@
 /**
- * Черга транскодування: бере transcode_jobs (queued) по одному, FOR UPDATE SKIP LOCKED,
- * транскодує backgrounds.source_file -> files/preview (відео -> mp4, фото -> jpg), ставить status ready|failed.
+ * Дві черги в одному процесі: transcode_jobs (ffmpeg: фони) і ai_jobs (розпізнавання
+ * меню з фото, генерація фото страв). Обидві — FOR UPDATE SKIP LOCKED, опитування раз на POLL_MS.
  */
 import postgres from "postgres";
 import { join } from "node:path";
 import { unlink } from "node:fs/promises";
 import { transcode, transcodeImage } from "./transcode.ts";
+import { runOneAiJob } from "./ai-jobs.ts";
+import { providersFromEnv } from "./ai/index.ts";
 
 const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://deye:deye@localhost:5432/deye";
 const MEDIA_ROOT = process.env.MEDIA_ROOT ?? "/media";
@@ -50,12 +52,17 @@ export async function runOne(): Promise<boolean> {
 }
 
 if (process.argv[1]?.endsWith("worker.ts")) {
-  log({ msg: "worker started", media: MEDIA_ROOT });
+  const providers = providersFromEnv();
+  log({ msg: "worker started", media: MEDIA_ROOT, ai: providers.vision ? "xai" : "off" });
   // зависла джоба після рестарту -> назад у чергу
   await sql`update transcode_jobs set status = 'queued' where status = 'running'`;
+  await sql`update ai_jobs set status = 'queued' where status = 'running' and attempts < 3`;
+  await sql`update ai_jobs set status = 'failed', error = 'перервано рестартом', finished_at = now() where status = 'running'`;
+  const aiDeps = { sql, providers, mediaRoot: MEDIA_ROOT, log };
   for (;;) {
     let did = false;
     try { did = await runOne(); } catch (e) { log({ error: String(e) }); }
+    try { did = (await runOneAiJob(aiDeps)) || did; } catch (e) { log({ error: String(e) }); }
     if (!did) await new Promise((r) => setTimeout(r, POLL_MS));
   }
 }

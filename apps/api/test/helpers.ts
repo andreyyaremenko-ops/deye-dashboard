@@ -27,16 +27,17 @@ export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts"
   const mails: Mail[] = [];
   const auth = createAuth(db, async (m) => { mails.push(m); });
   const store = new MemoryStateStore();
+  const mediaRoot = mkdtempSync(join(tmpdir(), "deye-media-"));
   const app = await buildApp({
     db, auth, store, publicUrl: "http://localhost:5173",
     mqttInternalUser: INTERNAL.user, mqttInternalPass: INTERNAL.pass,
-    mediaRoot: mkdtempSync(join(tmpdir(), "deye-media-")),
+    mediaRoot,
     mono: opts.mono ?? null,
     feeds: opts.feeds ? opts.feeds(store, db) : null,
     alertsWebhookSecret: opts.alertsWebhookSecret ?? null,
   });
   await app.ready();
-  return { app, db, store, mails, pg, close: async () => { await app.close(); await pg.close(); } };
+  return { app, db, store, mails, pg, mediaRoot, close: async () => { await app.close(); await pg.close(); } };
 }
 
 export type TestApp = Awaited<ReturnType<typeof makeTestApp>>;

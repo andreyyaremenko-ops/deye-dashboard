@@ -5,7 +5,14 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { menuItemInputSchema, menuItemPatchSchema, menuSectionInputSchema } from "@deye/shared";
+import { createWriteStream } from "node:fs";
+import { mkdir, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { pipeline } from "node:stream/promises";
 import { requireUser } from "../auth/plugin.ts";
+import { requireRole } from "../orgs/service.ts";
+import { badRequest } from "../lib/errors.ts";
 import * as mn from "../menus/service.ts";
 import { screensUsingMenu } from "../screens/service.ts";
 import { member, orgParams, uuid, type Deps } from "./common.ts";
@@ -53,6 +60,43 @@ export async function menuRoutes(app: FastifyInstance, deps: Deps) {
     const m = await mn.publishMenu(db, orgId, u.id, menuId);
     await notify(orgId, menuId);
     return m;
+  });
+
+  /**
+   * Фото паперового меню (1–5 сторінок) -> чернетка. Відповідь одразу, розпізнає воркер.
+   * Rate-limit: кожен виклик коштує грошей у vision-API.
+   */
+  app.post("/api/orgs/:orgId/menus/import", { config: { rateLimit: { max: 10, timeWindow: "1 hour" } } }, async (req, reply) => {
+    const u = requireUser(req); const { orgId } = orgParams.parse(req.params);
+    await requireRole(db, orgId, u.id, "admin");        // перевіряємо роль до запису файлів
+    const dir = `menu-import/${randomUUID()}`;
+    await mkdir(join(deps.mediaRoot, dir), { recursive: true });
+    const files: string[] = [];
+    let name = "";
+    try {
+      for await (const part of req.parts({ limits: { fileSize: mn.MAX_IMPORT_BYTES, files: mn.MAX_IMPORT_FILES } })) {
+        if (part.type === "field") {
+          if (part.fieldname === "name") name = String(part.value).slice(0, 100);
+          continue;
+        }
+        const ext = mn.IMPORT_MIME[part.mimetype];
+        if (!ext) throw badRequest(`Unsupported file type ${part.mimetype}: expected jpeg or png`, "bad_type");
+        const rel = `${dir}/${files.length + 1}.${ext}`;
+        await pipeline(part.file, createWriteStream(join(deps.mediaRoot, rel)));
+        if (part.file.truncated) throw badRequest(`File too large (max ${Math.round(mn.MAX_IMPORT_BYTES / 1024 / 1024)} MB)`, "too_large");
+        files.push(rel);
+      }
+      if (!files.length) throw badRequest("No file", "no_file");
+      const res = await mn.startImport(db, orgId, u.id, name.trim() || "Меню з фото", files);
+      return reply.code(202).send(res);
+    } catch (e) {
+      await rm(join(deps.mediaRoot, dir), { recursive: true, force: true }).catch(() => {});
+      throw e;
+    }
+  });
+  app.get("/api/orgs/:orgId/menus/:menuId/import", async (req) => {
+    const { orgId, menuId } = await member(deps, req, menuParams, "staff");
+    return mn.importStatus(db, orgId, menuId);
   });
 
   // --- розділи ---

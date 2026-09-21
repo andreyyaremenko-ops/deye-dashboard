@@ -6,7 +6,7 @@
 import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { planLimitsOf, type MenuItemInput, type MenuPayload } from "@deye/shared";
-import { dishImages, menuItems, menuSections, menuStyles, menus } from "../db/schema.ts";
+import { aiJobs, dishImages, menuItems, menuSections, menuStyles, menus } from "../db/schema.ts";
 import { badRequest, conflict, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
@@ -119,6 +119,34 @@ export async function publishMenu(db: Db, orgId: string, actorId: string, menuId
 }
 
 const touch = (db: Db, menuId: string) => db.update(menus).set({ updatedAt: new Date() }).where(eq(menus.id, menuId));
+
+// --- розпізнавання фото меню ---
+
+export const MAX_IMPORT_FILES = 5;
+export const MAX_IMPORT_BYTES = 20 * 1024 * 1024;     // ліміт vision-API на одне фото
+export const IMPORT_MIME: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png" };
+
+/**
+ * Створює чернетку меню (status importing) і ставить задачу воркеру.
+ * Фото вже збережені у /media викликаючою стороною: сервіс не працює з потоками.
+ */
+export async function startImport(db: Db, orgId: string, actorId: string, name: string, files: string[]) {
+  if (!files.length) throw badRequest("No files", "no_file");
+  const menu = await createMenu(db, orgId, actorId, name, "importing");
+  const [job] = await db.insert(aiJobs).values({ orgId, kind: "menu_import", refId: menu.id, payload: { files } }).returning();
+  return { menuId: menu.id, jobId: job!.id, status: menu.status };
+}
+
+/** Стан останнього розпізнавання цього меню — для екрана перевірки. */
+export async function importStatus(db: Db, orgId: string, menuId: string) {
+  const menu = await ownMenu(db, orgId, menuId);
+  const [job] = await db.select({
+    id: aiJobs.id, status: aiJobs.status, error: aiJobs.error, attempts: aiJobs.attempts,
+    createdAt: aiJobs.createdAt, finishedAt: aiJobs.finishedAt,
+  }).from(aiJobs).where(and(eq(aiJobs.orgId, orgId), eq(aiJobs.kind, "menu_import"), eq(aiJobs.refId, menuId)))
+    .orderBy(desc(aiJobs.createdAt)).limit(1);
+  return { menu: { id: menu.id, name: menu.name, status: menu.status }, job: job ?? null };
+}
 
 // --- розділи ---
 

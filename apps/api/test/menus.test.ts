@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, type TestApp } from "./helpers.ts";
-import { organizations, plans } from "../src/db/schema.ts";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { aiJobs, organizations, plans } from "../src/db/schema.ts";
 
 // тариф із одним меню: перевіряємо саму перевірку ліміту
 const ONE = { id: "one-menu", name: "One", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 1, ai_dishes: 5, ai_generations_month: 10 } };
@@ -171,5 +173,65 @@ describe("меню на екрані", () => {
     await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, { config: cfg(draftId) });
     const pub = await t.app.inject({ method: "GET", url: `/api/public/screens/${token}` });
     expect(pub.json().menus).toEqual({});
+  });
+});
+
+/** Кілька фото + текстове поле в одному multipart-тілі. */
+function multipartFiles(name: string, files: { filename: string; type: string; data: string }[]) {
+  const b = "----deyeMenuBoundary";
+  const parts = [`--${b}\r\nContent-Disposition: form-data; name="name"\r\n\r\n${name}\r\n`];
+  for (const f of files) {
+    parts.push(`--${b}\r\nContent-Disposition: form-data; name="files"; filename="${f.filename}"\r\nContent-Type: ${f.type}\r\n\r\n${f.data}\r\n`);
+  }
+  return { headers: { "content-type": `multipart/form-data; boundary=${b}` }, payload: parts.join("") + `--${b}--\r\n` };
+}
+
+describe("розпізнавання фото меню", () => {
+  let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>, ownerCookie: string, staffCookie: string;
+  let orgId: string;
+
+  beforeAll(async () => {
+    const o = await signUp(t.app, "import@menu.test"); owner = api(t.app, o.cookie); ownerCookie = o.cookie;
+    const s = await signUp(t.app, "import-staff@menu.test"); staff = api(t.app, s.cookie); staffCookie = s.cookie;
+    orgId = (await owner.post("/api/orgs", { name: "Піцерія" })).json().id;
+    await t.db.update(organizations).set({ planId: "max" }).where(eq(organizations.id, orgId));
+    const inv = (await owner.post(`/api/orgs/${orgId}/invites`, {})).json();
+    await staff.post(`/api/invites/${inv.token}/accept`);
+  });
+
+  const post = (cookie: string, mp: ReturnType<typeof multipartFiles>) =>
+    t.app.inject({ method: "POST", url: `/api/orgs/${orgId}/menus/import`, headers: { cookie, ...mp.headers }, payload: mp.payload });
+
+  it("фото стають чернеткою в стані importing і задачею в черзі", async () => {
+    const mp = multipartFiles("Літнє меню", [
+      { filename: "p1.jpg", type: "image/jpeg", data: "fake-jpeg-1" },
+      { filename: "p2.png", type: "image/png", data: "fake-png-2" },
+    ]);
+    const res = await post(ownerCookie, mp);
+    expect(res.statusCode).toBe(202);
+    const { menuId, jobId } = res.json();
+    expect(jobId).toBeTruthy();
+
+    const st = await owner.get(`/api/orgs/${orgId}/menus/${menuId}/import`);
+    expect(st.statusCode).toBe(200);
+    expect(st.json().menu).toMatchObject({ name: "Літнє меню", status: "importing" });
+    expect(st.json().job).toMatchObject({ id: jobId, status: "queued", attempts: 0 });
+
+    const [job] = await t.db.select().from(aiJobs).where(eq(aiJobs.id, jobId));
+    expect(job!.kind).toBe("menu_import");
+    expect(job!.refId).toBe(menuId);
+    const files = job!.payload.files as string[];
+    expect(files).toHaveLength(2);
+    for (const f of files) expect(existsSync(join(t.mediaRoot, f))).toBe(true);
+  });
+
+  it("не-фото відхиляється, staff не імпортує", async () => {
+    const pdf = multipartFiles("PDF", [{ filename: "menu.pdf", type: "application/pdf", data: "%PDF" }]);
+    const bad = await post(ownerCookie, pdf);
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().error).toBe("bad_type");
+
+    const ok = multipartFiles("Спроба", [{ filename: "p.jpg", type: "image/jpeg", data: "x" }]);
+    expect((await post(staffCookie, ok)).statusCode).toBe(403);
   });
 });
