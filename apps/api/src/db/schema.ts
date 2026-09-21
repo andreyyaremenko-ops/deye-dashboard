@@ -202,7 +202,7 @@ export const loggerFrames = pgTable("logger_frames", {
 
 export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
 export const dishImageStatus = pgEnum("dish_image_status", ["queued", "ready", "failed"]);
-export const aiJobKind = pgEnum("ai_job_kind", ["menu_import", "dish_image"]);
+export const aiJobKind = pgEnum("ai_job_kind", ["menu_import", "dish_image", "dish_upload"]);   // dish_upload — власне фото: те саме оброблення, без AI
 
 /** Стиль закладу: один шаблон промпту на всі страви, щоб фото виглядали як одна серія. */
 export const menuStyles = pgTable("menu_styles", {

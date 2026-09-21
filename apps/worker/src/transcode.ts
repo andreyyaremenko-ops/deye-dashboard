@@ -62,3 +62,23 @@ export async function transcodeImage(input: string, outBase: string, mediaRoot: 
   for (const s of ["-1080.jpg", "-720.jpg", ".jpg"]) bytes[s] = (await stat(outBase + s)).size;
   return { files: { "1080": rel(`${outBase}-1080.jpg`), "720": rel(`${outBase}-720.jpg`) }, preview: rel(`${outBase}.jpg`), info: { ...info, duration: 0 }, bytes };
 }
+
+export interface DishResult { file: string; thumb: string; width: number; height: number; bytes: number }
+
+/**
+ * Фото страви -> квадрат 1:1 (обрізка по центру) 900 px + мініатюра 300 px.
+ * Однаково для AI-фото і для завантаженого власного: меню має виглядати однорідно.
+ */
+export async function dishPhoto(input: string, outBase: string, mediaRoot: string, side = 900): Promise<DishResult> {
+  const info = await probe(input);
+  await mkdir(dirname(outBase), { recursive: true });
+  const square = `crop='min(iw,ih)':'min(iw,ih)',scale=${side}:${side}`;
+  const common = ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-frames:v", "1", "-pix_fmt", "yuvj420p"];
+  await run("ffmpeg", [...common, "-vf", square, "-q:v", "3", `${outBase}.jpg`]);
+  await run("ffmpeg", [...common, "-vf", `crop='min(iw,ih)':'min(iw,ih)',scale=300:300`, "-q:v", "4", `${outBase}-t.jpg`]);
+  const rel = (p: string) => (p.startsWith(mediaRoot) ? p.slice(mediaRoot.length).replace(/^\/+/, "") : p);
+  return {
+    file: rel(`${outBase}.jpg`), thumb: rel(`${outBase}-t.jpg`),
+    width: side, height: side, bytes: (await stat(`${outBase}.jpg`)).size,
+  };
+}

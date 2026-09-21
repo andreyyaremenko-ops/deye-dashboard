@@ -3,24 +3,19 @@
  * наявність (in_stock) — staff (офіціант позначає «закінчилось»).
  * Ціна — ціле число копійок; розбір рядків цін у @deye/shared/menu-data.
  */
-import { and, asc, count, desc, eq, inArray, max, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gte, inArray, isNull, max, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { planLimitsOf, type MenuItemInput, type MenuPayload } from "@deye/shared";
-import { aiJobs, dishImages, menuItems, menuSections, menuStyles, menus } from "../db/schema.ts";
-import { badRequest, conflict, notFound } from "../lib/errors.ts";
+import { DEFAULT_MENU_STYLE, planLimitsOf, type MenuItemInput, type MenuPayload } from "@deye/shared";
+import { unlink, rm } from "node:fs/promises";
+import { join } from "node:path";
+import { aiJobs, aiUsage, dishImages, menuItems, menuSections, menuStyles, menus } from "../db/schema.ts";
+import { HttpError, badRequest, conflict, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
-/** Стиль за замовчуванням, поки заклад не зберіг свій. */
-export const DEFAULT_STYLE = {
-  id: null as string | null,
-  name: "Стандартний",
-  prompt: "Апетитна фотографія страви для меню кафе, вигляд згори під кутом 45°, "
-    + "мʼяке природне світло, неглибока різкість, акуратна подача на простому посуді",
-  bgMode: "solid",
-  bgColor: "#f2ece3",
-};
+/** Стиль за замовчуванням, поки заклад не зберіг свій (спільний з воркером). */
+export const DEFAULT_STYLE = { id: null as string | null, ...DEFAULT_MENU_STYLE };
 
 export async function getStyle(db: Db, orgId: string) {
   const [s] = await db.select().from(menuStyles).where(and(eq(menuStyles.orgId, orgId), eq(menuStyles.isDefault, true))).limit(1);
@@ -101,9 +96,10 @@ export async function updateMenu(db: Db, orgId: string, actorId: string, menuId:
   return m!;
 }
 
-export async function deleteMenu(db: Db, orgId: string, actorId: string, menuId: string) {
+export async function deleteMenu(db: Db, orgId: string, actorId: string, menuId: string, mediaRoot: string) {
   await requireRole(db, orgId, actorId, "admin");
   await ownMenu(db, orgId, menuId);
+  await purgeMenuFiles(db, orgId, menuId, mediaRoot);
   await db.delete(menus).where(eq(menus.id, menuId));
 }
 
@@ -269,4 +265,145 @@ export async function menuPayloads(db: Db, orgId: string, ids: string[]): Promis
     };
   }
   return out;
+}
+
+// --- фото страв ---
+
+export const MAX_DISH_BYTES = 15 * 1024 * 1024;
+export const DISH_MIME: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+export const VARIANTS = { min: 1, max: 4, default: 3 };
+
+const monthStart = sql`date_trunc('month', now())`;
+
+/** Витрати AI за поточний місяць і залишок за тарифом — і для перевірок, і для кабінету. */
+export async function aiUsageSummary(db: Db, orgId: string) {
+  const { plan } = await getOrgWithPlan(db, orgId);
+  const limits = planLimitsOf(plan.limits);
+  const [u] = await db.select({
+    images: sql<number>`coalesce(sum(${aiUsage.images}), 0)`,
+    costMicros: sql<number>`coalesce(sum(${aiUsage.costMicros}), 0)`,
+    calls: count(),
+  }).from(aiUsage).where(and(eq(aiUsage.orgId, orgId), gte(aiUsage.createdAt, monthStart)));
+  const [d] = await db.select({ n: count() }).from(menuItems)
+    .innerJoin(menus, eq(menus.id, menuItems.menuId))
+    .where(and(eq(menus.orgId, orgId), eq(menuItems.imageIsAi, true)));
+  const imagesMonth = Number(u?.images ?? 0);
+  const dishesWithAi = Number(d?.n ?? 0);
+  return {
+    imagesMonth, dishesWithAi,
+    calls: Number(u?.calls ?? 0),
+    costMicros: Number(u?.costMicros ?? 0),
+    limits: { aiDishes: limits.ai_dishes, aiGenerationsMonth: limits.ai_generations_month },
+    remaining: {
+      images: Math.max(0, limits.ai_generations_month - imagesMonth),
+      dishes: Math.max(0, limits.ai_dishes - dishesWithAi),
+    },
+  };
+}
+
+/** Остання задача на фото цієї страви — щоб кабінет показав «генерується». */
+async function activeImageJob(db: Db, itemId: string) {
+  const [j] = await db.select({ id: aiJobs.id, status: aiJobs.status, error: aiJobs.error, kind: aiJobs.kind, createdAt: aiJobs.createdAt })
+    .from(aiJobs).where(and(eq(aiJobs.refId, itemId), inArray(aiJobs.kind, ["dish_image", "dish_upload"])))
+    .orderBy(desc(aiJobs.createdAt)).limit(1);
+  return j ?? null;
+}
+
+/** Варіанти фото страви + стан останньої задачі. */
+export async function listDishImages(db: Db, orgId: string, menuId: string, itemId: string) {
+  const item = await ownItem(db, orgId, menuId, itemId);
+  const images = await db.select().from(dishImages).where(eq(dishImages.itemId, itemId)).orderBy(asc(dishImages.createdAt));
+  return { itemId, chosen: item.imageId, imageIsAi: item.imageIsAi, images, job: await activeImageJob(db, itemId) };
+}
+
+/** Ставить задачу на N варіантів. Перевіряє обидва ліміти тарифу до постановки. */
+export async function requestDishImages(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, n = VARIANTS.default) {
+  await requireRole(db, orgId, actorId, "admin");
+  const item = await ownItem(db, orgId, menuId, itemId);
+  const count = Math.min(VARIANTS.max, Math.max(VARIANTS.min, n));
+  const s = await aiUsageSummary(db, orgId);
+  if (s.limits.aiGenerationsMonth <= 0) throw conflict("AI images are not included in the plan", "plan_limit");
+  if (s.imagesMonth + count > s.limits.aiGenerationsMonth) {
+    throw conflict(`Plan allows ${s.limits.aiGenerationsMonth} AI image(s) per month`, "plan_limit");
+  }
+  // нова страва з AI-фото рахується проти ліміту страв; перегенерація вже врахованої — ні
+  if (!item.imageIsAi && s.dishesWithAi >= s.limits.aiDishes) {
+    throw conflict(`Plan allows AI photos for ${s.limits.aiDishes} dish(es)`, "plan_limit");
+  }
+  const running = await activeImageJob(db, itemId);
+  if (running && (running.status === "queued" || running.status === "running")) throw conflict("Generation already in progress", "in_progress");
+  const [job] = await db.insert(aiJobs).values({ orgId, kind: "dish_image", refId: itemId, payload: { n: count } }).returning();
+  return { jobId: job!.id, itemId, variants: count, status: job!.status };
+}
+
+/** Після імпорту: згенерувати фото всім стравам без фото, скільки дозволяє тариф. */
+export async function requestMenuImages(db: Db, orgId: string, actorId: string, menuId: string, n = VARIANTS.default) {
+  await requireRole(db, orgId, actorId, "admin");
+  await ownMenu(db, orgId, menuId);
+  const items = await db.select({ id: menuItems.id }).from(menuItems)
+    .where(and(eq(menuItems.menuId, menuId), isNull(menuItems.imageId))).orderBy(asc(menuItems.sort));
+  const queued: string[] = [];
+  let stopped: string | null = null;
+  for (const it of items) {
+    try { queued.push((await requestDishImages(db, orgId, actorId, menuId, it.id, n)).jobId); }
+    catch (e) {
+      if (e instanceof HttpError && e.code === "plan_limit") { stopped = e.message; break; }   // ліміт вичерпано — решту лишаємо власнику
+      if (e instanceof HttpError && e.code === "in_progress") continue;
+      throw e;
+    }
+  }
+  return { queued: queued.length, items: items.length, stopped };
+}
+
+/** Вибір варіанта: image_is_ai береться з самого файлу, а не з запиту. */
+export async function chooseDishImage(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, imageId: string) {
+  await requireRole(db, orgId, actorId, "admin");
+  await ownItem(db, orgId, menuId, itemId);
+  const [img] = await db.select().from(dishImages).where(and(eq(dishImages.id, imageId), eq(dishImages.itemId, itemId)));
+  if (!img) throw notFound("Image not found");
+  if (img.status !== "ready") throw conflict("Image is not ready", "not_ready");
+  const [i] = await db.update(menuItems).set({ imageId: img.id, imageIsAi: img.isAi, updatedAt: new Date() })
+    .where(eq(menuItems.id, itemId)).returning();
+  await touch(db, menuId);
+  return i!;
+}
+
+export async function deleteDishImage(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, imageId: string, mediaRoot: string) {
+  await requireRole(db, orgId, actorId, "admin");
+  const item = await ownItem(db, orgId, menuId, itemId);
+  const [img] = await db.select().from(dishImages).where(and(eq(dishImages.id, imageId), eq(dishImages.itemId, itemId)));
+  if (!img) throw notFound("Image not found");
+  await db.delete(dishImages).where(eq(dishImages.id, imageId));
+  if (item.imageId === imageId) {
+    await db.update(menuItems).set({ imageId: null, imageIsAi: false, updatedAt: new Date() }).where(eq(menuItems.id, itemId));
+  }
+  await removeFiles(mediaRoot, [img.file, img.thumb]);
+  await touch(db, menuId);
+}
+
+/** Власне фото: файл уже збережено, воркер зведе його до того самого квадрата. */
+export async function startDishUpload(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, file: string) {
+  await requireRole(db, orgId, actorId, "admin");
+  await ownItem(db, orgId, menuId, itemId);
+  const [job] = await db.insert(aiJobs).values({ orgId, kind: "dish_upload", refId: itemId, payload: { file } }).returning();
+  return { jobId: job!.id, itemId, status: job!.status };
+}
+
+async function removeFiles(mediaRoot: string, files: (string | null)[]) {
+  for (const f of files) if (f) await unlink(join(mediaRoot, f)).catch(() => {});
+}
+
+/** Файли меню: фото страв і фото-оригінали імпорту. Викликається перед видаленням меню. */
+export async function purgeMenuFiles(db: Db, orgId: string, menuId: string, mediaRoot: string) {
+  const imgs = await db.select({ file: dishImages.file, thumb: dishImages.thumb }).from(dishImages)
+    .innerJoin(menuItems, eq(menuItems.id, dishImages.itemId))
+    .where(eq(menuItems.menuId, menuId));
+  await removeFiles(mediaRoot, imgs.flatMap((i) => [i.file, i.thumb]));
+  const jobs = await db.select({ payload: aiJobs.payload }).from(aiJobs)
+    .where(and(eq(aiJobs.orgId, orgId), eq(aiJobs.kind, "menu_import"), eq(aiJobs.refId, menuId)));
+  for (const j of jobs) {
+    const files = (j.payload?.files as string[] | undefined) ?? [];
+    const dir = files[0]?.split("/").slice(0, 2).join("/");
+    if (dir?.startsWith("menu-import/")) await rm(join(mediaRoot, dir), { recursive: true, force: true }).catch(() => {});
+  }
 }

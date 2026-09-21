@@ -51,7 +51,7 @@ export async function menuRoutes(app: FastifyInstance, deps: Deps) {
   });
   app.delete("/api/orgs/:orgId/menus/:menuId", async (req, reply) => {
     const u = requireUser(req); const { orgId, menuId } = menuParams.parse(req.params);
-    await mn.deleteMenu(db, orgId, u.id, menuId);
+    await mn.deleteMenu(db, orgId, u.id, menuId, deps.mediaRoot);
     await notify(orgId, menuId);
     return reply.code(204).send();
   });
@@ -145,6 +145,62 @@ export async function menuRoutes(app: FastifyInstance, deps: Deps) {
     await mn.deleteItem(db, orgId, u.id, menuId, itemId);
     await notify(orgId, menuId);
     return reply.code(204).send();
+  });
+
+  // --- фото страв ---
+  const imageParams = itemParams.extend({ imageId: uuid });
+  const variants = z.object({ n: z.number().int().min(mn.VARIANTS.min).max(mn.VARIANTS.max).optional() });
+
+  app.get("/api/orgs/:orgId/menus/:menuId/items/:itemId/images", async (req) => {
+    const { orgId, menuId, itemId } = await member(deps, req, itemParams, "staff");
+    return mn.listDishImages(db, orgId, menuId, itemId);
+  });
+  // генерація: 3–4 варіанти, відповідь одразу, малює воркер
+  app.post("/api/orgs/:orgId/menus/:menuId/items/:itemId/images", async (req, reply) => {
+    const u = requireUser(req); const { orgId, menuId, itemId } = itemParams.parse(req.params);
+    const { n } = variants.parse(req.body ?? {});
+    return reply.code(202).send(await mn.requestDishImages(db, orgId, u.id, menuId, itemId, n));
+  });
+  // після імпорту: всім стравам без фото, доки вистачає ліміту
+  app.post("/api/orgs/:orgId/menus/:menuId/images", async (req, reply) => {
+    const u = requireUser(req); const { orgId, menuId } = menuParams.parse(req.params);
+    const { n } = variants.parse(req.body ?? {});
+    return reply.code(202).send(await mn.requestMenuImages(db, orgId, u.id, menuId, n));
+  });
+  app.post("/api/orgs/:orgId/menus/:menuId/items/:itemId/images/:imageId/choose", async (req) => {
+    const u = requireUser(req); const { orgId, menuId, itemId, imageId } = imageParams.parse(req.params);
+    const i = await mn.chooseDishImage(db, orgId, u.id, menuId, itemId, imageId);
+    await notify(orgId, menuId);
+    return i;
+  });
+  app.delete("/api/orgs/:orgId/menus/:menuId/items/:itemId/images/:imageId", async (req, reply) => {
+    const u = requireUser(req); const { orgId, menuId, itemId, imageId } = imageParams.parse(req.params);
+    await mn.deleteDishImage(db, orgId, u.id, menuId, itemId, imageId, deps.mediaRoot);
+    await notify(orgId, menuId);
+    return reply.code(204).send();
+  });
+  // власне фото замість AI
+  app.post("/api/orgs/:orgId/menus/:menuId/items/:itemId/images/upload", async (req, reply) => {
+    const u = requireUser(req); const { orgId, menuId, itemId } = itemParams.parse(req.params);
+    await requireRole(db, orgId, u.id, "admin");
+    const file = await req.file({ limits: { fileSize: mn.MAX_DISH_BYTES, files: 1 } });
+    if (!file) throw badRequest("No file", "no_file");
+    const ext = mn.DISH_MIME[file.mimetype];
+    if (!ext) throw badRequest(`Unsupported file type ${file.mimetype}: expected jpeg, png or webp`, "bad_type");
+    const rel = `dish-src/${randomUUID()}.${ext}`;
+    await mkdir(join(deps.mediaRoot, "dish-src"), { recursive: true });
+    await pipeline(file.file, createWriteStream(join(deps.mediaRoot, rel)));
+    if (file.file.truncated) {
+      await rm(join(deps.mediaRoot, rel), { force: true }).catch(() => {});
+      throw badRequest(`File too large (max ${Math.round(mn.MAX_DISH_BYTES / 1024 / 1024)} MB)`, "too_large");
+    }
+    return reply.code(202).send(await mn.startDishUpload(db, orgId, u.id, menuId, itemId, rel));
+  });
+
+  // витрати AI за місяць і залишок за тарифом
+  app.get("/api/orgs/:orgId/ai-usage", async (req) => {
+    const { orgId } = await member(deps, req, orgParams, "admin");
+    return mn.aiUsageSummary(db, orgId);
   });
 
   // --- стиль фото закладу ---

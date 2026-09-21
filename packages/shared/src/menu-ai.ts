@@ -107,6 +107,15 @@ export function parseVisionMenu(raw: string): DraftSection[] {
   return sections;
 }
 
+/** Стиль закладу, поки власник не зберіг свій: один на всі страви. */
+export const DEFAULT_MENU_STYLE = {
+  name: "Стандартний",
+  prompt: "Апетитна фотографія страви для меню кафе, вигляд згори під кутом 45°, "
+    + "мʼяке природне світло, неглибока різкість, акуратна подача на простому посуді",
+  bgMode: "solid",
+  bgColor: "#f2ece3",
+};
+
 /** Промпт фото страви: стиль закладу + назва + опис; «без тексту» — завжди. */
 export function dishPrompt(style: { prompt: string; bgMode?: string | null; bgColor?: string | null }, item: { name: string; description?: string | null }): string {
   const bg = style.bgMode === "transparent"

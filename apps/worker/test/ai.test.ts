@@ -109,3 +109,43 @@ describe("задача menu_import", () => {
     await expect(runMenuImport(fakeSql() as never, { ...job, payload: {} }, vision as never, "/tmp")).rejects.toThrow(/без файлів/);
   });
 });
+
+describe("задача dish_image", () => {
+  const job = { id: "job-2", org_id: "org-1", kind: "dish_image" as const, ref_id: "item-1", payload: { n: 2 } };
+
+  it("будує промпт зі стилю закладу, зберігає варіанти і перше робить обраним", async () => {
+    const { runDishImage } = await import("../src/dish-image.ts");
+    const fs = await import("node:fs/promises");
+    const tmp = await fs.mkdtemp("/tmp/dish-");
+    // 1x1 jpeg, щоб ffmpeg мав що обробляти
+    const jpeg = Buffer.from("/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==", "base64");
+    const image = { generate: async (prompt: string, n: number) => ({
+      images: Array.from({ length: n }, () => ({ data: jpeg, mime: "image/jpeg" })),
+      usage: { provider: "xai", model: "grok-imagine-image-2.0", tokensIn: 0, tokensOut: 0, images: n, costMicros: 80_000 },
+      prompt,
+    }) };
+    const seen: string[] = [];
+    const sql = Object.assign((strings: TemplateStringsArray, ...values: unknown[]) => {
+      const q = strings.join("?").replace(/\s+/g, " ").trim();
+      seen.push(q);
+      if (q.startsWith("select i.id")) return Promise.resolve([{ id: "item-1", name: "Борщ", description: "зі сметаною", menu_id: "m1", org_id: "org-1", prompt: "Стиль закладу", bg_mode: "solid", bg_color: "#ffffff" }]);
+      if (q.includes("insert into dish_images")) return Promise.resolve([{ id: `img-${values[0]}` }]);
+      return Promise.resolve([]);
+    }, { begin: async (fn: (tx: unknown) => Promise<unknown>) => fn(sql), json: (o: unknown) => o });
+
+    const res = await runDishImage(sql as never, job, image as never, tmp);
+    expect(res).toMatchObject({ variants: 2, costMicros: 80_000 });
+    const q = seen.join("\n");
+    expect(q).toContain("insert into dish_images");
+    expect(q).toContain("insert into ai_usage");
+    expect(q).toContain("image_is_ai = true");
+    expect(q).toContain("image_id is null");      // не перебиваємо вже обране фото
+    await fs.rm(tmp, { recursive: true, force: true });
+  }, 20_000);
+
+  it("страву видалили, поки задача чекала — зрозуміла помилка", async () => {
+    const { runDishImage } = await import("../src/dish-image.ts");
+    const sql = Object.assign(() => Promise.resolve([]), { begin: async (f: (t: unknown) => Promise<unknown>) => f(null), json: (o: unknown) => o });
+    await expect(runDishImage(sql as never, job, {} as never, "/tmp")).rejects.toThrow(/видалено/);
+  });
+});

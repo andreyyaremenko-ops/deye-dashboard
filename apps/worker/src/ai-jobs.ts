@@ -3,6 +3,7 @@
  * Без провайдера (немає XAI_API_KEY) задачі не беруться — лишаються queued до налаштування ключа.
  */
 import { runMenuImport, type AiJobRow } from "./menu-import.ts";
+import { runDishImage, runDishUpload } from "./dish-image.ts";
 import type { AiProviders } from "./ai/types.ts";
 
 type Sql = any;
@@ -12,10 +13,9 @@ export interface AiDeps { sql: Sql; providers: AiProviders; mediaRoot: string; l
 /** Бере одну задачу; повертає false, якщо черга порожня або нема чим її виконати. */
 export async function runOneAiJob(deps: AiDeps): Promise<boolean> {
   const { sql, providers, mediaRoot, log } = deps;
-  const kinds: string[] = [];
+  const kinds: string[] = ["dish_upload"];      // власне фото обробляється і без ключів AI
   if (providers.vision) kinds.push("menu_import");
   if (providers.image) kinds.push("dish_image");
-  if (!kinds.length) return false;
 
   const job: AiJobRow | undefined = await sql.begin(async (tx: Sql) => {
     const [j] = await tx`
@@ -31,6 +31,8 @@ export async function runOneAiJob(deps: AiDeps): Promise<boolean> {
   try {
     let result: object;
     if (job.kind === "menu_import") result = await runMenuImport(sql, job, providers.vision!, mediaRoot);
+    else if (job.kind === "dish_image") result = await runDishImage(sql, job, providers.image!, mediaRoot);
+    else if (job.kind === "dish_upload") result = await runDishUpload(sql, job, mediaRoot);
     else throw new Error(`невідомий тип задачі ${job.kind}`);
     await sql`update ai_jobs set status = 'done', result = ${sql.json(result)}, finished_at = now() where id = ${job.id}`;
     log({ aiJob: job.id, kind: job.kind, ok: true, ms: Date.now() - t0, ...result });

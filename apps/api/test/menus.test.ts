@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { makeTestApp, signUp, api, type TestApp } from "./helpers.ts";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { aiJobs, organizations, plans } from "../src/db/schema.ts";
+import { aiJobs, aiUsage, dishImages, organizations, plans } from "../src/db/schema.ts";
 
 // тариф із одним меню: перевіряємо саму перевірку ліміту
 const ONE = { id: "one-menu", name: "One", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 1, ai_dishes: 5, ai_generations_month: 10 } };
@@ -233,5 +233,113 @@ describe("розпізнавання фото меню", () => {
 
     const ok = multipartFiles("Спроба", [{ filename: "p.jpg", type: "image/jpeg", data: "x" }]);
     expect((await post(staffCookie, ok)).statusCode).toBe(403);
+  });
+});
+
+// тариф із крихітними AI-лімітами: 1 страва з AI-фото, 3 зображення на місяць
+const TINY = { id: "tiny-ai", name: "Tiny", priceMonth: null, limits: { screens: 5, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 5, ai_dishes: 1, ai_generations_month: 6 } };
+
+describe("фото страв: черга, вибір варіанта, ліміти тарифу", () => {
+  let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>;
+  let orgId: string, menuId: string, sectionId: string, itemA: string, itemB: string;
+
+  beforeAll(async () => {
+    await t.db.insert(plans).values(TINY);
+    const o = await signUp(t.app, "photo@menu.test"); owner = api(t.app, o.cookie);
+    const s = await signUp(t.app, "photo-staff@menu.test"); staff = api(t.app, s.cookie);
+    orgId = (await owner.post("/api/orgs", { name: "Бістро" })).json().id;
+    await t.db.update(organizations).set({ planId: "tiny-ai" }).where(eq(organizations.id, orgId));
+    const inv = (await owner.post(`/api/orgs/${orgId}/invites`, {})).json();
+    await staff.post(`/api/invites/${inv.token}/accept`);
+    menuId = (await owner.post(`/api/orgs/${orgId}/menus`, { name: "Обіди" })).json().id;
+    sectionId = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/sections`, { name: "Супи" })).json().id;
+    itemA = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items`, { sectionId, name: "Борщ", price: "120" })).json().id;
+    itemB = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items`, { sectionId, name: "Крем-суп", price: "110" })).json().id;
+  });
+
+  /** Те, що зробив би воркер: варіанти + облік вартості. */
+  async function pretendWorker(itemId: string, n: number, isAi = true) {
+    let [job] = await t.db.select().from(aiJobs).where(eq(aiJobs.refId, itemId)).orderBy(desc(aiJobs.createdAt)).limit(1);
+    if (!job) [job] = await t.db.insert(aiJobs).values({ orgId, kind: isAi ? "dish_image" : "dish_upload", refId: itemId, payload: {} }).returning();
+    const ids: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const [img] = await t.db.insert(dishImages).values({
+        orgId, itemId, status: "ready", file: `dish/${itemId}-${i}.jpg`, thumb: `dish/${itemId}-${i}-t.jpg`,
+        width: 900, height: 900, bytes: 1000, isAi, provider: "xai", model: "grok-imagine-image-2.0", prompt: "p",
+      }).returning();
+      ids.push(img!.id);
+    }
+    if (isAi) {
+      await t.db.insert(aiUsage).values({ orgId, jobId: job!.id, kind: "dish_image", provider: "xai", model: "grok-imagine-image-2.0", images: n, costMicros: 40_000 * n });
+    }
+    await t.db.update(aiJobs).set({ status: "done", finishedAt: new Date() }).where(eq(aiJobs.id, job!.id));
+    return ids;
+  }
+
+  it("owner ставить задачу на варіанти, друга задача на ту саму страву відхиляється", async () => {
+    const res = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`, { n: 3 });
+    expect(res.statusCode).toBe(202);
+    expect(res.json()).toMatchObject({ itemId: itemA, variants: 3, status: "queued" });
+
+    const again = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`, { n: 3 });
+    expect(again.statusCode).toBe(409);
+    expect(again.json().error).toBe("in_progress");
+
+    expect((await staff.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemB}/images`)).statusCode).toBe(403);
+  });
+
+  it("варіанти видно, вибір позначає страву як AI-фото", async () => {
+    const ids = await pretendWorker(itemA, 3);
+    const list = await staff.get(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`);
+    expect(list.statusCode).toBe(200);
+    expect(list.json().images).toHaveLength(3);
+    expect(list.json().job.status).toBe("done");
+
+    const chosen = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images/${ids[1]}/choose`);
+    expect(chosen.statusCode).toBe(200);
+    expect(chosen.json()).toMatchObject({ imageId: ids[1], imageIsAi: true });
+    // чуже фото до цієї страви не прикрутиш
+    expect((await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemB}/images/${ids[1]}/choose`)).statusCode).toBe(404);
+  });
+
+  it("ліміт страв із AI-фото і місячний ліміт зображень", async () => {
+    // ai_dishes: 1 — борщ уже з AI-фото, друга страва не проходить
+    // місячного ліміту ще вистачає (3 з 6), але страва з AI-фото дозволена лише одна
+    const limited = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemB}/images`);
+    expect(limited.statusCode).toBe(409);
+    expect(limited.json().error).toBe("plan_limit");
+    expect(limited.json().message).toMatch(/dish/);
+
+    const usage = await owner.get(`/api/orgs/${orgId}/ai-usage`);
+    expect(usage.json()).toMatchObject({ imagesMonth: 3, dishesWithAi: 1, costMicros: 120_000 });
+    expect(usage.json().remaining).toEqual({ images: 3, dishes: 0 });
+    expect((await staff.get(`/api/orgs/${orgId}/ai-usage`)).statusCode).toBe(403);
+
+    // добираємо місячний ліміт: навіть перегенерація вже врахованої страви впирається в нього
+    await t.db.insert(aiUsage).values({ orgId, kind: "dish_image", provider: "xai", model: "m", images: 3, costMicros: 120_000 });
+    const month = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`, { n: 1 });
+    expect(month.statusCode).toBe(409);
+    expect(month.json().message).toMatch(/per month/);
+  });
+
+  it("власне фото не рахується як AI і замінює вибране", async () => {
+    const [own] = await pretendWorker(itemB, 1, false).then(async (ids) => {
+      await t.db.update(aiJobs).set({ kind: "dish_upload" }).where(eq(aiJobs.refId, itemB));
+      return ids;
+    });
+    const res = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemB}/images/${own}/choose`);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().imageIsAi).toBe(false);
+    expect((await owner.get(`/api/orgs/${orgId}/ai-usage`)).json().dishesWithAi).toBe(1);
+  });
+
+  it("видалення обраного фото лишає страву без фото", async () => {
+    const list = (await owner.get(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`)).json();
+    const del = await owner.del(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images/${list.chosen}`);
+    expect(del.statusCode).toBe(204);
+    const after = (await owner.get(`/api/orgs/${orgId}/menus/${menuId}/items/${itemA}/images`)).json();
+    expect(after.chosen).toBeNull();
+    expect(after.imageIsAi).toBe(false);
+    expect(after.images).toHaveLength(2);
   });
 });
