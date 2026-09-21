@@ -8,7 +8,8 @@ COPY packages/register-maps/package.json packages/register-maps/
 COPY apps/api/package.json apps/api/
 COPY apps/tv/package.json apps/tv/
 COPY apps/web/package.json apps/web/
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter @deye/worker
+# "@deye/worker..." — сам воркер і його workspace-залежності (@deye/shared тягне zod)
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter "@deye/worker..."
 COPY packages/shared ./packages/shared
 COPY apps/worker ./apps/worker
 WORKDIR /repo/apps/worker
