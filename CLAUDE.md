@@ -31,6 +31,16 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   початок місяця); працює й для організацій без історії. Тарифи (2026-09-18): Free = увесь
   функціонал на 1 екран + 1 логер з брендингом, Pro = на 5/5 без брендингу, Max 50/50;
   ліміти в `plans.limits` (seed), перевірки в createScreen/claimDevice/historyWindow.
+- AI-меню (2026-09-21): меню закладу — дані в БД (`menus/menu_sections/menu_items/dish_images`),
+  а не текст у віджеті. Фото паперового меню -> `POST /menus/import` -> черга `ai_jobs`
+  (той самий патерн, що `transcode_jobs`) -> vision-модель -> чернетка з `confidence`,
+  власник перевіряє і публікує. Фото страв генеруються в стилі закладу (`menu_styles`,
+  промпт завжди з «no text, no letters»), 3–4 варіанти на страву, можна завантажити своє.
+  Провайдер — xAI через `apps/worker/src/ai/` (інтерфейси `VisionProvider`/`ImageProvider`,
+  `XAI_API_KEY`; без ключа задачі просто чекають). Вартість кожного виклику — в `ai_usage`
+  (`cost_in_usd_ticks`, 1 USD = 1e10), ліміти тарифу `menus`/`ai_dishes`/`ai_generations_month`.
+  Ціни — цілі копійки; розбір і промпти в `packages/shared/src/menu-data.ts` і `menu-ai.ts`.
+  На ТБ — віджет `menu` (`apps/tv/src/menu.tsx`), ціни оновлюються наявним WS-конфігом.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
   розкладом за годинами і пріоритетом при відключенні; схема й нормалізація в
   `packages/shared/src/index.ts`, вибір сцени в `shared/scenes.ts`, ротація на ТБ у
