@@ -23,15 +23,16 @@ import { ChartWidget } from "./chart.tsx";
 import { FlowWidget } from "./flow.tsx";
 import { MpptWidget } from "./mppt.tsx";
 import { QrWidget } from "./qr.tsx";
+import { MenuWidget } from "./menu.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
-import type { Feeds } from "./types.ts";
+import type { Feeds, PublicMenu } from "./types.ts";
 
 interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string;
   device?: { batteryKwh: number | null; minSoc: number; pvKwp?: number | null }; socHistory?: [number, number][];
-  feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null }
+  feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null; menus?: Record<string, PublicMenu> }
 
-const NO_DEVICE = new Set(["clock", "text", "qr", "alert", "weather"]);
-export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince }: Props) {
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather"]);
+export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
   const stale = NO_DEVICE.has(type) ? false : !state || state.stale;
@@ -86,6 +87,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       return <Clock cls={cls} />;
     case "text":
       return <MenuText cls={cls} props={props} />;
+    case "menu":
+      return <MenuWidget cls={cls} menu={menus?.[String(props.menuId ?? "")]} props={props} theme={props.theme === "light" ? "light" : "dark"} />;
     case "runtime": {
       const soc = num(m, "bat_soc");
       const est = m ? estimateRuntime(m, { capacityKwh: device?.batteryKwh, minSoc: device?.minSoc ?? 20, socHistory, assumeLoad: true }) : null;

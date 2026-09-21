@@ -7,6 +7,8 @@ import { Invite, NewOrg } from "./pages/Orgs.tsx";
 import { Devices } from "./pages/Devices.tsx";
 import { DeviceDetail } from "./pages/DeviceDetail.tsx";
 import { Screens } from "./pages/Screens.tsx";
+import { Menus } from "./pages/Menus.tsx";
+import { MenuEditor } from "./pages/MenuEditor.tsx";
 import { ScreenEditor } from "./pages/ScreenEditor.tsx";
 import { Members, Settings } from "./pages/Members.tsx";
 import { Landing } from "./pages/Landing.tsx";
@@ -69,6 +71,8 @@ function OrgArea({ me, orgId }: { me: Me; orgId: string }) {
       <Route path="/o/:orgId/devices/:deviceId">{(p) => <DeviceDetail org={org} deviceId={p.deviceId!} />}</Route>
       <Route path="/o/:orgId/screens"><Screens org={org} /></Route>
       <Route path="/o/:orgId/screens/:screenId">{(p) => <ScreenEditor org={org} screenId={p.screenId!} />}</Route>
+      <Route path="/o/:orgId/menus"><Menus org={org} /></Route>
+      <Route path="/o/:orgId/menus/:menuId">{(p) => <MenuEditor org={org} menuId={p.menuId!} />}</Route>
       <Route path="/o/:orgId/members"><Members org={org} meId={me.user.id} /></Route>
       <Route path="/o/:orgId/settings"><Settings org={org} onPlanChange={() => void api.get<Org>(`/api/orgs/${orgId}`).then(setOrg)} /></Route>
       <Route><Redirect to={`/o/${orgId}/devices`} /></Route>

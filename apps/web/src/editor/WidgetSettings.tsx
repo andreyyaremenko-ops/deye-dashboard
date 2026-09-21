@@ -1,17 +1,17 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
 import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
-import type { Device } from "../api.ts";
+import type { Device, MenuSummary } from "../api.ts";
 import { Field } from "../components/ui.tsx";
 import { kindOf, type Widget } from "./widgetTypes.ts";
 
 type Theme = "dark" | "light";
 type Props = Record<string, unknown>;
-interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme }
+interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme; menus: MenuSummary[] }
 
-export function WidgetSettings({ widget, devices, theme, onChange }: { widget: Widget; devices: Device[]; theme: Theme; onChange: (w: Widget) => void }) {
+export function WidgetSettings({ widget, devices, menus = [], theme, onChange }: { widget: Widget; devices: Device[]; menus?: MenuSummary[]; theme: Theme; onChange: (w: Widget) => void }) {
   const p = widget.props ?? {};
-  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme };
+  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme, menus };
   const pos = (k: "x" | "y" | "w" | "h") => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...widget, [k]: +e.currentTarget.value });
   return <>
     {(kindOf(widget.type)?.needsDevice || (kindOf(widget.type)?.optionalDevice && devices.length > 0)) && <Field label="Пристрій">
@@ -104,6 +104,44 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
   weather: () => <Hint>Прогноз генерації на завтра зʼявиться, якщо в пристрої вказано потужність панелей (kWp).</Hint>,
   chart: (ctx) => <Field label="Період"><select value={String(ctx.p.hours ?? 24)} onChange={(e) => ctx.set({ hours: Number(e.currentTarget.value) })}>
     <option value="24">24 години</option><option value="72">3 доби</option><option value="168">тиждень</option></select></Field>,
+  menu: (ctx) => {
+    const st = menuStyle(ctx.p, ctx.theme);
+    const themeFg = ctx.theme === "light" ? "#10203a" : "#ffffff";
+    const chosen = ctx.menus.find((m) => m.id === ctx.p.menuId);
+    return <>
+      <Field label="Меню закладу">
+        <select value={String(ctx.p.menuId ?? "")} onChange={(e) => ctx.set({ menuId: e.currentTarget.value })}>
+          <option value="">— оберіть меню —</option>
+          {ctx.menus.map((m) => <option key={m.id} value={m.id}>{m.name}{m.status === "published" ? "" : " (чернетка)"}</option>)}
+        </select>
+      </Field>
+      {chosen && chosen.status !== "published" && <Hint>Це меню ще не підтверджене — на телевізорі воно зʼявиться після публікації в розділі «Меню».</Hint>}
+      {!ctx.menus.length && <Hint>Меню ще немає. Створіть його в розділі «Меню»: сфотографуйте паперове — позиції розпізнаються автоматично.</Hint>}
+      <Text ctx={ctx} k="title" label="Заголовок" placeholder={chosen?.name ?? "Меню"} />
+      <div className="row small">
+        <Toggle ctx={ctx} k="photos" label="Фото страв" on="показувати" off="лише текст" />
+        <Select ctx={ctx} k="outOfStock" label="Коли позиція закінчилась" fallback="hide" options={[["hide", "ховати"], ["strike", "перекреслювати"]]} />
+      </div>
+      <div className="row small">
+        <Select ctx={ctx} k="columns" label="Колонок" fallback="0" options={[["0", "автоматично"], ["2", "2"], ["3", "3"], ["4", "4"]]} />
+        <Field label={`Розділ на екрані ${Number(ctx.p.sectionS ?? 15)} с`}>
+          <input type="range" min={5} max={60} step={5} value={Number(ctx.p.sectionS ?? 15)} onChange={(e) => ctx.set({ sectionS: +e.currentTarget.value })} />
+        </Field>
+      </div>
+      <div className="row small">
+        <Field label="Шрифт"><select value={st.fontId} onChange={(e) => ctx.set({ font: e.currentTarget.value })} style={{ fontFamily: st.fontFamily }}>
+          {MENU_FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
+        </select></Field>
+        <Field label={`Розмір ${st.fontSize.toFixed(1)}`}><input type="range" min={MENU_FONT_SIZE.min} max={MENU_FONT_SIZE.max} step={MENU_FONT_SIZE.step} value={st.fontSize} onChange={(e) => ctx.set({ fontSize: +e.currentTarget.value })} /></Field>
+      </div>
+      <div className="row small">
+        <ColorField label="Колір тексту" value={st.color} fallback={themeFg} onChange={(v) => ctx.set({ color: v ?? "" })} />
+        <ColorField label="Заголовок і ціни" value={st.accent} fallback={st.color ?? themeFg} onChange={(v) => ctx.set({ accent: v ?? "" })} />
+      </div>
+      <div className="row small">{Card(ctx)}</div>
+      <Hint>Ціни й наявність беруться з розділу «Меню» і оновлюються на телевізорі одразу. Орієнтовний розмір 46×62 %.</Hint>
+    </>;
+  },
   text: (ctx) => {
     const st = menuStyle(ctx.p, ctx.theme);
     const themeFg = ctx.theme === "light" ? "#10203a" : "#ffffff";

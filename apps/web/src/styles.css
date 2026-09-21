@@ -322,3 +322,31 @@ html, body { overflow-x: hidden; }
 .faq summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; }
 .faq details[open] summary { margin-bottom: .5rem; }
 .faq p { margin: 0; color: var(--muted); line-height: 1.5; }
+
+/* --- AI-меню: екран перевірки і редагування --- */
+.ai-bar { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: .8rem; padding: .6rem .8rem; border: 1px solid var(--line); border-radius: var(--radius-s); background: rgba(255,255,255,.03); font-size: .88rem; }
+.spin { display: inline-block; width: .9rem; height: .9rem; border: 2px solid var(--line-2); border-top-color: var(--amber); border-radius: 50%; animation: spin 1s linear infinite; vertical-align: -2px; margin-right: .4rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.mi-list { display: flex; flex-direction: column; gap: .35rem; }
+.mi { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; padding: .4rem .5rem; border: 1px solid transparent; border-radius: var(--radius-s); }
+.mi:hover { background: rgba(255,255,255,.03); }
+.mi.unsure { border-color: rgba(242,178,27,.45); background: rgba(242,178,27,.07); }
+.mi.out { opacity: .6; }
+.mi.out .mi-name { text-decoration: line-through; }
+.mi-photo { width: 44px; height: 44px; flex: 0 0 auto; padding: 0; border: 1px solid var(--line-2); border-radius: 10px; background: var(--panel-2); color: var(--muted); font-size: .65rem; cursor: pointer; overflow: hidden; }
+.mi-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mi-main { display: flex; flex-direction: column; gap: .15rem; flex: 1 1 220px; min-width: 160px; }
+.mi-name { font-weight: 600; }
+.mi-desc { font-size: .85rem; color: var(--muted); }
+.mi-vol { width: 6.5rem; } .mi-price { width: 5.5rem; text-align: right; } .mi-sec { max-width: 9rem; }
+.mi input, .mi select { min-height: 2.1rem; padding: .3rem .55rem; }
+.mi-stock { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; color: var(--muted); }
+.mi-flag { font: 500 .66rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: #ffd98a; }
+.mi-photos { flex: 1 1 100%; margin: .4rem 0 .2rem 3rem; padding: .6rem .7rem; border: 1px dashed var(--line-2); border-radius: var(--radius-s); }
+.mi-photos-h { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+.mi-variants { display: flex; gap: .6rem; flex-wrap: wrap; margin-top: .6rem; }
+.mi-var { margin: 0; width: 120px; }
+.mi-var img { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 2px solid transparent; cursor: pointer; display: block; }
+.mi-var.on img { border-color: var(--amber); }
+.mi-var figcaption { display: flex; align-items: center; gap: .3rem; justify-content: center; margin-top: .25rem; font-size: .75rem; color: var(--muted); }

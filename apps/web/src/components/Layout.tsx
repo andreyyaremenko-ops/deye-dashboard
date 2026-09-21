@@ -8,7 +8,7 @@ import { Logo } from "./Logo.tsx";
 import { Icon, type IconName } from "./Icon.tsx";
 
 const ROLE: Record<string, string> = { owner: "власник", admin: "адмін", staff: "персонал" };
-const NAV: [string, string, IconName][] = [["devices", "Пристрої", "devices"], ["screens", "Екрани", "screens"], ["members", "Учасники", "members"], ["settings", "Налаштування", "settings"]];
+const NAV: [string, string, IconName][] = [["devices", "Пристрої", "devices"], ["screens", "Екрани", "screens"], ["menus", "Меню", "menu"], ["members", "Учасники", "members"], ["settings", "Налаштування", "settings"]];
 
 export function Layout({ me, orgId, children }: { me: Me; orgId: string; children: ReactNode }) {
   const [loc, navigate] = useLocation();

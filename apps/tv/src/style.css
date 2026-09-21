@@ -274,3 +274,42 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .w-mppt.mppt-plain { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
 .theme-light .mppt-bar { background: rgba(0,0,0,.12); }
 .theme-light .mppt-total { color: #a8620a; }
+
+/* --- Меню закладу: сітка страв, слайди розділів, Ken Burns --- */
+.w.dm { display: flex; flex-direction: column; gap: .45em; padding: .7em .9em; overflow: hidden; }
+.dm-head { display: flex; align-items: baseline; gap: .6em; flex: 0 0 auto; }
+.dm-head .menu-title { margin: 0; }
+.dm-sec { font-size: .95em; opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
+.menu-font-lobster .dm-sec, .menu-font-caveat .dm-sec, .menu-font-marck .dm-sec { text-transform: none; letter-spacing: 0; }
+.dm-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9em), 1fr)); gap: .5em .7em;
+  align-content: start; overflow: hidden; animation: dm-in .7s ease both; }
+@keyframes dm-in { from { opacity: 0; transform: translateY(.4em); } to { opacity: 1; transform: none; } }
+.dm-i { display: flex; flex-direction: column; gap: .18em; min-width: 0; }
+.dm-ph { position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: .5em; overflow: hidden; background: rgba(255,255,255,.07); }
+.theme-light .dm-ph { background: rgba(0,0,0,.06); }
+.dm-ph img { width: 100%; height: 100%; object-fit: cover; display: block; transform-origin: center; animation: kb 26s ease-in-out infinite alternate; }
+.dm-i:nth-child(2n) .dm-ph img { animation-delay: -7s; } .dm-i:nth-child(3n) .dm-ph img { animation-delay: -14s; }
+@keyframes kb { from { transform: scale(1.02) translate(0, 0); } to { transform: scale(1.12) translate(-1.5%, -1%); } }
+.dm-t { min-width: 0; }
+.dm-n { font-weight: 600; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dm-d { font-size: .72em; opacity: .7; line-height: 1.25; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.dm-p { display: flex; align-items: baseline; gap: .4em; }
+.dm-v { font-size: .72em; opacity: .65; }
+.dm-i.gone { opacity: .45; }
+.dm-i.gone .dm-n, .dm-i.gone .menu-price { text-decoration: line-through; }
+.dm-i.gone .dm-ph img { filter: grayscale(1); animation: none; }
+/* список без фото: щільніші рядки, як у текстовому меню */
+.dm-list .dm-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 14em), 1fr)); gap: .15em .9em; }
+.dm-list .dm-i { flex-direction: row; align-items: baseline; gap: .4em; }
+.dm-list .dm-t { flex: 1 1 auto; } .dm-list .dm-n { -webkit-line-clamp: 1; }
+.dm-foot { flex: 0 0 auto; display: flex; align-items: center; gap: .6em; min-height: .8em; }
+.dm-dots { display: flex; gap: .3em; }
+.dm-dots i { width: .35em; height: .35em; border-radius: 50%; background: currentColor; opacity: .3; }
+.dm-dots i.on { opacity: .85; }
+.dm-note { margin-left: auto; font-size: .55em; opacity: .45; letter-spacing: .04em; }
+.dm-empty { margin: auto; opacity: .6; }
+/* портрет: менше колонок, вищі картки */
+@media (orientation: portrait) {
+  .dm-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5em), 1fr)); }
+  .dm-list .dm-grid { grid-template-columns: 1fr; }
+}

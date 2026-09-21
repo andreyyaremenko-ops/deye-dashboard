@@ -3,6 +3,7 @@
  *   потік:  /preview/?skin=orbit&scene=day&theme=dark
  *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
+ *   AI-меню: /preview/?type=menu&photos=0&cols=3&out=strike   (фото беруться з /media, тут їх нема — картки без фото)
  */
 import { render } from "preact";
 import "../src/style.css";
@@ -30,8 +31,29 @@ const theme = q.get("theme") ?? "dark";
 const menuProps = { title: q.get("title") ?? "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95\nТірамісу — 110", theme,
   font: q.get("font") ?? "system", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
   align: q.get("align") ?? "left", card: q.get("card") !== "0", size: q.get("size") ?? "" };
+// мок опублікованого меню: те саме, що віддає publicScreen()
+const mockMenu = {
+  id: "m1", name: "Барна карта", updatedAt: new Date().toISOString(),
+  sections: [
+    { id: "s1", name: "Кава", items: [
+      { id: "i1", name: "Еспресо", description: null, price: 4500, volume: "30 мл", inStock: true, image: null, imageIsAi: true },
+      { id: "i2", name: "Капучино", description: "на вівсяному за бажанням", price: 6500, volume: "250 мл", inStock: true, image: null, imageIsAi: true },
+      { id: "i3", name: "Лате", description: null, price: 7000, volume: "300 мл", inStock: false, image: null, imageIsAi: true },
+      { id: "i4", name: "Раф солона карамель", description: null, price: 9500, volume: "300 мл", inStock: true, image: null, imageIsAi: false },
+    ] },
+    { id: "s2", name: "Десерти", items: [
+      { id: "i5", name: "Чізкейк Нью-Йорк", description: "з ягідним соусом", price: 9500, volume: "120 г", inStock: true, image: null, imageIsAi: true },
+      { id: "i6", name: "Тірамісу", description: null, price: 11000, volume: "140 г", inStock: true, image: null, imageIsAi: true },
+    ] },
+  ],
+};
+const dishMenuProps = { ...menuProps, menuId: "m1", photos: q.get("photos") !== "0", columns: q.get("cols") ?? 0,
+  sectionS: q.get("secs") ?? 15, outOfStock: q.get("out") ?? "hide", title: q.get("title") ?? "" };
+
 render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradient(120% 90% at 20% 10%, #3a1b3a 0%, #1a0b1b 55%, #050a12 100%)" }}>
-  {q.get("type") === "text"
+  {q.get("type") === "menu"
+    ? <div class="slot" style={{ left: "3%", top: "5%", width: "46%", height: "72%" }}><Widget type="menu" state={undefined} props={dishMenuProps} menus={{ m1: mockMenu }} /></div>
+    : q.get("type") === "text"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "28%", height: "60%" }}><Widget type="text" state={undefined} props={menuProps} /></div>
     : q.get("type") === "mppt"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "34%", height: "26%" }}><Widget type="mppt" state={state} props={{ card: q.get("card") !== "0", showVA: q.get("va") !== "0", names: (q.get("names") ?? "").split(",").filter(Boolean) }} /></div>
