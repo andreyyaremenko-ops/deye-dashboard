@@ -64,6 +64,7 @@ export function api(app: FastifyInstance, cookie: string) {
     get: (url: string) => app.inject({ method: "GET", url, headers: { cookie } }),
     post: (url: string, payload?: unknown) => app.inject({ method: "POST", url, headers: { cookie, "content-type": "application/json" }, payload: payload as never }),
     patch: (url: string, payload?: unknown) => app.inject({ method: "PATCH", url, headers: { cookie, "content-type": "application/json" }, payload: payload as never }),
+    put: (url: string, payload?: unknown) => app.inject({ method: "PUT", url, headers: { cookie, "content-type": "application/json" }, payload: payload as never }),
     del: (url: string) => app.inject({ method: "DELETE", url, headers: { cookie } }),
   };
 }

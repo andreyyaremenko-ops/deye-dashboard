@@ -198,8 +198,114 @@ export const loggerFrames = pgTable("logger_frames", {
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("logger_frames_serial_time_idx").on(t.serial, t.receivedAt.desc())]);
 
+// --- AI-меню: розпізнане з фото меню закладу + згенеровані фото страв ---
+
+export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
+export const dishImageStatus = pgEnum("dish_image_status", ["queued", "ready", "failed"]);
+export const aiJobKind = pgEnum("ai_job_kind", ["menu_import", "dish_image"]);
+
+/** Стиль закладу: один шаблон промпту на всі страви, щоб фото виглядали як одна серія. */
+export const menuStyles = pgTable("menu_styles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  prompt: text("prompt").notNull(),
+  bgMode: text("bg_mode").notNull().default("solid"),     // solid | transparent
+  bgColor: text("bg_color"),                              // #rrggbb для solid
+  isDefault: boolean("is_default").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("menu_styles_org_idx").on(t.orgId)]);
+
+export const menus = pgTable("menus", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  styleId: uuid("style_id").references(() => menuStyles.id, { onDelete: "set null" }),
+  status: menuStatus("status").notNull().default("draft"),   // importing -> draft (перевірка) -> published
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("menus_org_idx").on(t.orgId)]);
+
+export const menuSections = pgTable("menu_sections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  menuId: uuid("menu_id").notNull().references(() => menus.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sort: integer("sort").notNull().default(0),
+}, (t) => [index("menu_sections_menu_idx").on(t.menuId, t.sort)]);
+
+export const menuItems = pgTable("menu_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  menuId: uuid("menu_id").notNull().references(() => menus.id, { onDelete: "cascade" }),
+  sectionId: uuid("section_id").notNull().references(() => menuSections.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: integer("price"),                 // копійки; null = «за запитом»
+  volume: text("volume"),                  // «250 мл», «300 г»
+  sort: integer("sort").notNull().default(0),
+  inStock: boolean("in_stock").notNull().default(true),
+  imageId: uuid("image_id"),               // обране фото з dish_images; без FK — dish_images вже посилається сюди
+  imageIsAi: boolean("image_is_ai").notNull().default(false),
+  confidence: doublePrecision("confidence"),   // від vision-моделі; null після ручного правлення
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("menu_items_menu_idx").on(t.menuId), index("menu_items_section_idx").on(t.sectionId, t.sort)]);
+
+/** Варіанти фото страви (AI або завантажене власне). Файли в /media/dish, роздаються Caddy. */
+export const dishImages = pgTable("dish_images", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  itemId: uuid("item_id").references(() => menuItems.id, { onDelete: "cascade" }),
+  status: dishImageStatus("status").notNull().default("ready"),
+  file: text("file"),                      // dish/<id>.jpg відносно MEDIA_ROOT
+  thumb: text("thumb"),
+  width: integer("width"),
+  height: integer("height"),
+  bytes: integer("bytes"),
+  isAi: boolean("is_ai").notNull().default(true),
+  provider: text("provider"),
+  model: text("model"),
+  prompt: text("prompt"),
+  seed: bigint("seed", { mode: "number" }),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("dish_images_item_idx").on(t.itemId), index("dish_images_org_idx").on(t.orgId)]);
+
+/** Черга AI-задач (той самий патерн, що transcode_jobs): воркер бере FOR UPDATE SKIP LOCKED. */
+export const aiJobs = pgTable("ai_jobs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  kind: aiJobKind("kind").notNull(),
+  refId: uuid("ref_id"),                   // menu_id для menu_import, menu_item_id для dish_image
+  payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  status: jobStatus("status").notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0),
+  error: text("error"),
+  result: jsonb("result").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+}, (t) => [index("ai_jobs_queue_idx").on(t.status, t.createdAt), index("ai_jobs_org_idx").on(t.orgId), index("ai_jobs_ref_idx").on(t.refId)]);
+
+/** Леджер вартості AI: і облік грошей, і база для місячних лімітів тарифу. */
+export const aiUsage = pgTable("ai_usage", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  jobId: uuid("job_id").references(() => aiJobs.id, { onDelete: "set null" }),
+  kind: aiJobKind("kind").notNull(),
+  provider: text("provider").notNull(),
+  model: text("model").notNull(),
+  tokensIn: integer("tokens_in").notNull().default(0),
+  tokensOut: integer("tokens_out").notNull().default(0),
+  images: integer("images").notNull().default(0),
+  costMicros: bigint("cost_micros", { mode: "number" }).notNull().default(0),   // мільйонні долара
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("ai_usage_org_time_idx").on(t.orgId, t.createdAt.desc())]);
+
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
+  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage,
 };
 export { sql };

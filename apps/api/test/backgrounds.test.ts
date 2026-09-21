@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { backgrounds, organizations, plans, transcodeJobs } from "../src/db/schema.ts";
 // тест-тариф без радіо/фонів/історії: перевіряємо самі перевірки, бо Free тепер має все на 1 екран/логер
-const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true } };
+const LITE = { id: "lite", name: "Lite", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true, menus: 1, ai_dishes: 0, ai_generations_month: 0 } };
 
 import { startUpload } from "../src/backgrounds/service.ts";
 

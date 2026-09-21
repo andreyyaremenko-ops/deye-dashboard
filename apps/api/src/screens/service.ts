@@ -1,11 +1,12 @@
 import { and, eq, count, inArray } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
-import { backgrounds, devices, organizations, plans, screens } from "../db/schema.ts";
+import { backgrounds, devices, menus, organizations, plans, screens } from "../db/schema.ts";
 import { randomToken } from "../lib/crypto.ts";
 import { randomInt } from "node:crypto";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
+import { menuPayloads } from "../menus/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
@@ -18,6 +19,15 @@ function normalized(config: unknown): ScreenConfig {
 }
 const deviceIdsOf = (cfg: ScreenConfig) => [...new Set(cfg.scenes.flatMap((sc) => sc.widgets.map((w) => w.deviceId)).filter((x): x is string => !!x))];
 const backgroundIdsOf = (cfg: ScreenConfig) => [...new Set(cfg.scenes.map((sc) => sc.backgroundId).filter((x): x is string => !!x))];
+const menuIdsOf = (cfg: ScreenConfig) => [...new Set(cfg.scenes.flatMap((sc) => sc.widgets
+  .filter((w) => w.type === "menu")
+  .map((w) => (typeof w.props.menuId === "string" ? w.props.menuId : null))).filter((x): x is string => !!x))];
+
+/** Екрани організації, що показують це меню: кому слати новий конфіг після зміни цін чи наявності. */
+export async function screensUsingMenu(db: Db, orgId: string, menuId: string): Promise<string[]> {
+  const rows = await db.select({ id: screens.id, config: screens.config }).from(screens).where(eq(screens.orgId, orgId));
+  return rows.filter((r) => menuIdsOf(normalized(r.config)).includes(menuId)).map((r) => r.id);
+}
 
 async function validateConfig(db: Db, orgId: string, input: unknown): Promise<ScreenConfig> {
   const parsed = screenConfigSchema.safeParse(input);
@@ -37,6 +47,12 @@ async function validateConfig(db: Db, orgId: string, input: unknown): Promise<Sc
     const rows = await db.select({ id: backgrounds.id, orgId: backgrounds.orgId }).from(backgrounds).where(inArray(backgrounds.id, bgIds));
     const ok = rows.filter((bg) => bg.orgId === null || bg.orgId === orgId);
     if (ok.length !== bgIds.length) throw badRequest("Background not available", "bad_background");
+  }
+  // віджет меню може посилатись лише на меню цієї організації
+  const menuIds = menuIdsOf(cfg);
+  if (menuIds.length) {
+    const rows = await db.select({ id: menus.id }).from(menus).where(and(eq(menus.orgId, orgId), inArray(menus.id, menuIds)));
+    if (rows.length !== menuIds.length) throw badRequest("Menu not available", "bad_menu");
   }
   return cfg;
 }
@@ -102,12 +118,15 @@ export async function publicScreen(db: Db, token: string) {
     for (const bg of rows) if (bg.status === "ready" && (bg.orgId === null || bg.orgId === row.screen.orgId)) bgMap[bg.id] = { kind: bg.kind, files: bg.files, preview: bg.preview, attribution: bg.attribution };
   }
   const background = cfg.backgroundId ? bgMap[cfg.backgroundId] ?? null : null;   // перша сцена: для старих бандлів ТБ
+  // меню віджетів: лише опубліковані меню цієї організації
+  const menuMap = await menuPayloads(db, row.screen.orgId, menuIdsOf(cfg));
   return {
     id: row.screen.id,
     name: row.screen.name,
     config: cfg,
     background,
     backgrounds: bgMap,
+    menus: menuMap,
     deviceIds: own.map((d) => d.id),
     devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp })),
     location: cfg.location ?? null,

@@ -42,7 +42,7 @@ export type OrgRole = (typeof orgRoles)[number];
 /** Конфіг екрана для ТБ */
 export const widgetSchema = z.object({
   id: z.string(),
-  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr", "runtime", "weather", "alert", "eco", "outage", "flow", "mppt"]),
+  type: z.enum(["pv", "battery", "grid", "load", "energy_today", "clock", "text", "chart", "qr", "runtime", "weather", "alert", "eco", "outage", "flow", "mppt", "menu"]),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
   w: z.number().min(1).max(100),
@@ -109,8 +109,20 @@ export const planLimitsSchema = z.object({
   history_days: z.number().int(),
   radio: z.boolean(),
   branding: z.boolean(),
+  /** меню закладу (AI-меню) на організацію */
+  menus: z.number().int().default(1),
+  /** скільки страв можуть мати AI-фото */
+  ai_dishes: z.number().int().default(20),
+  /** генерацій зображень на місяць */
+  ai_generations_month: z.number().int().default(60),
 });
 export type PlanLimits = z.infer<typeof planLimitsSchema>;
+
+/** plans.limits читається з jsonb без розбору: у старих рядках нових ключів немає — добираємо значення за замовчуванням. */
+export function planLimitsOf(raw: unknown): PlanLimits {
+  const r = planLimitsSchema.safeParse(raw);
+  return r.success ? r.data : planLimitsSchema.parse({ screens: 1, custom_backgrounds: false, history_days: 0, radio: false, branding: true, ...(raw as object ?? {}) });
+}
 
 export * from "./radio.ts";
 export * from "./chart.ts";
@@ -118,5 +130,6 @@ export * from "./energy.ts";
 export * from "./brand.ts";
 export * from "./feeds.ts";
 export * from "./menu.ts";
+export * from "./menu-data.ts";
 export * from "./flow.ts";
 export * from "./scenes.ts";

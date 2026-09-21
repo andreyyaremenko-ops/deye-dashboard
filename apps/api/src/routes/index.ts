@@ -11,11 +11,12 @@ import { billingRoutes } from "./billing.ts";
 import { adminRoutes } from "./admin.ts";
 import { screenRoutes } from "./screens.ts";
 import { backgroundRoutes } from "./backgrounds.ts";
+import { menuRoutes } from "./menus.ts";
 import { publicRoutes } from "./public.ts";
 import { internalRoutes } from "./internal.ts";
 
 export async function registerRoutes(app: FastifyInstance, deps: AppDeps) {
-  for (const plugin of [orgRoutes, deviceRoutes, historyRoutes, billingRoutes, screenRoutes, backgroundRoutes, publicRoutes]) {
+  for (const plugin of [orgRoutes, deviceRoutes, historyRoutes, billingRoutes, screenRoutes, backgroundRoutes, menuRoutes, publicRoutes]) {
     await app.register(async (a) => plugin(a, deps));
   }
   await app.register(async (a) => adminRoutes(a, deps));       // preHandler: superadmin
