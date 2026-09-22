@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { aiJobs, aiUsage, dishImages, organizations, plans } from "../src/db/schema.ts";
 
 // тариф із одним меню: перевіряємо саму перевірку ліміту
-const ONE = { id: "one-menu", name: "One", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 1, ai_dishes: 5, ai_generations_month: 10 } };
+const ONE = { id: "one-menu", name: "One", priceMonth: null, limits: { screens: 1, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 1, ai_dishes: 5, ai_generations_month: 10, custom_radio: 5 } };
 
 let t: TestApp;
 beforeAll(async () => { t = await makeTestApp(); });
@@ -237,7 +237,7 @@ describe("розпізнавання фото меню", () => {
 });
 
 // тариф із крихітними AI-лімітами: 1 страва з AI-фото, 3 зображення на місяць
-const TINY = { id: "tiny-ai", name: "Tiny", priceMonth: null, limits: { screens: 5, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 5, ai_dishes: 1, ai_generations_month: 6 } };
+const TINY = { id: "tiny-ai", name: "Tiny", priceMonth: null, limits: { screens: 5, devices: 1, custom_backgrounds: true, history_days: 30, radio: true, branding: true, menus: 5, ai_dishes: 1, ai_generations_month: 6, custom_radio: 5 } };
 
 describe("фото страв: черга, вибір варіанта, ліміти тарифу", () => {
   let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>;

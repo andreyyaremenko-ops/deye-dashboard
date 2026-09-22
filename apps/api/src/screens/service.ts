@@ -7,6 +7,7 @@ import { randomInt } from "node:crypto";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 import { menuPayloads } from "../menus/service.ts";
+import { isAllowedRadio } from "../radio/service.ts";
 
 type Db = PgDatabase<any, any, any>;
 
@@ -42,6 +43,8 @@ async function validateConfig(db: Db, orgId: string, input: unknown): Promise<Sc
   }
   const { plan } = await getOrgWithPlan(db, orgId);
   if (cfg.radioUrl && !plan.limits.radio) throw conflict("Radio is not included in the plan", "plan_limit");
+  // радіо — лише з каталогу або власні перевірені станції цієї організації, а не довільна адреса
+  if (cfg.radioUrl && !(await isAllowedRadio(db, orgId, cfg.radioUrl))) throw badRequest("Radio station not available", "bad_radio");
   const bgIds = backgroundIdsOf(cfg);
   if (bgIds.length) {
     const rows = await db.select({ id: backgrounds.id, orgId: backgrounds.orgId }).from(backgrounds).where(inArray(backgrounds.id, bgIds));

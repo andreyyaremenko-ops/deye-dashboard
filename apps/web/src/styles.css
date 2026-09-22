@@ -350,3 +350,10 @@ html, body { overflow-x: hidden; }
 .mi-var img { width: 120px; height: 120px; object-fit: cover; border-radius: 10px; border: 2px solid transparent; cursor: pointer; display: block; }
 .mi-var.on img { border-color: var(--amber); }
 .mi-var figcaption { display: flex; align-items: center; gap: .3rem; justify-content: center; margin-top: .25rem; font-size: .75rem; color: var(--muted); }
+
+/* --- власні радіостанції в налаштуваннях екрана --- */
+.linklike { background: none; border: 0; padding: .3rem 0 0; color: #9be9f5; cursor: pointer; font: inherit; text-align: left; }
+.linklike:hover { text-decoration: underline; }
+.own-radio { display: flex; flex-direction: column; gap: .35rem; margin: -.3rem 0 .8rem; padding: .7rem .8rem; border: 1px dashed var(--line-2); border-radius: var(--radius-s); }
+.own-radio-row { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
+.own-radio-row .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

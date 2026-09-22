@@ -115,6 +115,8 @@ export const planLimitsSchema = z.object({
   ai_dishes: z.number().int().default(20),
   /** генерацій зображень на місяць */
   ai_generations_month: z.number().int().default(60),
+  /** власних радіостанцій закладу */
+  custom_radio: z.number().int().default(5),
 });
 export type PlanLimits = z.infer<typeof planLimitsSchema>;
 

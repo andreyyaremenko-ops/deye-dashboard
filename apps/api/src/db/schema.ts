@@ -198,6 +198,17 @@ export const loggerFrames = pgTable("logger_frames", {
   receivedAt: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("logger_frames_serial_time_idx").on(t.serial, t.receivedAt.desc())]);
 
+/** Власні радіостанції закладу: у редакторі екрана йдуть поруч із каталогом RADIO_STATIONS. */
+export const radioStations = pgTable("radio_stations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url").notNull(),               // прямий стрім (після розгортання плейлиста) — саме він іде в radioUrl екрана
+  sourceUrl: text("source_url").notNull(),  // що вставив користувач (може бути .m3u/.pls)
+  contentType: text("content_type"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("radio_stations_org_url_idx").on(t.orgId, t.url)]);
+
 // --- AI-меню: розпізнане з фото меню закладу + згенеровані фото страв ---
 
 export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
@@ -306,6 +317,6 @@ export const aiUsage = pgTable("ai_usage", {
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
-  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage,
+  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations,
 };
 export { sql };

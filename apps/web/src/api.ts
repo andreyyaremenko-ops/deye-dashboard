@@ -41,6 +41,9 @@ export interface Background {
   files: Record<"1080" | "720", string> | null; preview: string | null; attribution: string | null; license: string | null; durationS: number | null; createdAt: string;
 }
 export type { RadioStation };
+/** Власна станція закладу (перевірена сервером при додаванні). */
+export interface OwnStation { id: string; title: string; url: string; sourceUrl: string; createdAt: string }
+export interface OrgRadio { catalog: RadioStation[]; own: OwnStation[] }
 
 /** Завантаження з прогресом (fetch не дає upload progress). */
 export function uploadBackground(orgId: string, file: File, onProgress: (pct: number) => void): Promise<Background> {

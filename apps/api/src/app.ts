@@ -24,6 +24,8 @@ export interface AppDeps {
   /** погода/тривоги; без нього екрани отримують feeds = null */
   feeds?: FeedHub | null;
   alertsWebhookSecret?: string | null;
+  /** перевірка радіостріму при додаванні власної станції (тести підміняють) */
+  radioProbe?: (url: string) => Promise<import("./radio/probe.ts").ProbeResult>;
   /** геокодер для кабінету (Open-Meteo) */
   geocodeBase?: string;
   logger?: boolean | object;

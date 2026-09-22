@@ -89,7 +89,7 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
       <p className="org-line"><b>{org.name}</b><span className={`plan-chip plan-${org.plan.id}`}>{org.plan.name}</span></p>
       <p className="muted small">Тариф {org.plan.name}{b?.planUntil && <span className="muted"> · оплачено до {fmtDate(b.planUntil)}</span>}</p>
       <div className="kpis">
-        {[["Телевізорів", L.screens], ["Логерів", L.devices], ["Історія", L.history_days ? `${L.history_days} дн.` : "—"], ["Радіо", L.radio ? "так" : "—"], ["Власні фони", L.custom_backgrounds ? "так" : "—"], ["Брендинг на екрані", L.branding ? "є" : "немає"]].map(([l, v]) =>
+        {[["Телевізорів", L.screens], ["Логерів", L.devices], ["Історія", L.history_days ? `${L.history_days} дн.` : "—"], ["Радіо", L.radio ? "так" : "—"], ["Власні радіостанції", L.custom_radio ?? 5], ["Власні фони", L.custom_backgrounds ? "так" : "—"], ["Брендинг на екрані", L.branding ? "є" : "немає"]].map(([l, v]) =>
           <div key={String(l)} className="kpi"><span className="muted small">{l}</span><b>{v}</b></div>)}
       </div>
     </Card>

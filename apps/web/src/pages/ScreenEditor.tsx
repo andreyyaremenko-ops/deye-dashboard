@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { screenConfigSchema, type Scene, type ScreenConfig } from "@deye/shared";
-import { api, screenUrl, type Device, type MenuSummary, type Org, type RadioStation, type Screen } from "../api.ts";
+import { api, screenUrl, type Device, type MenuSummary, type Org, type OrgRadio, type Screen } from "../api.ts";
 import { Btn, Card, ErrorBox, useAction } from "../components/ui.tsx";
 import { Canvas } from "../editor/Canvas.tsx";
 import { WidgetSettings } from "../editor/WidgetSettings.tsx";
@@ -18,7 +18,8 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
   const [name, setName] = useState("");
   const [devices, setDevices] = useState<Device[]>([]);
   const [menus, setMenus] = useState<MenuSummary[]>([]);
-  const [radio, setRadio] = useState<RadioStation[]>([]);
+  const [radio, setRadio] = useState<OrgRadio>({ catalog: [], own: [] });
+  const reloadRadio = async () => setRadio(await api.get<OrgRadio>(`/api/orgs/${org.id}/radio`));
   const [sel, setSel] = useState<string | null>(null);
   const [sceneIdx, setSceneIdx] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -26,7 +27,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
 
   useEffect(() => {
     void (async () => {
-      const [list, devs, st, mns] = await Promise.all([api.get<Screen[]>(`/api/orgs/${org.id}/screens`), api.get<Device[]>(`/api/orgs/${org.id}/devices`), api.get<RadioStation[]>("/api/radio"), api.get<MenuSummary[]>(`/api/orgs/${org.id}/menus`).catch(() => [])]);
+      const [list, devs, st, mns] = await Promise.all([api.get<Screen[]>(`/api/orgs/${org.id}/screens`), api.get<Device[]>(`/api/orgs/${org.id}/devices`), api.get<OrgRadio>(`/api/orgs/${org.id}/radio`), api.get<MenuSummary[]>(`/api/orgs/${org.id}/menus`).catch(() => [])]);
       const s = list.find((x) => x.id === screenId) ?? null;
       setScreen(s); setCfg(s ? screenConfigSchema.parse(s.config) : null); setName(s?.name ?? ""); setDevices(devs); setRadio(st); setMenus(mns);
     })();
@@ -82,7 +83,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
           <WidgetSettings widget={selected} devices={devices} menus={menus} theme={scene.theme} onChange={updateWidget} />
         </Card>}
         <Card title={`Сцена: ${sceneTitle(scene, idx)}`}><SceneSettings org={org} scene={scene} index={idx} many={cfg.scenes.length > 1} canEdit={canEdit} update={updateScene} /></Card>
-        <Card title="Екран"><ScreenSettings org={org} cfg={cfg} radio={radio} canEdit={canEdit} update={update} /></Card>
+        <Card title="Екран"><ScreenSettings org={org} cfg={cfg} radio={radio} reloadRadio={reloadRadio} canEdit={canEdit} update={update} /></Card>
         <PairCard org={org} screen={screen} canEdit={canEdit} />
       </aside>
     </div>
