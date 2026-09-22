@@ -5,7 +5,7 @@
  */
 import { and, asc, count, desc, eq, gte, inArray, isNull, max, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { DEFAULT_MENU_STYLE, planLimitsOf, type MenuItemInput, type MenuPayload } from "@deye/shared";
+import { DEFAULT_MENU_STYLE, imageModel, planLimitsOf, type MenuItemInput, type MenuPayload } from "@deye/shared";
 import { unlink, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { aiJobs, aiUsage, dishImages, menuItems, menuSections, menuStyles, menus } from "../db/schema.ts";
@@ -22,11 +22,28 @@ export async function getStyle(db: Db, orgId: string) {
   return s ?? { ...DEFAULT_STYLE, orgId, isDefault: true };
 }
 
-export async function saveStyle(db: Db, orgId: string, actorId: string, patch: { name?: string; prompt: string; bgMode?: string; bgColor?: string | null }) {
+export interface StylePatch {
+  name?: string; prompt: string; bgMode?: string; bgColor?: string | null;
+  imageProvider?: string; imageModel?: string; imageQuality?: string;
+}
+
+/** Модель має бути з каталогу, а її провайдер — налаштований на сервері (є ключ). */
+export function assertImageModel(provider: string, model: string, available: readonly string[]) {
+  if (!imageModel(provider, model)) throw badRequest(`Unknown image model ${provider}/${model}`, "bad_model");
+  if (!available.includes(provider)) throw conflict(`Провайдер ${provider} не налаштований на сервері`, "provider_unavailable");
+}
+
+export async function saveStyle(db: Db, orgId: string, actorId: string, patch: StylePatch, available: readonly string[]) {
   await requireRole(db, orgId, actorId, "admin");
+  const current = await getStyle(db, orgId);
+  const provider = patch.imageProvider ?? current.imageProvider;
+  const model = patch.imageModel ?? current.imageModel;
+  if (provider !== current.imageProvider || model !== current.imageModel) assertImageModel(provider, model, available);
   const values = {
     name: patch.name ?? DEFAULT_STYLE.name, prompt: patch.prompt,
-    bgMode: patch.bgMode ?? DEFAULT_STYLE.bgMode, bgColor: patch.bgColor ?? DEFAULT_STYLE.bgColor, updatedAt: new Date(),
+    bgMode: patch.bgMode ?? DEFAULT_STYLE.bgMode, bgColor: patch.bgColor ?? DEFAULT_STYLE.bgColor,
+    imageProvider: provider, imageModel: model, imageQuality: patch.imageQuality ?? current.imageQuality,
+    updatedAt: new Date(),
   };
   const [existing] = await db.select({ id: menuStyles.id }).from(menuStyles)
     .where(and(eq(menuStyles.orgId, orgId), eq(menuStyles.isDefault, true))).limit(1);
@@ -317,7 +334,7 @@ export async function listDishImages(db: Db, orgId: string, menuId: string, item
 }
 
 /** Ставить задачу на N варіантів. Перевіряє обидва ліміти тарифу до постановки. */
-export async function requestDishImages(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, n = VARIANTS.default) {
+export async function requestDishImages(db: Db, orgId: string, actorId: string, menuId: string, itemId: string, n = VARIANTS.default, available: readonly string[] = []) {
   await requireRole(db, orgId, actorId, "admin");
   const item = await ownItem(db, orgId, menuId, itemId);
   const count = Math.min(VARIANTS.max, Math.max(VARIANTS.min, n));
@@ -332,12 +349,17 @@ export async function requestDishImages(db: Db, orgId: string, actorId: string, 
   }
   const running = await activeImageJob(db, itemId);
   if (running && (running.status === "queued" || running.status === "running")) throw conflict("Generation already in progress", "in_progress");
-  const [job] = await db.insert(aiJobs).values({ orgId, kind: "dish_image", refId: itemId, payload: { n: count } }).returning();
+  // модель фіксуємо в задачі: зміна стилю поки задача в черзі на неї вже не впливає
+  const style = await getStyle(db, orgId);
+  assertImageModel(style.imageProvider, style.imageModel, available);
+  const alpha = style.bgMode === "transparent" && !!imageModel(style.imageProvider, style.imageModel)?.transparent;
+  const payload = { n: count, provider: style.imageProvider, model: style.imageModel, quality: style.imageQuality, alpha };
+  const [job] = await db.insert(aiJobs).values({ orgId, kind: "dish_image", refId: itemId, payload }).returning();
   return { jobId: job!.id, itemId, variants: count, status: job!.status };
 }
 
 /** Після імпорту: згенерувати фото всім стравам без фото, скільки дозволяє тариф. */
-export async function requestMenuImages(db: Db, orgId: string, actorId: string, menuId: string, n = VARIANTS.default) {
+export async function requestMenuImages(db: Db, orgId: string, actorId: string, menuId: string, n = VARIANTS.default, available: readonly string[] = []) {
   await requireRole(db, orgId, actorId, "admin");
   await ownMenu(db, orgId, menuId);
   const items = await db.select({ id: menuItems.id }).from(menuItems)
@@ -345,7 +367,7 @@ export async function requestMenuImages(db: Db, orgId: string, actorId: string, 
   const queued: string[] = [];
   let stopped: string | null = null;
   for (const it of items) {
-    try { queued.push((await requestDishImages(db, orgId, actorId, menuId, it.id, n)).jobId); }
+    try { queued.push((await requestDishImages(db, orgId, actorId, menuId, it.id, n, available)).jobId); }
     catch (e) {
       if (e instanceof HttpError && e.code === "plan_limit") { stopped = e.message; break; }   // ліміт вичерпано — решту лишаємо власнику
       if (e instanceof HttpError && e.code === "in_progress") continue;

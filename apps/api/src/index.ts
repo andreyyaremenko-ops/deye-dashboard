@@ -24,6 +24,7 @@ const app = await buildApp({
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
   mediaRoot: config.MEDIA_ROOT,
   mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
+  imageProviders: [config.XAI_API_KEY && "xai", config.OPENAI_API_KEY && "openai"].filter((x): x is string => !!x),
   logger: { level: config.NODE_ENV === "production" ? "info" : "debug" },
 });
 feeds.start();

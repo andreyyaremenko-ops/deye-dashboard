@@ -4,7 +4,7 @@
  */
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { menuItemInputSchema, menuItemPatchSchema, menuSectionInputSchema } from "@deye/shared";
+import { IMAGE_PROVIDERS, menuItemInputSchema, menuItemPatchSchema, menuSectionInputSchema } from "@deye/shared";
 import { createWriteStream } from "node:fs";
 import { mkdir, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -23,6 +23,7 @@ const itemParams = menuParams.extend({ itemId: uuid });
 
 export async function menuRoutes(app: FastifyInstance, deps: Deps) {
   const { db, store } = deps;
+  const available = deps.imageProviders ?? [];
 
   /** Телевізори, що показують це меню, отримують свіжий конфіг (ціни, наявність). */
   const notify = async (orgId: string, menuId: string) => {
@@ -159,13 +160,13 @@ export async function menuRoutes(app: FastifyInstance, deps: Deps) {
   app.post("/api/orgs/:orgId/menus/:menuId/items/:itemId/images", async (req, reply) => {
     const u = requireUser(req); const { orgId, menuId, itemId } = itemParams.parse(req.params);
     const { n } = variants.parse(req.body ?? {});
-    return reply.code(202).send(await mn.requestDishImages(db, orgId, u.id, menuId, itemId, n));
+    return reply.code(202).send(await mn.requestDishImages(db, orgId, u.id, menuId, itemId, n, available));
   });
   // після імпорту: всім стравам без фото, доки вистачає ліміту
   app.post("/api/orgs/:orgId/menus/:menuId/images", async (req, reply) => {
     const u = requireUser(req); const { orgId, menuId } = menuParams.parse(req.params);
     const { n } = variants.parse(req.body ?? {});
-    return reply.code(202).send(await mn.requestMenuImages(db, orgId, u.id, menuId, n));
+    return reply.code(202).send(await mn.requestMenuImages(db, orgId, u.id, menuId, n, available));
   });
   app.post("/api/orgs/:orgId/menus/:menuId/items/:itemId/images/:imageId/choose", async (req) => {
     const u = requireUser(req); const { orgId, menuId, itemId, imageId } = imageParams.parse(req.params);
@@ -215,7 +216,15 @@ export async function menuRoutes(app: FastifyInstance, deps: Deps) {
       prompt: z.string().trim().min(10).max(1000),
       bgMode: z.enum(["solid", "transparent"]).optional(),
       bgColor: z.string().regex(/^#[0-9a-f]{6}$/i).nullable().optional(),
+      imageProvider: z.string().max(20).optional(),
+      imageModel: z.string().max(60).optional(),
+      imageQuality: z.enum(["low", "medium", "high"]).optional(),
     }).parse(req.body);
-    return mn.saveStyle(db, orgId, u.id, body);
+    return mn.saveStyle(db, orgId, u.id, body, available);
+  });
+  // каталог моделей генерації + які провайдери налаштовані на сервері (є ключ)
+  app.get("/api/ai/image-models", async (req) => {
+    requireUser(req);
+    return IMAGE_PROVIDERS.map((p) => ({ ...p, available: available.includes(p.id) }));
   });
 }

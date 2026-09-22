@@ -59,8 +59,14 @@ describe("відповідь xAI", () => {
   });
 
   it("без ключа провайдерів немає — черга AI просто стоїть", () => {
-    expect(providersFromEnv({} as NodeJS.ProcessEnv)).toEqual({ vision: null, image: null });
-    expect(providersFromEnv({ XAI_API_KEY: "k" } as NodeJS.ProcessEnv).vision).toBeTruthy();
+    expect(providersFromEnv({} as NodeJS.ProcessEnv)).toEqual({ vision: null, images: {} });
+    const xai = providersFromEnv({ XAI_API_KEY: "k" } as NodeJS.ProcessEnv);
+    expect(xai.vision).toBeTruthy();
+    expect(Object.keys(xai.images)).toEqual(["xai"]);
+    // лише OpenAI: фото страв є, а розпізнавання меню — ні (воно на Grok)
+    const oa = providersFromEnv({ OPENAI_API_KEY: "k" } as NodeJS.ProcessEnv);
+    expect(oa.vision).toBeNull();
+    expect(Object.keys(oa.images)).toEqual(["openai"]);
   });
 });
 
@@ -133,7 +139,7 @@ describe("задача dish_image", () => {
       return Promise.resolve([]);
     }, { begin: async (fn: (tx: unknown) => Promise<unknown>) => fn(sql), json: (o: unknown) => o });
 
-    const res = await runDishImage(sql as never, job, image as never, tmp);
+    const res = await runDishImage(sql as never, job, { xai: image as never }, tmp);
     expect(res).toMatchObject({ variants: 2, costMicros: 80_000 });
     const q = seen.join("\n");
     expect(q).toContain("insert into dish_images");
@@ -146,6 +152,92 @@ describe("задача dish_image", () => {
   it("страву видалили, поки задача чекала — зрозуміла помилка", async () => {
     const { runDishImage } = await import("../src/dish-image.ts");
     const sql = Object.assign(() => Promise.resolve([]), { begin: async (f: (t: unknown) => Promise<unknown>) => f(null), json: (o: unknown) => o });
-    await expect(runDishImage(sql as never, job, {} as never, "/tmp")).rejects.toThrow(/видалено/);
+    await expect(runDishImage(sql as never, job, {}, "/tmp")).rejects.toThrow(/видалено/);
+  });
+});
+
+describe("OpenAI (GPT Image)", () => {
+  it("шле модель, якість і прозоре тло; вартість рахує за токенами", async () => {
+    const { OpenAiProvider, openAiCostMicros } = await import("../src/ai/openai.ts");
+    const png = Buffer.from("fake-png");
+    const calls: { url: string; body: any }[] = [];
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) });
+      return okJson({
+        data: [{ b64_json: png.toString("base64") }, { b64_json: png.toString("base64") }],
+        usage: { input_tokens: 120, output_tokens: 2112, input_tokens_details: { text_tokens: 120, image_tokens: 0 } },
+      });
+    }) as unknown as typeof fetch;
+    const p = new OpenAiProvider({ apiKey: "sk-test", fetchImpl });
+    const r = await p.generate("чізкейк", 2, { model: "gpt-image-2", quality: "high", alpha: true });
+
+    expect(calls[0]!.url).toBe("https://api.openai.com/v1/images/generations");
+    expect(calls[0]!.body).toMatchObject({ model: "gpt-image-2", n: 2, size: "1024x1024", quality: "high", background: "transparent", output_format: "png" });
+    expect(r.images.map((i) => i.mime)).toEqual(["image/png", "image/png"]);
+    // 120 текстових токенів * $5/1M + 2112 токенів зображення * $30/1M = $0.0006 + $0.06336
+    expect(r.usage).toMatchObject({ provider: "openai", model: "gpt-image-2", images: 2, tokensIn: 120, tokensOut: 2112, costMicros: 63_960 });
+    expect(openAiCostMicros("gpt-image-1-mini", { input_tokens: 100, output_tokens: 1000 })).toBe(8_500);
+    // невідома модель — рахуємо дорожче, ніж дешевше: облік не має занижувати витрати
+    expect(openAiCostMicros("gpt-image-9", { output_tokens: 1000 })).toBe(40_000);
+  });
+
+  it("без прозорості — непрозорий jpeg; помилку доступу не повторює", async () => {
+    const { OpenAiProvider } = await import("../src/ai/openai.ts");
+    const bodies: any[] = [];
+    const ok = vi.fn(async (_u: string, init: RequestInit) => { bodies.push(JSON.parse(String(init.body))); return okJson({ data: [{ b64_json: "AA==" }], usage: {} }); }) as unknown as typeof fetch;
+    const r = await new OpenAiProvider({ apiKey: "k", fetchImpl: ok }).generate("борщ", 1);
+    expect(bodies[0]).toMatchObject({ model: "gpt-image-2", quality: "medium", background: "opaque", output_format: "jpeg" });
+    expect(r.images[0]!.mime).toBe("image/jpeg");
+
+    const denied = vi.fn(async () => new Response('{"error":{"message":"organization must be verified"}}', { status: 403 })) as unknown as typeof fetch;
+    await expect(new OpenAiProvider({ apiKey: "k", fetchImpl: denied }).generate("x", 1)).rejects.toThrow(/openai 403.*verified/);
+    expect((denied as unknown as ReturnType<typeof vi.fn>).mock.calls.length).toBe(1);
+  });
+});
+
+describe("задача dish_image з вибором провайдера", () => {
+  const itemRow = { id: "item-1", name: "Чізкейк", description: null, menu_id: "m1", org_id: "org-1", prompt: "Стиль", bg_mode: "transparent", bg_color: null };
+  const fakeSql = (seen: string[], values: unknown[][]) => {
+    const sql = Object.assign((strings: TemplateStringsArray, ...v: unknown[]) => {
+      const q = strings.join("?").replace(/\s+/g, " ").trim();
+      seen.push(q); values.push(v);
+      if (q.startsWith("select i.id")) return Promise.resolve([itemRow]);
+      if (q.includes("insert into dish_images")) return Promise.resolve([{ id: String(v[0]) }]);
+      return Promise.resolve([]);
+    }, { begin: async (fn: (tx: unknown) => Promise<unknown>) => fn(sql), json: (o: unknown) => o });
+    return sql;
+  };
+
+  it("бере провайдера й модель із задачі, прозоре тло зберігає у webp з альфою", async () => {
+    const { runDishImage } = await import("../src/dish-image.ts");
+    const fs = await import("node:fs/promises");
+    const { execFileSync } = await import("node:child_process");
+    const tmp = await fs.mkdtemp("/tmp/dish-alpha-");
+    // справжній PNG з прозорим тлом: помаранчевий квадрат на прозорому
+    execFileSync("ffmpeg", ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "color=c=black@0.0:s=640x480,format=rgba,drawbox=x=200:y=120:w=240:h=240:color=orange@1:t=fill", "-frames:v", "1", `${tmp}/in.png`]);
+    const png = await fs.readFile(`${tmp}/in.png`);
+    const seenOpts: unknown[] = [];
+    const openai = { generate: async (prompt: string, n: number, opts: unknown) => {
+      seenOpts.push({ prompt, n, opts });
+      return { images: [{ data: png, mime: "image/png" }], usage: { provider: "openai", model: "gpt-image-2", tokensIn: 1, tokensOut: 1, images: 1, costMicros: 30 } };
+    } };
+    const seen: string[] = []; const values: unknown[][] = [];
+    const job = { id: "j", org_id: "org-1", kind: "dish_image" as const, ref_id: "item-1", payload: { n: 1, provider: "openai", model: "gpt-image-2", quality: "low", alpha: true } };
+    await runDishImage(fakeSql(seen, values) as never, job, { openai: openai as never }, tmp);
+
+    expect(seenOpts[0]).toMatchObject({ n: 1, opts: { model: "gpt-image-2", quality: "low", alpha: true } });
+    expect((seenOpts[0] as { prompt: string }).prompt).toContain("прозорому тлі");
+    const insert = values[seen.findIndex((q) => q.includes("insert into dish_images"))]!;
+    const file = String(insert[3]);
+    expect(file).toMatch(/^dish\/.+\.webp$/);
+    const pix = execFileSync("ffprobe", ["-v", "error", "-show_entries", "stream=pix_fmt,width,height", "-of", "csv=p=0", `${tmp}/${file}`]).toString().trim();
+    expect(pix).toBe("900,900,yuva420p");
+    await fs.rm(tmp, { recursive: true, force: true });
+  }, 20_000);
+
+  it("провайдера, для якого немає ключа, — зрозуміла помилка", async () => {
+    const { runDishImage } = await import("../src/dish-image.ts");
+    const job = { id: "j", org_id: "org-1", kind: "dish_image" as const, ref_id: "item-1", payload: { provider: "openai", model: "gpt-image-2" } };
+    await expect(runDishImage(fakeSql([], []) as never, job, { xai: {} as never }, "/tmp")).rejects.toThrow(/openai не налаштований/);
   });
 });

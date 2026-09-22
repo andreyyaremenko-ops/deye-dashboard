@@ -14,6 +14,9 @@ const schema = z.object({
   ALERTS_API_KEY: z.string().optional(),                   // api.ukrainealarm.com: офіційне джерело тривог
   ALERTS_API: z.string().default("https://api.ukrainealarm.com"),
   ALERTS_URL: z.string().default("https://ubilling.net.ua/aerialalerts/?json=true"), // "off" — вимкнути тривоги
+  // ключі AI використовує воркер; API лише знає, які провайдери доступні (для вибору в кабінеті)
+  XAI_API_KEY: z.string().optional(),
+  OPENAI_API_KEY: z.string().optional(),
   PUBLIC_URL: z.string().default("http://localhost:5173"),
   BETTER_AUTH_SECRET: z.string().default("dev-secret-change-me-please-32-bytes"),
   GOOGLE_CLIENT_ID: z.string().optional(),

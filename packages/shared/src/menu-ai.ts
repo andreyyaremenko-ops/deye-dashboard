@@ -107,6 +107,57 @@ export function parseVisionMenu(raw: string): DraftSection[] {
   return sections;
 }
 
+// --- провайдери генерації фото страв ---
+
+export type ImageProviderId = "xai" | "openai";
+export type ImageQuality = "low" | "medium" | "high";
+
+export interface ImageModelInfo {
+  id: string;
+  label: string;
+  /** підказка про ціну для кабінету; точна сума пишеться в ai_usage з відповіді провайдера */
+  price: string;
+  /** провайдер уміє справжнє прозоре тло (PNG з альфою) */
+  transparent: boolean;
+  /** є вибір якості (у OpenAI ціна залежить від неї в рази) */
+  qualities: boolean;
+}
+export interface ImageProviderInfo { id: ImageProviderId; label: string; env: string; models: ImageModelInfo[] }
+
+/**
+ * Каталог моделей генерації. xAI — фіксована ціна за зображення (перевірено 2026-09-21);
+ * OpenAI — оплата за токенами, ціни за 1M токенів у OPENAI_IMAGE_PRICING (pricing-сторінка 2026-09-22).
+ */
+export const IMAGE_PROVIDERS: readonly ImageProviderInfo[] = [
+  { id: "xai", label: "xAI Grok", env: "XAI_API_KEY", models: [
+    { id: "grok-imagine-image-2.0", label: "Grok Imagine 2.0", price: "$0.04 за фото", transparent: false, qualities: false },
+    { id: "grok-imagine-image-quality", label: "Grok Imagine Quality", price: "$0.05 за фото", transparent: false, qualities: false },
+    { id: "grok-imagine-image", label: "Grok Imagine (старша, дешевша)", price: "$0.02 за фото", transparent: false, qualities: false },
+  ] },
+  { id: "openai", label: "OpenAI", env: "OPENAI_API_KEY", models: [
+    { id: "gpt-image-2.5-flare", label: "GPT Image 2.5 Flare (швидка)", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-2.5-sunburst", label: "GPT Image 2.5 Sunburst (детальна)", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-2", label: "GPT Image 2", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-1.5", label: "GPT Image 1.5", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-1-mini", label: "GPT Image 1 Mini (найдешевша)", price: "за токенами", transparent: true, qualities: true },
+  ] },
+];
+
+/** $ за 1M токенів: текст на вході, зображення на виході. */
+export const OPENAI_IMAGE_PRICING: Record<string, { textIn: number; imageOut: number }> = {
+  "gpt-image-2.5-flare": { textIn: 5, imageOut: 30 },
+  "gpt-image-2.5-sunburst": { textIn: 5, imageOut: 30 },
+  "gpt-image-2": { textIn: 5, imageOut: 30 },
+  "gpt-image-1.5": { textIn: 5, imageOut: 32 },
+  "gpt-image-1-mini": { textIn: 5, imageOut: 8 },
+};
+
+export const DEFAULT_IMAGE = { provider: "xai" as ImageProviderId, model: "grok-imagine-image-2.0", quality: "medium" as ImageQuality };
+
+export function imageModel(provider: string, model: string): ImageModelInfo | null {
+  return IMAGE_PROVIDERS.find((p) => p.id === provider)?.models.find((m) => m.id === model) ?? null;
+}
+
 /** Стиль закладу, поки власник не зберіг свій: один на всі страви. */
 export const DEFAULT_MENU_STYLE = {
   name: "Стандартний",
@@ -114,13 +165,21 @@ export const DEFAULT_MENU_STYLE = {
     + "мʼяке природне світло, неглибока різкість, акуратна подача на простому посуді",
   bgMode: "solid",
   bgColor: "#f2ece3",
+  imageProvider: DEFAULT_IMAGE.provider as string,
+  imageModel: DEFAULT_IMAGE.model,
+  imageQuality: DEFAULT_IMAGE.quality as string,
 };
 
-/** Промпт фото страви: стиль закладу + назва + опис; «без тексту» — завжди. */
-export function dishPrompt(style: { prompt: string; bgMode?: string | null; bgColor?: string | null }, item: { name: string; description?: string | null }): string {
-  const bg = style.bgMode === "transparent"
-    ? "однотонне світле тло без предметів"
-    : `однотонне тло кольору ${style.bgColor ?? "#f2ece3"} без предметів`;
+/**
+ * Промпт фото страви: стиль закладу + назва + опис; «без тексту» — завжди.
+ * alpha: провайдер віддасть справжнє прозоре тло — просимо ізольовану страву без тла.
+ */
+export function dishPrompt(style: { prompt: string; bgMode?: string | null; bgColor?: string | null }, item: { name: string; description?: string | null }, opts: { alpha?: boolean } = {}): string {
+  const bg = opts.alpha
+    ? "страва ізольована на прозорому тлі, без стола і предметів навколо, мʼяка тінь під посудом"
+    : style.bgMode === "transparent"
+      ? "однотонне світле тло без предметів"
+      : `однотонне тло кольору ${style.bgColor ?? "#f2ece3"} без предметів`;
   return [
     style.prompt.trim().replace(/[.\s]+$/, ""),
     item.name.trim() + (item.description?.trim() ? `, ${item.description.trim()}` : ""),

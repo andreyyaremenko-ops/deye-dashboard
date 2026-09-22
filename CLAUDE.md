@@ -36,9 +36,11 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   (той самий патерн, що `transcode_jobs`) -> vision-модель -> чернетка з `confidence`,
   власник перевіряє і публікує. Фото страв генеруються в стилі закладу (`menu_styles`,
   промпт завжди з «no text, no letters»), 3–4 варіанти на страву, можна завантажити своє.
-  Провайдер — xAI через `apps/worker/src/ai/` (інтерфейси `VisionProvider`/`ImageProvider`,
-  `XAI_API_KEY`; без ключа задачі просто чекають). Вартість кожного виклику — в `ai_usage`
-  (`cost_in_usd_ticks`, 1 USD = 1e10), ліміти тарифу `menus`/`ai_dishes`/`ai_generations_month`.
+  Провайдери в `apps/worker/src/ai/` (інтерфейси `VisionProvider`/`ImageProvider`): розпізнавання —
+  xAI (`XAI_API_KEY`); фото страв — xAI або OpenAI GPT Image (`OPENAI_API_KEY`), провайдер/модель/якість
+  обирає заклад у стилі (`menu_styles.image_*`, каталог `IMAGE_PROVIDERS` у shared) і фіксуються в
+  payload задачі. OpenAI вміє справжнє прозоре тло -> webp з альфою. Без ключа задачі чекають у черзі. Вартість кожного виклику — в `ai_usage`
+  (xAI: `cost_in_usd_ticks`, 1 USD = 1e10; OpenAI: токени × `OPENAI_IMAGE_PRICING`), ліміти тарифу `menus`/`ai_dishes`/`ai_generations_month`.
   Ціни — цілі копійки; розбір і промпти в `packages/shared/src/menu-data.ts` і `menu-ai.ts`.
   На ТБ — віджет `menu` (`apps/tv/src/menu.tsx`), ціни оновлюються наявним WS-конфігом.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,

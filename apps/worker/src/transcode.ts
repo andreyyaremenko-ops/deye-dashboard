@@ -68,17 +68,21 @@ export interface DishResult { file: string; thumb: string; width: number; height
 /**
  * Фото страви -> квадрат 1:1 (обрізка по центру) 900 px + мініатюра 300 px.
  * Однаково для AI-фото і для завантаженого власного: меню має виглядати однорідно.
+ * alpha: прозоре тло (OpenAI) зберігаємо у webp з альфою, інакше jpg.
  */
-export async function dishPhoto(input: string, outBase: string, mediaRoot: string, side = 900): Promise<DishResult> {
-  const info = await probe(input);
+export async function dishPhoto(input: string, outBase: string, mediaRoot: string, opts: { alpha?: boolean; side?: number } = {}): Promise<DishResult> {
+  const side = opts.side ?? 900;
+  await probe(input);
   await mkdir(dirname(outBase), { recursive: true });
-  const square = `crop='min(iw,ih)':'min(iw,ih)',scale=${side}:${side}`;
-  const common = ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-frames:v", "1", "-pix_fmt", "yuvj420p"];
-  await run("ffmpeg", [...common, "-vf", square, "-q:v", "3", `${outBase}.jpg`]);
-  await run("ffmpeg", [...common, "-vf", `crop='min(iw,ih)':'min(iw,ih)',scale=300:300`, "-q:v", "4", `${outBase}-t.jpg`]);
+  const crop = (px: number) => `crop='min(iw,ih)':'min(iw,ih)',scale=${px}:${px}`;
+  const ext = opts.alpha ? "webp" : "jpg";
+  const enc = opts.alpha ? ["-c:v", "libwebp", "-pix_fmt", "yuva420p", "-quality", "85"] : ["-pix_fmt", "yuvj420p", "-q:v", "3"];
+  const common = ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-frames:v", "1"];
+  await run("ffmpeg", [...common, "-vf", crop(side), ...enc, `${outBase}.${ext}`]);
+  await run("ffmpeg", [...common, "-vf", crop(300), ...enc, `${outBase}-t.${ext}`]);
   const rel = (p: string) => (p.startsWith(mediaRoot) ? p.slice(mediaRoot.length).replace(/^\/+/, "") : p);
   return {
-    file: rel(`${outBase}.jpg`), thumb: rel(`${outBase}-t.jpg`),
-    width: side, height: side, bytes: (await stat(`${outBase}.jpg`)).size,
+    file: rel(`${outBase}.${ext}`), thumb: rel(`${outBase}-t.${ext}`),
+    width: side, height: side, bytes: (await stat(`${outBase}.${ext}`)).size,
   };
 }

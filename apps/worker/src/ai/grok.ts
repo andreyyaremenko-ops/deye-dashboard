@@ -3,10 +3,10 @@
  * Ключ лише на сервері (XAI_API_KEY), таймаут і повтори на 429/5xx.
  * Вартість беремо з відповіді: usage.cost_in_usd_ticks, 1 USD = 1e10 «тіків».
  */
-import type { AiInputImage, AiUsage, ImageProvider, VisionProvider } from "./types.ts";
+import type { AiInputImage, AiUsage, GenerateOptions, ImageProvider, VisionProvider } from "./types.ts";
+import { postJson } from "./http.ts";
 
 const TICKS_PER_USD = 1e10;
-const RETRY_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
 
 export interface GrokOptions {
   apiKey: string;
@@ -48,28 +48,8 @@ export class GrokProvider implements VisionProvider, ImageProvider {
     };
   }
 
-  private async call(path: string, body: unknown): Promise<any> {
-    let last: Error | null = null;
-    for (let attempt = 0; attempt <= this.o.retries; attempt++) {
-      if (attempt) await new Promise((r) => setTimeout(r, 1000 * 2 ** (attempt - 1)));
-      let res: Response;
-      try {
-        res = await this.o.fetchImpl(`${this.o.api}${path}`, {
-          method: "POST",
-          headers: { authorization: `Bearer ${this.o.apiKey}`, "content-type": "application/json" },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(this.o.timeoutMs),
-        });
-      } catch (e) {
-        last = e as Error;            // мережа або таймаут — пробуємо ще раз
-        continue;
-      }
-      if (res.ok) return res.json();
-      const text = (await res.text().catch(() => "")).slice(0, 300);
-      last = new Error(`xai ${res.status}: ${text}`);
-      if (!RETRY_STATUS.has(res.status)) break;
-    }
-    throw last ?? new Error("xai: no response");
+  private call(path: string, body: unknown): Promise<any> {
+    return postJson(`${this.o.api}${path}`, body, { ...this.o, label: "xai" });
   }
 
   async readMenu(images: AiInputImage[], prompt: { system: string; user: string }) {
@@ -91,9 +71,11 @@ export class GrokProvider implements VisionProvider, ImageProvider {
     return { raw, usage };
   }
 
-  async generate(prompt: string, n: number) {
+  /** Grok не вміє прозоре тло і вибір якості — opts.alpha/quality ігноруються. */
+  async generate(prompt: string, n: number, opts: GenerateOptions = {}) {
+    const model = opts.model ?? this.o.imageModel;
     const body = await this.call("/v1/images/generations", {
-      model: this.o.imageModel, prompt, n, aspect_ratio: "1:1", resolution: "1k", response_format: "b64_json",
+      model, prompt, n, aspect_ratio: "1:1", resolution: "1k", response_format: "b64_json",
     });
     const data = (body.data ?? []) as { b64_json?: string; url?: string; mime_type?: string }[];
     const images = [];
@@ -108,7 +90,7 @@ export class GrokProvider implements VisionProvider, ImageProvider {
     if (!images.length) throw new Error("xai: зображень не повернуто");
     const u: XaiUsage = body.usage ?? {};
     const usage: AiUsage = {
-      provider: this.provider, model: this.o.imageModel,
+      provider: this.provider, model,
       tokensIn: u.input_tokens ?? 0, tokensOut: u.output_tokens ?? 0, images: images.length, costMicros: costMicrosOf(u),
     };
     return { images, usage };

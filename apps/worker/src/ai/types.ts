@@ -21,9 +21,23 @@ export interface VisionProvider {
   readMenu(images: AiInputImage[], prompt: { system: string; user: string }): Promise<{ raw: string; usage: AiUsage }>;
 }
 
-export interface ImageProvider {
-  /** n варіантів фото страви, квадрат 1:1. */
-  generate(prompt: string, n: number): Promise<{ images: AiOutputImage[]; usage: AiUsage }>;
+export interface GenerateOptions {
+  /** модель з каталогу IMAGE_PROVIDERS; без неї — модель провайдера за замовчуванням */
+  model?: string;
+  quality?: "low" | "medium" | "high";
+  /** справжнє прозоре тло (лише провайдери, що вміють) */
+  alpha?: boolean;
 }
 
-export interface AiProviders { vision: VisionProvider | null; image: ImageProvider | null }
+export interface ImageProvider {
+  /** n варіантів фото страви, квадрат 1:1. */
+  generate(prompt: string, n: number, opts?: GenerateOptions): Promise<{ images: AiOutputImage[]; usage: AiUsage }>;
+}
+
+export type ImageProviderId = "xai" | "openai";
+
+export interface AiProviders {
+  vision: VisionProvider | null;
+  /** генерація фото страв за провайдером; задача сама каже, яким (payload.provider) */
+  images: Partial<Record<ImageProviderId, ImageProvider>>;
+}

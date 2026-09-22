@@ -343,3 +343,79 @@ describe("фото страв: черга, вибір варіанта, лімі
     expect(after.images).toHaveLength(2);
   });
 });
+
+describe("вибір провайдера й моделі генерації", () => {
+  let t2: TestApp;
+  let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>;
+  let orgId: string, menuId: string, itemId: string;
+
+  beforeAll(async () => {
+    // на цьому «сервері» є лише ключ xAI
+    t2 = await makeTestApp({ imageProviders: ["xai"] });
+    const o = await signUp(t2.app, "prov@menu.test"); owner = api(t2.app, o.cookie);
+    const s = await signUp(t2.app, "prov-staff@menu.test"); staff = api(t2.app, s.cookie);
+    orgId = (await owner.post("/api/orgs", { name: "Пекарня" })).json().id;
+    const inv = (await owner.post(`/api/orgs/${orgId}/invites`, {})).json();
+    await staff.post(`/api/invites/${inv.token}/accept`);
+    menuId = (await owner.post(`/api/orgs/${orgId}/menus`, { name: "Випічка" })).json().id;
+    const sectionId = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/sections`, { name: "Круасани" })).json().id;
+    itemId = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items`, { sectionId, name: "Круасан" })).json().id;
+  });
+  afterAll(async () => { await t2.close(); });
+
+  it("каталог показує, які провайдери налаштовані", async () => {
+    const res = await staff.get("/api/ai/image-models");
+    expect(res.statusCode).toBe(200);
+    const byId = Object.fromEntries(res.json().map((p: { id: string; available: boolean }) => [p.id, p.available]));
+    expect(byId).toEqual({ xai: true, openai: false });
+    expect((await t2.app.inject({ method: "GET", url: "/api/ai/image-models" })).statusCode).toBe(401);
+  });
+
+  it("стиль за замовчуванням — Grok; ненастроєний провайдер і вигадана модель відхиляються", async () => {
+    expect((await owner.get(`/api/orgs/${orgId}/menu-style`)).json()).toMatchObject({ imageProvider: "xai", imageModel: "grok-imagine-image-2.0" });
+    const base = { prompt: "Свіжа випічка на дошці, ранкове світло" };
+    const noKey = await owner.put(`/api/orgs/${orgId}/menu-style`, { ...base, imageProvider: "openai", imageModel: "gpt-image-2" });
+    expect(noKey.statusCode).toBe(409);
+    expect(noKey.json().error).toBe("provider_unavailable");
+    const fake = await owner.put(`/api/orgs/${orgId}/menu-style`, { ...base, imageProvider: "xai", imageModel: "grok-9000" });
+    expect(fake.json().error).toBe("bad_model");
+    const ok = await owner.put(`/api/orgs/${orgId}/menu-style`, { ...base, imageProvider: "xai", imageModel: "grok-imagine-image" });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().imageModel).toBe("grok-imagine-image");
+    expect((await staff.put(`/api/orgs/${orgId}/menu-style`, { ...base, imageModel: "grok-imagine-image-2.0" })).statusCode).toBe(403);
+  });
+
+  it("модель фіксується в задачі на момент постановки", async () => {
+    const res = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemId}/images`, { n: 2 });
+    expect(res.statusCode).toBe(202);
+    const [job] = await t2.db.select().from(aiJobs).where(eq(aiJobs.id, res.json().jobId));
+    expect(job!.payload).toEqual({ n: 2, provider: "xai", model: "grok-imagine-image", quality: "medium", alpha: false });
+  });
+
+  it("прозоре тло вмикає альфу лише там, де провайдер її вміє", async () => {
+    // Grok прозорості не вміє: bgMode=transparent лишається «світлим однотонним тлом» у промпті
+    await owner.put(`/api/orgs/${orgId}/menu-style`, { prompt: "Свіжа випічка на дошці, ранкове світло", bgMode: "transparent" });
+    await t2.db.update(aiJobs).set({ status: "done" }).where(eq(aiJobs.refId, itemId));
+    const res = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemId}/images`, { n: 1 });
+    const [job] = await t2.db.select().from(aiJobs).where(eq(aiJobs.id, res.json().jobId));
+    expect(job!.payload).toMatchObject({ provider: "xai", alpha: false });
+  });
+});
+
+describe("OpenAI з прозорим тлом", () => {
+  let t3: TestApp;
+  it("з ключем OpenAI і прозорим тлом задача просить альфу", async () => {
+    t3 = await makeTestApp({ imageProviders: ["xai", "openai"] });
+    const o = await signUp(t3.app, "oa@menu.test"); const owner = api(t3.app, o.cookie);
+    const orgId = (await owner.post("/api/orgs", { name: "Кондитерська" })).json().id;
+    const menuId = (await owner.post(`/api/orgs/${orgId}/menus`, { name: "Торти" })).json().id;
+    const sectionId = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/sections`, { name: "Торти" })).json().id;
+    const itemId = (await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items`, { sectionId, name: "Наполеон" })).json().id;
+    const saved = await owner.put(`/api/orgs/${orgId}/menu-style`, { prompt: "Студійне фото десерту, мʼяке світло", bgMode: "transparent", imageProvider: "openai", imageModel: "gpt-image-2.5-flare", imageQuality: "high" });
+    expect(saved.statusCode).toBe(200);
+    const res = await owner.post(`/api/orgs/${orgId}/menus/${menuId}/items/${itemId}/images`, { n: 3 });
+    const [job] = await t3.db.select().from(aiJobs).where(eq(aiJobs.id, res.json().jobId));
+    expect(job!.payload).toEqual({ n: 3, provider: "openai", model: "gpt-image-2.5-flare", quality: "high", alpha: true });
+    await t3.close();
+  });
+});

@@ -14,7 +14,7 @@ import type { Mail } from "../src/mail/index.ts";
 
 export const INTERNAL = { user: "api", pass: "internal-test-pass" };
 
-export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null; feeds?: (store: MemoryStateStore, db: ReturnType<typeof drizzle>) => import("../src/feeds/hub.ts").FeedHub; alertsWebhookSecret?: string; radioProbe?: import("../src/app.ts").AppDeps["radioProbe"] } = {}) {
+export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null; feeds?: (store: MemoryStateStore, db: ReturnType<typeof drizzle>) => import("../src/feeds/hub.ts").FeedHub; alertsWebhookSecret?: string; radioProbe?: import("../src/app.ts").AppDeps["radioProbe"]; imageProviders?: string[] } = {}) {
   const pg = new PGlite();
   const db = drizzle(pg, { schema });
   const dir = join(import.meta.dirname, "../drizzle");
@@ -36,6 +36,7 @@ export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts"
     feeds: opts.feeds ? opts.feeds(store, db) : null,
     alertsWebhookSecret: opts.alertsWebhookSecret ?? null,
     radioProbe: opts.radioProbe,
+    imageProviders: opts.imageProviders ?? ["xai", "openai"],
   });
   await app.ready();
   return { app, db, store, mails, pg, mediaRoot, close: async () => { await app.close(); await pg.close(); } };

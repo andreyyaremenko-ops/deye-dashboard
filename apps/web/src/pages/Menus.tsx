@@ -1,6 +1,7 @@
 /** Список меню закладу: створити порожнє або сфотографувати паперове (AI-розпізнавання). */
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
+import type { ImageProviderInfo } from "@deye/shared";
 import { api, importMenuPhotos, type MenuSummary, type Org } from "../api.ts";
 import { Btn, Card, ErrorBox, ago, useAction } from "../components/ui.tsx";
 
@@ -88,39 +89,74 @@ function ImportButton({ org, disabled, onDone }: { org: Org; disabled: boolean; 
   </>;
 }
 
-/** Стиль фото страв: один промпт на весь заклад, щоб серія виглядала однаково. */
+/** Каталог моделей генерації з сервера: available = на сервері є ключ провайдера. */
+type ProviderRow = ImageProviderInfo & { available: boolean };
+
+/** Стиль фото страв: один промпт на весь заклад, щоб серія виглядала однаково; тут же провайдер і модель. */
 function StyleCard({ org }: { org: Org }) {
   const [prompt, setPrompt] = useState<string | null>(null);
   const [bgColor, setBgColor] = useState("#f2ece3");
   const [bgMode, setBgMode] = useState("solid");
+  const [provider, setProvider] = useState("xai");
+  const [model, setModel] = useState("grok-imagine-image-2.0");
+  const [quality, setQuality] = useState("medium");
+  const [providers, setProviders] = useState<ProviderRow[]>([]);
   const [saved, setSaved] = useState(false);
   useEffect(() => {
-    void api.get<{ prompt: string; bgMode: string; bgColor: string | null }>(`/api/orgs/${org.id}/menu-style`).then((s) => {
+    void api.get<{ prompt: string; bgMode: string; bgColor: string | null; imageProvider: string; imageModel: string; imageQuality: string }>(`/api/orgs/${org.id}/menu-style`).then((s) => {
       setPrompt(s.prompt); setBgMode(s.bgMode); setBgColor(s.bgColor ?? "#f2ece3");
+      setProvider(s.imageProvider); setModel(s.imageModel); setQuality(s.imageQuality);
     });
+    void api.get<ProviderRow[]>("/api/ai/image-models").then(setProviders).catch(() => {});
   }, [org.id]);
   const save = useAction(async () => {
-    await api.put(`/api/orgs/${org.id}/menu-style`, { prompt, bgMode, bgColor: bgMode === "solid" ? bgColor : null });
+    await api.put(`/api/orgs/${org.id}/menu-style`, { prompt, bgMode, bgColor: bgMode === "solid" ? bgColor : null, imageProvider: provider, imageModel: model, imageQuality: quality });
     setSaved(true); setTimeout(() => setSaved(false), 2500);
   });
   if (prompt === null) return null;
+
+  const prov = providers.find((p) => p.id === provider);
+  const info = prov?.models.find((m) => m.id === model);
+  // зміна провайдера: беремо його першу модель, щоб не лишити чужу
+  const pickProvider = (id: string) => { setProvider(id); setModel(providers.find((p) => p.id === id)?.models[0]?.id ?? ""); };
 
   return <Card title="Стиль фото страв">
     <p className="muted small">Цей опис додається до кожного фото: світло, подача, настрій. Назви страв і «без тексту» додаються автоматично.</p>
     <textarea rows={3} value={prompt} onChange={(e) => setPrompt(e.currentTarget.value)} />
     <div className="row small" style={{ marginTop: ".6rem" }}>
+      <label className="field"><span>Хто малює</span>
+        <select value={provider} onChange={(e) => pickProvider(e.currentTarget.value)}>
+          {providers.map((p) => <option key={p.id} value={p.id} disabled={!p.available}>{p.label}{p.available ? "" : " — немає ключа на сервері"}</option>)}
+        </select>
+      </label>
+      <label className="field"><span>Модель</span>
+        <select value={model} onChange={(e) => setModel(e.currentTarget.value)}>
+          {prov?.models.map((m) => <option key={m.id} value={m.id}>{m.label} · {m.price}</option>)}
+        </select>
+      </label>
+      {info?.qualities && <label className="field"><span>Якість</span>
+        <select value={quality} onChange={(e) => setQuality(e.currentTarget.value)}>
+          <option value="low">низька — найдешевше, для чернеток</option>
+          <option value="medium">середня</option>
+          <option value="high">висока — у рази дорожче</option>
+        </select>
+      </label>}
+    </div>
+    <div className="row small" style={{ marginTop: ".6rem" }}>
       <label className="field"><span>Тло</span>
         <select value={bgMode} onChange={(e) => setBgMode(e.currentTarget.value)}>
           <option value="solid">однотонне кольорове</option>
-          <option value="transparent">світле нейтральне</option>
+          <option value="transparent">{info?.transparent ? "прозоре — страва поверх фону екрана" : "світле нейтральне"}</option>
         </select>
       </label>
       {bgMode === "solid" && <label className="field"><span>Колір тла</span>
         <input type="color" value={bgColor} onChange={(e) => setBgColor(e.currentTarget.value)} />
       </label>}
       <span className="grow" />
-      <Btn onClick={() => save.run(undefined)} disabled={save.busy || (prompt?.trim().length ?? 0) < 10}>Зберегти стиль</Btn>
+      <Btn onClick={() => save.run(undefined)} disabled={save.busy || (prompt?.trim().length ?? 0) < 10 || !model}>Зберегти стиль</Btn>
     </div>
+    {bgMode === "transparent" && info && !info.transparent && <p className="muted small">Справжнє прозоре тло вміє лише OpenAI; ця модель намалює світле нейтральне.</p>}
+    {provider === "openai" && <p className="muted small">OpenAI рахує за токенами: точна вартість кожного фото зʼявиться в смузі витрат меню після генерації.</p>}
     {saved && <div className="ok">Стиль збережено. Нові фото генеруватимуться в ньому.</div>}
     <ErrorBox err={save.err} />
   </Card>;

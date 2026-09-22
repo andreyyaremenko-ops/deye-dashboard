@@ -24,6 +24,8 @@ export interface AppDeps {
   /** погода/тривоги; без нього екрани отримують feeds = null */
   feeds?: FeedHub | null;
   alertsWebhookSecret?: string | null;
+  /** провайдери генерації фото, для яких на сервері є ключ (xai, openai) */
+  imageProviders?: string[];
   /** перевірка радіостріму при додаванні власної станції (тести підміняють) */
   radioProbe?: (url: string) => Promise<import("./radio/probe.ts").ProbeResult>;
   /** геокодер для кабінету (Open-Meteo) */

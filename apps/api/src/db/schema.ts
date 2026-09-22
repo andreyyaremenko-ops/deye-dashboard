@@ -223,6 +223,9 @@ export const menuStyles = pgTable("menu_styles", {
   prompt: text("prompt").notNull(),
   bgMode: text("bg_mode").notNull().default("solid"),     // solid | transparent
   bgColor: text("bg_color"),                              // #rrggbb для solid
+  imageProvider: text("image_provider").notNull().default("xai"),    // IMAGE_PROVIDERS у @deye/shared/menu-ai
+  imageModel: text("image_model").notNull().default("grok-imagine-image-2.0"),
+  imageQuality: text("image_quality").notNull().default("medium"),   // low | medium | high (для OpenAI)
   isDefault: boolean("is_default").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

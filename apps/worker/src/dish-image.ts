@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { DEFAULT_MENU_STYLE, dishPrompt } from "@deye/shared/menu-ai";
 import { dishPhoto } from "./transcode.ts";
 import { logUsage, type AiJobRow } from "./menu-import.ts";
-import type { AiOutputImage, ImageProvider } from "./ai/types.ts";
+import type { AiOutputImage, AiProviders, ImageProviderId } from "./ai/types.ts";
 
 type Sql = any;
 
@@ -41,14 +41,14 @@ async function itemWithStyle(sql: Sql, itemId: string): Promise<ItemRow | undefi
 /** Зберігає один файл у /media/dish як квадрат 1:1 і додає рядок dish_images. */
 async function storeVariant(sql: Sql, opts: {
   orgId: string; itemId: string; mediaRoot: string; bytes: Buffer; mime: string;
-  isAi: boolean; prompt: string | null; provider: string | null; model: string | null;
+  isAi: boolean; prompt: string | null; provider: string | null; model: string | null; alpha?: boolean;
 }) {
   const id = randomUUID();
   const tmp = join(opts.mediaRoot, "dish", `${id}.src`);
   await mkdir(join(opts.mediaRoot, "dish"), { recursive: true });
   await writeFile(tmp, opts.bytes);
   try {
-    const out = await dishPhoto(tmp, join(opts.mediaRoot, "dish", id), opts.mediaRoot);
+    const out = await dishPhoto(tmp, join(opts.mediaRoot, "dish", id), opts.mediaRoot, { alpha: opts.alpha });
     const [row] = await sql`
       insert into dish_images (id, org_id, item_id, status, file, thumb, width, height, bytes, is_ai, provider, model, prompt)
       values (${id}, ${opts.orgId}, ${opts.itemId}, 'ready', ${out.file}, ${out.thumb}, ${out.width}, ${out.height}, ${out.bytes},
@@ -60,19 +60,26 @@ async function storeVariant(sql: Sql, opts: {
   }
 }
 
-export async function runDishImage(sql: Sql, job: AiJobRow, image: ImageProvider, mediaRoot: string) {
+export async function runDishImage(sql: Sql, job: AiJobRow, providers: AiProviders["images"], mediaRoot: string) {
   const item = await itemWithStyle(sql, job.ref_id);
   if (!item) throw new Error("позицію меню видалено");
   const n = Math.min(MAX_VARIANTS, Math.max(1, Number(job.payload.n ?? DEFAULT_VARIANTS)));
+  // провайдер і модель зафіксовані в задачі при постановці; старі задачі без них — Grok за замовчуванням
+  const providerId = String(job.payload.provider ?? "xai") as ImageProviderId;
+  const image = providers[providerId];
+  if (!image) throw new Error(`Провайдер ${providerId} не налаштований (немає ключа на сервері)`);
+  const model = typeof job.payload.model === "string" ? job.payload.model : undefined;
+  const quality = (job.payload.quality ?? "medium") as "low" | "medium" | "high";
+  const alpha = job.payload.alpha === true;
   const style = { prompt: item.prompt ?? DEFAULT_MENU_STYLE.prompt, bgMode: item.bg_mode, bgColor: item.bg_color };
-  const prompt = dishPrompt(style, { name: item.name, description: item.description });
+  const prompt = dishPrompt(style, { name: item.name, description: item.description }, { alpha });
 
-  const { images, usage } = await image.generate(prompt, n);
+  const { images, usage } = await image.generate(prompt, n, { model, quality, alpha });
   const ids: string[] = [];
   for (const img of images as AiOutputImage[]) {
     ids.push(await storeVariant(sql, {
       orgId: item.org_id, itemId: item.id, mediaRoot, bytes: img.data, mime: img.mime,
-      isAi: true, prompt, provider: usage.provider, model: usage.model,
+      isAi: true, prompt, provider: usage.provider, model: usage.model, alpha,
     }));
   }
   await logUsage(sql, item.org_id, job.id, "dish_image", usage);

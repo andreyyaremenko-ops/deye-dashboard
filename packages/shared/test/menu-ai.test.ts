@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseVisionMenu, extractJson, dishPrompt, CONFIDENCE_OK } from "../src/menu-ai.ts";
+import { parseVisionMenu, extractJson, dishPrompt, CONFIDENCE_OK, IMAGE_PROVIDERS, OPENAI_IMAGE_PRICING, imageModel, DEFAULT_IMAGE } from "../src/menu-ai.ts";
 
 const GOOD = JSON.stringify({
   sections: [
@@ -74,5 +74,19 @@ describe("промпт фото страви", () => {
     const p = dishPrompt({ ...style, bgMode: "transparent" }, { name: "Чізкейк" });
     expect(p).toContain("однотонне світле тло");
     expect(p).toContain("Чізкейк.");
+  });
+});
+
+describe("каталог моделей генерації", () => {
+  it("кожна модель OpenAI має ціну за токенами, модель за замовчуванням існує", () => {
+    for (const m of IMAGE_PROVIDERS.find((p) => p.id === "openai")!.models) expect(OPENAI_IMAGE_PRICING[m.id]).toBeTruthy();
+    expect(imageModel(DEFAULT_IMAGE.provider, DEFAULT_IMAGE.model)).toBeTruthy();
+    expect(imageModel("xai", "gpt-image-2")).toBeNull();          // модель чужого провайдера
+  });
+  it("альфа: страва ізольована на прозорому, без кольору тла; «без тексту» лишається", () => {
+    const p = dishPrompt({ prompt: "Стиль", bgMode: "transparent", bgColor: "#123456" }, { name: "Торт" }, { alpha: true });
+    expect(p).toContain("прозорому тлі");
+    expect(p).not.toContain("#123456");
+    expect(p).toContain("no text, no letters");
   });
 });

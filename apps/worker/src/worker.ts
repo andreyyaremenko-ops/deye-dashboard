@@ -53,7 +53,7 @@ export async function runOne(): Promise<boolean> {
 
 if (process.argv[1]?.endsWith("worker.ts")) {
   const providers = providersFromEnv();
-  log({ msg: "worker started", media: MEDIA_ROOT, ai: providers.vision ? "xai" : "off" });
+  log({ msg: "worker started", media: MEDIA_ROOT, vision: providers.vision ? "xai" : "off", images: Object.keys(providers.images) });
   // зависла джоба після рестарту -> назад у чергу
   await sql`update transcode_jobs set status = 'queued' where status = 'running'`;
   await sql`update ai_jobs set status = 'queued' where status = 'running' and attempts < 3`;
