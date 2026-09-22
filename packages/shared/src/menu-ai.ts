@@ -127,6 +127,7 @@ export interface ImageProviderInfo { id: ImageProviderId; label: string; env: st
 /**
  * Каталог моделей генерації. xAI — фіксована ціна за зображення (перевірено 2026-09-21);
  * OpenAI — оплата за токенами, ціни за 1M токенів у OPENAI_IMAGE_PRICING (pricing-сторінка 2026-09-22).
+ * Заміряно 2026-09-22 на 1024², medium: gpt-image-2 — 1756 токенів ($0.053), 2.5-flare — 439 ($0.014).
  */
 export const IMAGE_PROVIDERS: readonly ImageProviderInfo[] = [
   { id: "xai", label: "xAI Grok", env: "XAI_API_KEY", models: [
@@ -135,9 +136,9 @@ export const IMAGE_PROVIDERS: readonly ImageProviderInfo[] = [
     { id: "grok-imagine-image", label: "Grok Imagine (старша, дешевша)", price: "$0.02 за фото", transparent: false, qualities: false },
   ] },
   { id: "openai", label: "OpenAI", env: "OPENAI_API_KEY", models: [
-    { id: "gpt-image-2.5-flare", label: "GPT Image 2.5 Flare (швидка)", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-2.5-flare", label: "GPT Image 2.5 Flare (швидка)", price: "≈$0.014 за фото (середня якість)", transparent: true, qualities: true },
     { id: "gpt-image-2.5-sunburst", label: "GPT Image 2.5 Sunburst (детальна)", price: "за токенами", transparent: true, qualities: true },
-    { id: "gpt-image-2", label: "GPT Image 2", price: "за токенами", transparent: true, qualities: true },
+    { id: "gpt-image-2", label: "GPT Image 2", price: "≈$0.05 за фото (середня якість)", transparent: true, qualities: true },
     { id: "gpt-image-1.5", label: "GPT Image 1.5", price: "за токенами", transparent: true, qualities: true },
     { id: "gpt-image-1-mini", label: "GPT Image 1 Mini (найдешевша)", price: "за токенами", transparent: true, qualities: true },
   ] },
