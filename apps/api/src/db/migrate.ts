@@ -17,14 +17,20 @@ await backfillRollups();
 async function backfillRollups() {
   const [ts] = await sql<{ ok: boolean }[]>`select to_regclass('timescaledb_information.continuous_aggregates') is not null as ok`;
   if (!ts?.ok) { console.log("rollups: Timescale не знайдено, пропускаю"); return; }
+  const [raw] = await sql<{ from: Date | null }[]>`
+    select min(range_start) as from from timescaledb_information.chunks where hypertable_name = 'telemetry'`;
+  if (!raw?.from) return;                                    // порожня база — наповнювати нічого
   for (const view of ROLLUP_VIEWS) {
-    const [cagg] = await sql<{ mat: string }[]>`
-      select format('%I.%I', materialization_hypertable_schema, materialization_hypertable_name) as mat
-      from timescaledb_information.continuous_aggregates where view_name = ${view}`;
-    if (!cagg) continue;
-    // саме матеріалізована таблиця, а не view: через materialized_only = false view віддала б і сирий хвіст
-    const [filled] = await sql.unsafe<{ x: number }[]>(`select 1 as x from ${cagg.mat} limit 1`);
-    if (filled) continue;
+    // Порівнюємо покриття, а не «чи є рядки»: політика оновлення могла вже запуститись і залити
+    // тільки своє вікно (start_offset), і тоді старіша історія лишилась би поза ролапом назавжди.
+    // Після ретенції сирих рядків min(range_start) сирої таблиці зсувається вперед, тож зайвого
+    // повного refresh (який стер би довгу історію з ролапу) не станеться.
+    const [cov] = await sql<{ from: Date | null }[]>`
+      select (select min(range_start) from timescaledb_information.chunks ch
+               where ch.hypertable_name = ca.materialization_hypertable_name) as from
+      from timescaledb_information.continuous_aggregates ca where ca.view_name = ${view}`;
+    if (!cov) continue;
+    if (cov.from && cov.from <= raw.from) continue;
     const t0 = Date.now();
     await sql.unsafe(`call refresh_continuous_aggregate('${view}', null, null)`);
     console.log(`rollups: ${view} наповнено за ${Math.round((Date.now() - t0) / 1000)} с`);
