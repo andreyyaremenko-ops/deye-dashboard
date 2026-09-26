@@ -30,6 +30,7 @@ describe("hexToRegs / rangesToTable", () => {
 const HP3: Record<string, { serial: string; ratedW: number; minPvTotalKwh: number; mapId: string }> = {
   "2763543833": { serial: "2309208317", ratedW: 15000, minPvTotalKwh: 20000, mapId: "deye-hp3" },       // стенд: 15 kW, одна батарея, 2 MPPT
   "2989852238": { serial: "2407102212", ratedW: 30000, minPvTotalKwh: 70000, mapId: "deye-hp3-p105" },  // Dymer: 30 kW, дві батареї, 4 MPPT, протокол 1.05
+  "2947846131": { serial: "2405040015", ratedW: 50000, minPvTotalKwh: 90000, mapId: "deye-hp3" },        // Budmayster: 50 kW, дві батареї, 4 MPPT, мікроінвертор на GEN-порту
 };
 
 describe("deye-hp3 на реальних дампах", () => {
@@ -49,11 +50,13 @@ describe("deye-hp3 на реальних дампах", () => {
       expect(map?.id).toBe(known!.mapId);
     });
 
-    it(`${file}: баланс мережа + інвертор = навантаження`, () => {
+    it(`${file}: баланс мережа + GEN + інвертор = навантаження`, () => {
       const m = decode(map!, table);
       expect(m.state).toBe("normal");
-      expect((m.grid_w as number) + (m.inv_w as number)).toBe(m.load_w);
+      // GEN-порт (мікроінвертор, генератор) входить у навантаження, але не проходить через CT мережі
+      expect((m.grid_w as number) + (m.gen_w as number) + (m.inv_w as number)).toBe(m.load_w);
       expect(m.grid_w_l1 as number + (m.grid_w_l2 as number) + (m.grid_w_l3 as number)).toBe(m.grid_w);
+      expect((m.gen_w_l1 as number) + (m.gen_w_l2 as number) + (m.gen_w_l3 as number)).toBe(m.gen_w);
     });
 
     it(`${file}: правдоподібні значення`, () => {
@@ -92,6 +95,40 @@ describe("deye-hp3 30 kW з двома батареями (Dymer): потужн�
   it("чотири входи панелей: увечері майже нуль, pv_w = сума чотирьох", () => {
     expect(m.pv3_w).toBe(10); expect(m.pv4_w).toBe(0); expect(m.pv_w).toBe(10);
     expect(m.pv3_v).toBe(165.4);
+  });
+});
+
+describe("deye-hp3 з мікроінвертором на GEN-порту (Budmayster)", () => {
+  const table = tableFromDump("2947846131_20260926T074442Z.json");
+  const m = decode(mapForDeviceType(6, decodeIdentity(table).protocol)!, table);
+
+  it("gen_w = сума фаз, напруга GEN у мережевих межах", () => {
+    expect(m.gen_w).toBe(10650);
+    expect([m.gen_w_l1, m.gen_w_l2, m.gen_w_l3]).toEqual([3533, 3591, 3526]);   // мікроінвертори рівномірно по фазах
+    for (const k of ["gen_v_l1", "gen_v_l2", "gen_v_l3"]) {
+      expect(m[k]).toBeGreaterThan(180); expect(m[k]).toBeLessThan(260);
+    }
+  });
+
+  it("GEN не бачить CT мережі: нев'язка load − grid − inv = gen", () => {
+    expect((m.load_w as number) - (m.grid_w as number) - (m.inv_w as number)).toBe(m.gen_w);
+    // по фазах те саме, з точністю до округлення регістрів
+    for (const i of [1, 2, 3]) {
+      const d = (m[`load_w_l${i}`] as number) - (m[`grid_w_l${i}`] as number) - (m[`inv_w_l${i}`] as number);
+      expect(Math.abs(d - (m[`gen_w_l${i}`] as number)), `фаза ${i}`).toBeLessThan(15);
+    }
+  });
+
+  it("баланс станції: сонце + GEN + мережа = споживання + заряд батареї (втрати до 5 %)", () => {
+    const inW = (m.pv_w as number) + (m.gen_w as number) + (m.grid_w as number);
+    const outW = (m.load_w as number) + -(m.bat_w as number);
+    expect(m.bat_w).toBeLessThan(0);                                            // батарея заряджається
+    expect(Math.abs(inW - outW) / inW).toBeLessThan(0.05);
+  });
+
+  it("лічильники GEN: добовий і загальний у 0.1 kWh", () => {
+    expect(m.gen_day_kwh).toBe(22.5);
+    expect(m.gen_total_kwh).toBe(10706.8);                                      // 32-бітний: 41532 + 1 x 65536
   });
 });
 

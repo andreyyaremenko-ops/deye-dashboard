@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { api, ApiError, type Device, type Org } from "../api.ts";
+import { genUsed } from "@deye/shared/energy";
 import { Btn, Card, ErrorBox, Field, ago, useAction } from "../components/ui.tsx";
 import { BarChart, Legend, LineChart, type Row } from "../components/charts.tsx";
 
 const PERIODS = [{ id: "day", label: "Доба", hours: 24, step: "5m" }, { id: "week", label: "Тиждень", hours: 7 * 24, step: "1h" }, { id: "month", label: "Місяць", hours: 30 * 24, step: "1h" }] as const;
+// GEN-порт (мікроінвертор) показуємо лише там, де він задіяний — у решти станцій його регістри нулі
+const GEN_POWER = { key: "gen_w", label: "Мікроінвертор", color: "#2fd0c8" };
+const GEN_ENERGY = { key: "gen_day_kwh", label: "Мікроінвертор", color: "#2fd0c8" };
 const POWER = [
   { key: "pv_w", label: "Сонце", color: "#f2b21b", fill: true },
   { key: "load_w", label: "Споживання", color: "#4f8cff" },
@@ -30,7 +34,7 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
     if (!allowed) return;
     setErr(null);
     const to = new Date(); const from = new Date(to.getTime() - period.hours * 3600_000);
-    void api.get<{ points: Row[]; from: string; to: string }>(`/api/orgs/${org.id}/devices/${deviceId}/history?metrics=pv_w,load_w,grid_w,bat_w,bat_soc&from=${from.toISOString()}&to=${to.toISOString()}&step=${period.step}`)
+    void api.get<{ points: Row[]; from: string; to: string }>(`/api/orgs/${org.id}/devices/${deviceId}/history?metrics=pv_w,gen_w,load_w,grid_w,bat_w,bat_soc&from=${from.toISOString()}&to=${to.toISOString()}&step=${period.step}`)
       .then((r) => { setRows(r.points); setRange([Date.parse(r.from), Date.parse(r.to)]); }).catch(setErr);
     void api.get<{ day: string }[]>(`/api/orgs/${org.id}/devices/${deviceId}/history/daily?days=${period.id === "month" ? 30 : period.id === "week" ? 7 : 7}`).then(setDaily).catch(() => {});
   }, [org.id, deviceId, period, allowed]);
@@ -43,6 +47,9 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
   });
   const m = device?.state ?? {};
   const num = (k: string) => (typeof m[k] === "number" ? (m[k] as number) : null);
+  const gen = genUsed(m);
+  const power = gen ? [POWER[0]!, GEN_POWER, ...POWER.slice(1)] : POWER;
+  const energy = gen ? [ENERGY[0]!, GEN_ENERGY, ...ENERGY.slice(1)] : ENERGY;
   return <>
     <div className="row" style={{ alignItems: "center" }}>
       <Link href={`/o/${org.id}/devices`} className="btn btn-ghost">← Пристрої</Link>
@@ -50,7 +57,7 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
       <span className="muted small">{device ? (device.online ? (device.stale ? "дані застарілі" : "онлайн") : "офлайн") + " · " + ago(device.stateUpdatedAt) : ""}</span>
     </div>
     <div className="kpis">
-      {[["Сонце", num("pv_w"), "W"], ["Споживання", num("load_w"), "W"], ["Мережа", num("grid_w"), "W"], ["Батарея", num("bat_soc"), "%"], ["Сьогодні сонце", num("pv_day_kwh"), "kWh"], ["Сьогодні спожито", num("load_day_kwh"), "kWh"]].map(([l, v, u]) =>
+      {[["Сонце", num("pv_w"), "W"], ...(gen ? [["Мікроінвертор", num("gen_w"), "W"] as const] : []), ["Споживання", num("load_w"), "W"], ["Мережа", num("grid_w"), "W"], ["Батарея", num("bat_soc"), "%"], ["Сьогодні сонце", num("pv_day_kwh"), "kWh"], ["Сьогодні спожито", num("load_day_kwh"), "kWh"]].map(([l, v, u]) =>
         <div key={String(l)} className="kpi"><span className="muted small">{l}</span><b>{v === null ? "—" : u === "W" ? (Math.abs(v as number) >= 1000 ? `${((v as number) / 1000).toFixed(2)} kW` : `${Math.round(v as number)} W`) : `${v} ${u}`}</b></div>)}
     </div>
     <Card title="Батарея, станція та відключення світла">
@@ -66,11 +73,11 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
     {!allowed ? <Card title="Історія"><p className="muted">Графіки та історія не входять у ваш тариф.</p></Card> : <>
       <Card title="Потужність" actions={<div className="seg">{PERIODS.map((p) => <button key={p.id} className={p.id === period.id ? "on" : ""} onClick={() => setPeriod(p)}>{p.label}</button>)}</div>}>
         <ErrorBox err={err instanceof ApiError ? err : null} />
-        <Legend series={POWER} />
-        <LineChart rows={rows} series={POWER} from={range[0]} to={range[1]} />
+        <Legend series={power} />
+        <LineChart rows={rows} series={power} from={range[0]} to={range[1]} />
       </Card>
       <Card title="Заряд батареї"><LineChart rows={rows} series={SOC} from={range[0]} to={range[1]} unit="%" height={160} /></Card>
-      <Card title="Енергія по днях, kWh"><Legend series={ENERGY} /><BarChart rows={daily} series={ENERGY} /></Card>
+      <Card title="Енергія по днях, kWh"><Legend series={energy} /><BarChart rows={daily} series={energy} /></Card>
     </>}
   </>;
 }

@@ -34,3 +34,9 @@ export const GridOffIcon = (p: P) => <svg {...base} {...p}>
   <path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H13z" fill="currentColor" fill-opacity=".2" />
   <path d="M3 3l18 18" stroke-width="2.5" />
 </svg>;
+/** Мікроінвертор (GEN-порт): панель + синусоїда AC — джерело змінного струму поряд з інвертором. */
+export const MicroInverterIcon = (p: P) => <svg {...base} {...p}>
+  <rect x="2.5" y="3.5" width="19" height="10" rx="1.5" fill="currentColor" fill-opacity=".18" />
+  <path d="M12 3.5v10M2.5 8.5h19" stroke-width="1.2" />
+  <path d="M4 19c1.3-3 2.7-3 4 0s2.7 3 4 0 2.7-3 4 0" />
+</svg>;

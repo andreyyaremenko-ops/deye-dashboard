@@ -1,6 +1,6 @@
 /**
  * Превʼю віджетів на мок-даних (dev-only):
- *   потік:  /preview/?skin=orbit&scene=day&theme=dark
+ *   потік:  /preview/?skin=orbit&scene=day|evening|hv|outage|micro&theme=dark   (micro — 50 kW з мікроінвертором на GEN-порту)
  *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
  *   AI-меню: /preview/?type=menu&photos=0&cols=3&out=strike   (фото беруться з /media, тут їх нема — картки без фото)
@@ -20,6 +20,11 @@ const scenes: Record<string, Record<string, number | string>> = {
             pv1_w: 16600, pv1_v: 720, pv1_a: 20.0, pv2_w: 16700, pv2_v: 721, pv2_a: 20.0, pv3_w: 12900, pv3_v: 629, pv3_a: 19.5, pv4_w: 0, pv4_v: 0, pv4_a: 0 },
   outage: { state: "normal", pv_w: 120, load_w: 1760, bat_w: 1640, grid_w: 0, bat_soc: 27, grid_v_l1: 0, grid_v_l2: 0, grid_v_l3: 0,
             pv1_w: 90, pv1_v: 260, pv1_a: 0.4, pv2_w: 30, pv2_v: 180, pv2_a: 0.2 },
+  // Budmayster 26.09.2026 10:44: 50 kW HV, мікроінвертор на GEN-порту (реальний кадр зі spike/dumps/2947846131_*)
+  micro:  { state: "normal", pv_w: 24590, load_w: 26588, bat_w: -23640, grid_w: 16151, bat_soc: 47, grid_v_l1: 228, grid_v_l2: 230, grid_v_l3: 233,
+            gen_w: 10650, gen_w_l1: 3533, gen_w_l2: 3591, gen_w_l3: 3526, gen_v_l1: 228.8, gen_day_kwh: 22.5, gen_total_kwh: 10706.8,
+            pv_day_kwh: 32.8, load_day_kwh: 74.4, grid_buy_day_kwh: 2.3, grid_sell_day_kwh: 0.6,
+            pv1_w: 4380, pv1_v: 288, pv1_a: 15.2, pv2_w: 6850, pv2_v: 464, pv2_a: 14.7, pv3_w: 5190, pv3_v: 345, pv3_a: 15, pv4_w: 8170, pv4_v: 541, pv4_a: 15.1 },
 };
 const scene = scenes[q.get("scene") ?? "day"] ?? scenes.day!;
 const skin = q.get("skin") ?? "orbit";
@@ -57,5 +62,7 @@ render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradien
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "28%", height: "60%" }}><Widget type="text" state={undefined} props={menuProps} /></div>
     : q.get("type") === "mppt"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "34%", height: "26%" }}><Widget type="mppt" state={state} props={{ card: q.get("card") !== "0", showVA: q.get("va") !== "0", names: (q.get("names") ?? "").split(",").filter(Boolean) }} /></div>
-    : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0" }} device={{ batteryKwh: 15, minSoc: 20, pvKwp: 10 }} /></div>}
+    : q.get("type") === "energy_today"
+    ? <div class="slot" style={{ left: "3%", top: "5%", width: "20%", height: "26%" }}><Widget type="energy_today" state={state} props={{}} /></div>
+    : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0", genLabel: q.get("gen") ?? "" }} device={{ batteryKwh: 15, minSoc: 20, pvKwp: 10 }} /></div>}
 </div>, document.getElementById("app")!);

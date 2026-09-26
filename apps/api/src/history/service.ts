@@ -49,7 +49,7 @@ export async function daily(db: Db, deviceId: string, days: number) {
   const rows = await db.execute(sql`
     select (time at time zone ${TZ})::date as day, metric, max(value)::float as v
     from telemetry
-    where device_id = ${deviceId} and metric in ('pv_day_kwh','load_day_kwh','grid_buy_day_kwh','grid_sell_day_kwh','bat_charge_day_kwh','bat_discharge_day_kwh')
+    where device_id = ${deviceId} and metric in ('pv_day_kwh','gen_day_kwh','load_day_kwh','grid_buy_day_kwh','grid_sell_day_kwh','bat_charge_day_kwh','bat_discharge_day_kwh')
       and time >= (now() at time zone ${TZ})::date - ${days}::int
     group by 1, 2 order by 1`);
   const byDay = new Map<string, Record<string, number | string>>();

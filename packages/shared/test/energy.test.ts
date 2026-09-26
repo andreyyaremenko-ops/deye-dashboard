@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { estimateRuntime, fmtHours, gridDown } from "../src/energy.ts";
+import { estimateRuntime, fmtHours, genUsed, gridDown } from "../src/energy.ts";
+
+describe("GEN-порт задіяний", () => {
+  it("вільний порт — усі регістри нулі", () => {
+    expect(genUsed({ gen_w: 0, gen_day_kwh: 0, gen_total_kwh: 0 })).toBe(false);
+    expect(genUsed({ load_w: 500 })).toBe(false);          // карта без GEN (LP1)
+  });
+  it("мікроінвертор: вдень за потужністю, вночі за лічильниками", () => {
+    expect(genUsed({ gen_w: 10650, gen_total_kwh: 10706.8 })).toBe(true);
+    expect(genUsed({ gen_w: 0, gen_day_kwh: 22.5, gen_total_kwh: 10706.8 })).toBe(true);
+    expect(genUsed({ gen_w: 5 })).toBe(false);             // шум датчика
+  });
+});
 
 describe("режим відключення", () => {
   it("мережа є / немає за напругою", () => {

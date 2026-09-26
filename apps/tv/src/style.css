@@ -155,6 +155,8 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fl-dots { fill: none; stroke-linecap: round; stroke-dasharray: 2 13; animation: flowdash 2s linear infinite; }
 @keyframes flowdash { to { stroke-dashoffset: -30; } }
 .fl-pv .fl-dots, .fl-pv .fl-glow { stroke: #f5b83d; } .fl-grid .fl-dots, .fl-grid .fl-glow { stroke: #4f8cff; } .fl-bat .fl-dots, .fl-bat .fl-glow { stroke: #35c46a; } .fl-load .fl-dots, .fl-load .fl-glow { stroke: #ff8a5b; }
+/* GEN-порт (мікроінвертор): бірюзовий — окреме AC-джерело, не плутається з сонцем на панелях і з мережею */
+.fl-gen .fl-dots, .fl-gen .fl-glow { stroke: #2fd0c8; }
 .fl.idle .fl-base { stroke-dasharray: 2 8; }
 .fh-glow { fill: rgba(124,92,255,.10); } .fh-box { fill: rgba(16,22,36,.92); stroke: rgba(255,255,255,.28); stroke-width: 1.5; }
 .fh .ico { color: rgba(255,255,255,.9); overflow: visible; }
@@ -164,14 +166,14 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fn-c { fill: rgba(10,16,28,.82); stroke: currentColor; stroke-width: 2.5; } .fn-c.track { stroke-opacity: .22; }
 .theme-light .fn-c { fill: rgba(255,255,255,.92); }
 .fn-arc { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; transition: stroke-dasharray 1s; }
-.fn-pv { color: #f5b83d; } .fn-grid { color: #4f8cff; } .fn-bat { color: #35c46a; } .fn-load { color: #ff8a5b; }
+.fn-pv { color: #f5b83d; } .fn-grid { color: #4f8cff; } .fn-bat { color: #35c46a; } .fn-load { color: #ff8a5b; } .fn-gen { color: #2fd0c8; }
 .fn-grid.off, .fn-bat.low { color: #ff6b70; }
 .fn.dim .fn-c { stroke-opacity: .4; } .fn.dim .ico { opacity: .55; } .fn.dim .fn-v { opacity: .6; }
 .fn-soc { fill: currentColor; font: 700 12px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; }
 .fn-v { fill: currentColor; font: 700 23px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; letter-spacing: -.5px; }
 .fn-l { fill: rgba(255,255,255,.7); font-size: 11.5px; letter-spacing: .12em; text-transform: uppercase; }
 .theme-light .fn-l { fill: rgba(0,0,0,.6); }
-.theme-light .fn-pv { color: #b8860b; } .theme-light .fn-grid { color: #2f6fe0; } .theme-light .fn-bat { color: #1f8f4a; } .theme-light .fn-load { color: #d9552a; }
+.theme-light .fn-pv { color: #b8860b; } .theme-light .fn-grid { color: #2f6fe0; } .theme-light .fn-bat { color: #1f8f4a; } .theme-light .fn-load { color: #d9552a; } .theme-light .fn-gen { color: #0e8f88; }
 .fn-grid.off .fn-l { fill: #ff8a8e; }
 /* підсумковий рядок orbit / gauge / sankey */
 .fl-sum { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .3vw .8vw; margin-top: .3vw; padding-top: .5vw; border-top: 1px solid rgba(255,255,255,.1); font-size: 1vw; white-space: nowrap; }
@@ -195,13 +197,15 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fc-n { fill: currentColor; font: 700 11px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; opacity: .9; }
 .fc-v { fill: currentColor; font: 700 25px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; letter-spacing: -.5px; }
 .fc.dim .fc-box { stroke-opacity: .5; } .fc.dim .fc-edge { opacity: .3; } .fc.dim .fc-v { opacity: .5; } .fc.dim .fc-ico { opacity: .5; }
+/* з мікроінвертором джерел чотири: картки вужчі, тому цифра й підпис дрібніші */
+.cards-wide .fc-v { font-size: 19px; } .cards-wide .fc-l { font-size: 9px; letter-spacing: .04em; } .cards-wide .fc-l.sm { font-size: 8px; } .cards-wide .fc-n { font-size: 10px; }
 
 /* gauge */
 .gauge { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; gap: .5vw; }
 .gauge-ring { flex: 1 1 0; min-height: 0; height: 0; width: 100%; display: block; }
 .gr-track { fill: none; stroke: rgba(255,255,255,.1); stroke-width: 11; } .theme-light .gr-track { stroke: rgba(0,0,0,.1); }
 .gr-arc { fill: none; stroke-width: 11; stroke-linecap: butt; transition: stroke-dasharray 1s, stroke-dashoffset 1s; } .gr-glow { fill: none; stroke-width: 21; opacity: .13; }
-.gr-pv circle { stroke: #f5b83d; } .gr-bat circle { stroke: #35c46a; } .gr-grid circle { stroke: #4f8cff; }
+.gr-pv circle { stroke: #f5b83d; } .gr-bat circle { stroke: #35c46a; } .gr-grid circle { stroke: #4f8cff; } .gr-gen circle { stroke: #2fd0c8; }
 .gr-l { fill: rgba(255,255,255,.7); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; } .theme-light .gr-l { fill: rgba(0,0,0,.6); }
 .gr-v { fill: #ff8a5b; font: 700 27px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; letter-spacing: -.5px; } .theme-light .gr-v { fill: #d9552a; }
 .gr-s { fill: #ffd98a; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; } .theme-light .gr-s { fill: #8a6100; }
@@ -209,19 +213,21 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .gc { flex: 1 1 0; min-width: 0; display: flex; align-items: flex-start; gap: .4vw; padding: .4vw .5vw; overflow: hidden; border-radius: .6vw; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); }
 .theme-light .gc { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); }
 .gc-i { line-height: 0; padding-top: .1vw; } .gc-i .ico { width: 1.2vw; height: 1.2vw; }
-.gc-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; } .gc-t small { font-size: .7vw; letter-spacing: .06em; text-transform: uppercase; opacity: .7; color: #fff; white-space: nowrap; }
+.gc-t { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; } .gc-t small { font-size: .7vw; letter-spacing: .06em; text-transform: uppercase; opacity: .7; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gc-t b { font: 700 1.1vw ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; white-space: nowrap; letter-spacing: -.03em; } .gc-t i { font: 400 .75vw ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; opacity: .8; white-space: nowrap; }
 .theme-light .gc-t small { color: #10203a; }
-.gc-pv { color: #f5b83d; } .gc-bat { color: #35c46a; } .gc-grid { color: #4f8cff; } .gc-grid.off, .gc-bat.low { color: #ff6b70; } .gc.dim { opacity: .55; } .gc-grid.off { opacity: 1; }
+.gc-pv { color: #f5b83d; } .gc-bat { color: #35c46a; } .gc-grid { color: #4f8cff; } .gc-gen { color: #2fd0c8; } .gc-grid.off, .gc-bat.low { color: #ff6b70; } .gc.dim { opacity: .55; } .gc-grid.off { opacity: 1; }
+.chips-4 { gap: .35vw; } .chips-4 .gc { padding: .35vw .35vw; gap: .3vw; } .chips-4 .gc-i .ico { width: 1vw; height: 1vw; }
+.chips-4 .gc-t small { font-size: .55vw; letter-spacing: .01em; } .chips-4 .gc-t b { font-size: .85vw; } .chips-4 .gc-t i { font-size: .7vw; }
 /* sankey */
 .sankey { width: 100%; flex: 1 1 0; height: 0; min-height: 0; display: block; }
 .sankey-empty { flex: 1; display: flex; align-items: center; justify-content: center; opacity: .6; font-size: 1.2vw; }
-.sk-band { stroke: none; opacity: .42; } .sk-pv .sk-band { fill: #f5b83d; } .sk-bat .sk-band { fill: #35c46a; } .sk-grid .sk-band { fill: #4f8cff; }
+.sk-band { stroke: none; opacity: .42; } .sk-pv .sk-band { fill: #f5b83d; } .sk-bat .sk-band { fill: #35c46a; } .sk-grid .sk-band { fill: #4f8cff; } .sk-gen .sk-band { fill: #2fd0c8; }
 .sk-dash { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-dasharray: 5 9; animation: flowdash 2s linear infinite reverse; }
 .sk-to-load { stroke: #ff8a5b; } .sk-to-bat { stroke: #35c46a; } .sk-to-grid { stroke: #4f8cff; }
-.sk-node rect { fill: currentColor; } .sk-c-pv { color: #f5b83d; } .sk-c-bat { color: #35c46a; } .sk-c-grid { color: #4f8cff; } .sk-c-load { color: #ff8a5b; }
+.sk-node rect { fill: currentColor; } .sk-c-pv { color: #f5b83d; } .sk-c-bat { color: #35c46a; } .sk-c-grid { color: #4f8cff; } .sk-c-load { color: #ff8a5b; } .sk-c-gen { color: #2fd0c8; }
 .sk-v { fill: currentColor; font: 700 17px ui-monospace, "DejaVu Sans Mono", Menlo, Consolas, monospace; letter-spacing: -.5px; }
-.sk-l { fill: rgba(255,255,255,.7); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; } .theme-light .sk-l { fill: rgba(0,0,0,.6); }
+.sk-l { fill: rgba(255,255,255,.7); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; } .sk-l.sm { font-size: 8.5px; letter-spacing: .03em; } .theme-light .sk-l { fill: rgba(0,0,0,.6); }
 .sk-inv rect { fill: rgba(16,22,36,.92); stroke: rgba(255,255,255,.3); stroke-width: 1.2; } .sk-inv .ico { color: rgba(255,255,255,.9); overflow: visible; }
 .theme-light .sk-inv rect { fill: #fff; stroke: rgba(0,0,0,.2); } .theme-light .sk-inv .ico { color: #10203a; }
 /* strip */
@@ -229,24 +235,27 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .strip { display: flex; align-items: center; justify-content: space-between; gap: .6vw; flex: 1; }
 .fs-c { display: flex; flex-direction: column; align-items: center; gap: .1vw; min-width: 8vw; text-align: center; }
 .fs-i { line-height: 0; } .fs-i .ico { width: 2.4vw; height: 2.4vw; } .fs-c.big .fs-i .ico { width: 3vw; height: 3vw; }
-.fs-pv { color: #f2b21b; } .fs-grid { color: #4f8cff; } .fs-bat { color: #35c46a; } .fs-load { color: #ff8a5b; } .fs-grid.off, .fs-bat.low { color: #ff8a8e; }
+.fs-pv { color: #f2b21b; } .fs-grid { color: #4f8cff; } .fs-bat { color: #35c46a; } .fs-load { color: #ff8a5b; } .fs-gen { color: #2fd0c8; } .fs-grid.off, .fs-bat.low { color: #ff8a8e; }
 .fs-v, .fs-l { color: #fff; } .theme-light .fs-v, .theme-light .fs-l { color: #10203a; }
 .fs-v { font-size: 1.9vw; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; } .fs-c.big .fs-v { font-size: 2.6vw; }
 .fs-l { font-size: 1vw; opacity: .75; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .fs-c.dim { opacity: .55; }
-.fs-pv .fs-v { color: #ffd36b; } .fs-grid .fs-v { color: #8ab4ff; } .fs-bat .fs-v { color: #7ee3a3; } .fs-load .fs-v { color: #ffb08a; }
-.theme-light .fs-pv .fs-v { color: #b8860b; } .theme-light .fs-grid .fs-v { color: #2f6fe0; } .theme-light .fs-bat .fs-v { color: #1f8f4a; } .theme-light .fs-load .fs-v { color: #d9552a; }
+.fs-pv .fs-v { color: #ffd36b; } .fs-grid .fs-v { color: #8ab4ff; } .fs-bat .fs-v { color: #7ee3a3; } .fs-load .fs-v { color: #ffb08a; } .fs-gen .fs-v { color: #7ceee6; }
+.theme-light .fs-pv .fs-v { color: #b8860b; } .theme-light .fs-grid .fs-v { color: #2f6fe0; } .theme-light .fs-bat .fs-v { color: #1f8f4a; } .theme-light .fs-load .fs-v { color: #d9552a; } .theme-light .fs-gen .fs-v { color: #0e8f88; }
 .fs-grid.off .fs-v, .fs-grid.off .fs-l { color: #ff8a8e; opacity: 1; } .fs-bat.low .fs-v { color: #ff8a8e; }
 .fs-a { font-size: 1.8vw; opacity: .9; width: 2.2vw; text-align: center; animation: fsnudge 1.6s ease-in-out infinite; }
 .fs-a.idle { animation: none; opacity: .35; } .fs-a.out { animation-name: fsnudge-out; }
 @keyframes fsnudge { 0%,100% { transform: translateX(-.25vw); opacity: .6; } 50% { transform: translateX(.25vw); opacity: 1; } }
 @keyframes fsnudge-out { 0%,100% { transform: translateX(.25vw); opacity: .6; } 50% { transform: translateX(-.25vw); opacity: 1; } }
 .fs-sep { width: 1px; align-self: stretch; background: rgba(255,255,255,.15); margin: .4vw .2vw; }
+/* п'ять комірок (з мікроінвертором) у той самий рядок: вужче й дрібніше */
+.strip-5 { gap: .3vw; } .strip-5 .fs-c { min-width: 6.4vw; } .strip-5 .fs-i .ico { width: 2vw; height: 2vw; } .strip-5 .fs-c.big .fs-i .ico { width: 2.5vw; height: 2.5vw; }
+.strip-5 .fs-v { font-size: 1.55vw; } .strip-5 .fs-c.big .fs-v { font-size: 2.1vw; } .strip-5 .fs-l { font-size: .85vw; } .strip-5 .fs-a { font-size: 1.4vw; width: 1.6vw; }
 /* bars */
 .bars { display: flex; flex-direction: column; justify-content: space-evenly; flex: 1; gap: .3vw; }
 .fb { display: grid; grid-template-columns: 2.4vw 9vw 1fr 6.5vw; align-items: center; gap: .6vw; font-size: 1.3vw; }
 .fb-i { line-height: 0; text-align: center; } .fb-i .ico { width: 2vw; height: 2vw; }
-.fb-pv { color: #f2b21b; } .fb-grid { color: #4f8cff; } .fb-bat { color: #35c46a; } .fb-load { color: #ff8a5b; } .fb-grid.off, .fb-bat.low { color: #ff8a8e; }
+.fb-pv { color: #f2b21b; } .fb-grid { color: #4f8cff; } .fb-bat { color: #35c46a; } .fb-load { color: #ff8a5b; } .fb-gen { color: #2fd0c8; } .fb-grid.off, .fb-bat.low { color: #ff8a8e; }
 .fb-l, .fb-v { color: #fff; } .theme-light .fb-l, .theme-light .fb-v { color: #10203a; }
 .fb-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .9; } .fb-l small { opacity: .7; font-size: 1.05vw; }
 .fb-bar { height: .9vw; background: rgba(255,255,255,.12); border-radius: .5vw; overflow: hidden; }
@@ -254,8 +263,10 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fb-fill { display: block; height: 100%; border-radius: .5vw; transition: width 1s; background: #fff; }
 .fb-pv .fb-fill { background: linear-gradient(90deg, #f2b21b, #ffd36b); } .fb-grid .fb-fill { background: linear-gradient(90deg, #4f8cff, #8ab4ff); }
 .fb-bat .fb-fill { background: linear-gradient(90deg, #35c46a, #8ee08a); } .fb-load .fb-fill { background: linear-gradient(90deg, #ff8a5b, #ffb08a); }
+.fb-gen .fb-fill { background: linear-gradient(90deg, #2fd0c8, #8ceee8); }
 .fb-v { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .fb.idle { opacity: .5; } .fb-grid.off { opacity: 1; } .fb-grid.off .fb-l, .fb-grid.off .fb-v { color: #ff8a8e; }
+.w-flow.has-gen .fb { font-size: 1.2vw; } .w-flow.has-gen .fb-i .ico { width: 1.8vw; height: 1.8vw; }
 
 /* Стрінги (MPPT): на кожен вхід — підпис і потужність зліва, смуга й вольти·ампери справа.
    Числа в різних рядках-блоках, тому довгі значення (16.6 kW, 720 V · 20.0 A) не налазять. */

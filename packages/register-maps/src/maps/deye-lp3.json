@@ -103,6 +103,19 @@
       "unit": "kWh"
     },
     {
+      "key": "gen_day_kwh",
+      "reg": 536,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "gen_total_kwh",
+      "reg": 537,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
       "key": "temp_dc_c",
       "reg": 540,
       "scale": 0.1,
@@ -334,6 +347,48 @@
       "unit": "Hz"
     },
     {
+      "key": "gen_v_l1",
+      "reg": 661,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "gen_v_l2",
+      "reg": 662,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "gen_v_l3",
+      "reg": 663,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "gen_w_l1",
+      "reg": 664,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "gen_w_l2",
+      "reg": 665,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "gen_w_l3",
+      "reg": 666,
+      "signed": true,
+      "unit": "W"
+    },
+    {
+      "key": "gen_w",
+      "reg": 667,
+      "signed": true,
+      "unit": "W"
+    },
+    {
       "key": "pv1_w",
       "reg": 672,
       "unit": "W"
@@ -378,5 +433,5 @@
       "unit": "W"
     }
   ],
-  "_notes": "Ті самі регістри, що deye-hp3 (500-700); відмінності: bat_v 0.01 V (LV 48 V), pv1_w/pv2_w без масштабу ×10 — за документацією SG04LP3, підтвердити вдень за V×A. Перевірено вночі на кадрі Stiklyashka (стік 3575357385): баланс load = grid + inv з точністю до 7 W."
+  "_notes": "Ті самі регістри, що deye-hp3 (500-700); відмінності: bat_v 0.01 V (LV 48 V), pv1_w/pv2_w без масштабу ×10 — за документацією SG04LP3, підтвердити вдень за V×A. Перевірено вночі на кадрі Stiklyashka (стік 3575357385): баланс load = grid + inv з точністю до 7 W. GEN-порт (661-667, лічильники 536 і 537-538) — ті самі адреси, що в HP3: у кадрі Stiklyashka порт вільний (лише шум напруги 1.3-2.1 V), тому масштаб потужності підтверджено на HP3 (Budmayster)."
 }

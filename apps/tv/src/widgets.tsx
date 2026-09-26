@@ -20,7 +20,7 @@ function isNight(m: M | undefined): boolean {
 }
 
 import { ChartWidget } from "./chart.tsx";
-import { FlowWidget } from "./flow.tsx";
+import { FlowWidget, GEN_LABEL } from "./flow.tsx";
 import { MpptWidget } from "./mppt.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
@@ -76,13 +76,17 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
         <Big>{fmtW(num(m, "load_w"))}</Big>
         <Sub>сьогодні {fmtKwh(num(m, "load_day_kwh"))}</Sub>
       </Card>;
-    case "energy_today":
+    case "energy_today": {
+      // GEN-порт (мікроінвертор) — окремий рядок, лише якщо він щось дав: у решти станцій лічильник 0
+      const gen = num(m, "gen_day_kwh");
       return <Card cls={cls} title="Сьогодні" stale={stale}>
         <Row k="Сонце" v={fmtKwh(num(m, "pv_day_kwh"))} />
+        {gen !== null && gen > 0 && <Row k={String(props.genLabel ?? "").trim() || GEN_LABEL} v={fmtKwh(gen)} />}
         <Row k="Спожито" v={fmtKwh(num(m, "load_day_kwh"))} />
         <Row k="З мережі" v={fmtKwh(num(m, "grid_buy_day_kwh"))} />
         <Row k="У мережу" v={fmtKwh(num(m, "grid_sell_day_kwh"))} />
       </Card>;
+    }
     case "clock":
       return <Clock cls={cls} />;
     case "text":

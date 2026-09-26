@@ -17,6 +17,8 @@
     { "key": "load_total_kwh", "reg": 527, "words": 2, "scale": 0.1, "unit": "kWh" },
     { "key": "pv_day_kwh", "reg": 529, "scale": 0.1, "unit": "kWh" },
     { "key": "pv_total_kwh", "reg": 534, "words": 2, "scale": 0.1, "unit": "kWh" },
+    { "key": "gen_day_kwh", "reg": 536, "scale": 0.1, "unit": "kWh" },
+    { "key": "gen_total_kwh", "reg": 537, "words": 2, "scale": 0.1, "unit": "kWh" },
     { "key": "temp_dc_c", "reg": 540, "scale": 0.1, "offset": -100, "unit": "C" },
     { "key": "temp_heatsink_c", "reg": 541, "scale": 0.1, "offset": -100, "unit": "C" },
     { "key": "bat_temp_c", "reg": 586, "scale": 0.1, "offset": -100, "unit": "C" },
@@ -58,6 +60,13 @@
     { "key": "load_w_l3", "reg": 652, "signed": true, "unit": "W" },
     { "key": "load_w", "reg": 653, "signed": true, "unit": "W" },
     { "key": "load_hz", "reg": 655, "scale": 0.01, "unit": "Hz" },
+    { "key": "gen_v_l1", "reg": 661, "scale": 0.1, "unit": "V" },
+    { "key": "gen_v_l2", "reg": 662, "scale": 0.1, "unit": "V" },
+    { "key": "gen_v_l3", "reg": 663, "scale": 0.1, "unit": "V" },
+    { "key": "gen_w_l1", "reg": 664, "signed": true, "unit": "W" },
+    { "key": "gen_w_l2", "reg": 665, "signed": true, "unit": "W" },
+    { "key": "gen_w_l3", "reg": 666, "signed": true, "unit": "W" },
+    { "key": "gen_w", "reg": 667, "signed": true, "unit": "W" },
     { "key": "pv1_w", "reg": 672, "scale": 10, "unit": "W" },
     { "key": "pv2_w", "reg": 673, "scale": 10, "unit": "W" },
     { "key": "pv3_w", "reg": 674, "scale": 10, "unit": "W" },
@@ -76,5 +85,5 @@
     { "key": "bat_w", "sum": ["bat1_w", "bat2_w"], "unit": "W" },
     { "key": "bat_a", "sum": ["bat1_a", "bat2_a"], "unit": "A" }
   ],
-  "_notes": "Потужності DC у HV-моделей у десятках ват: pv1..pv4_w і bat1/bat2_w мають scale 10 (підтверджено V*A на чотирьох інверторах і балансом DC≈AC на дампі 2989852238). Інвертори 25-50 kW мають два порти батареї (589, 593-595) і чотири MPPT (674, 675, 680-683); у менших ці регістри 0. bat_w > 0 — розряд. bat_w і bat_a — сума двох батарей."
+  "_notes": "Потужності DC у HV-моделей у десятках ват: pv1..pv4_w і bat1/bat2_w мають scale 10 (підтверджено V*A на чотирьох інверторах і балансом DC≈AC на дампі 2989852238). Інвертори 25-50 kW мають два порти батареї (589, 593-595) і чотири MPPT (674, 675, 680-683); у менших ці регістри 0. bat_w > 0 — розряд. bat_w і bat_a — сума двох батарей. GEN-порт (661-667: напруга й потужність по фазах, 667 — сума; лічильники 536 добовий і 537-538 загальний) — те, що під'єднане до входу генератора: у Budmayster це мікроінвертор на 10.6 kW. Потужність GEN не проходить через CT мережі, тому баланс — load = grid + gen + inv (дамп 2947846131). У станцій без GEN усі ці регістри 0."
 }

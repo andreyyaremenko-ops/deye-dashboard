@@ -3,7 +3,7 @@ import { flowGraph, loadSources } from "../src/flow.ts";
 
 describe("loadSources", () => {
   it("день: сонця більше за споживання -> 100% від сонця", () => {
-    expect(loadSources({ pv: 4200, load: 2020, bat: -1650, grid: -530 })).toEqual({ load: 2020, pv: 1, bat: 0, grid: 0 });
+    expect(loadSources({ pv: 4200, load: 2020, bat: -1650, grid: -530 })).toEqual({ load: 2020, pv: 1, gen: 0, bat: 0, grid: 0 });
   });
   it("вечір: батарея + мережа, частки в сумі 1", () => {
     const s = loadSources({ pv: 0, load: 2430, bat: 235, grid: 2195 });
@@ -14,8 +14,18 @@ describe("loadSources", () => {
     expect(s.pv + s.bat + s.grid).toBeCloseTo(1, 6); expect(s.grid).toBe(0);
   });
   it("немає даних або споживання в шумі -> нулі", () => {
-    expect(loadSources({ pv: null, load: null, bat: null, grid: null })).toEqual({ load: 0, pv: 0, bat: 0, grid: 0 });
+    expect(loadSources({ pv: null, load: null, bat: null, grid: null })).toEqual({ load: 0, pv: 0, gen: 0, bat: 0, grid: 0 });
     expect(loadSources({ pv: 3000, load: 10, bat: 0, grid: 0 }).load).toBe(0);
+  });
+});
+
+describe("loadSources з GEN-портом (мікроінвертор)", () => {
+  it("мікроінвертор — друге джерело після панелей", () => {
+    const s = loadSources({ pv: 1000, load: 4000, bat: 0, grid: 1000, gen: 2000 });
+    expect(s.pv).toBeCloseTo(0.25, 6); expect(s.gen).toBeCloseTo(0.5, 6); expect(s.grid).toBeCloseTo(0.25, 6);
+  });
+  it("без gen поводиться як раніше", () => {
+    expect(loadSources({ pv: 1000, load: 2000, bat: 0, grid: 1000 }).gen).toBe(0);
   });
 });
 
@@ -33,6 +43,16 @@ describe("flowGraph", () => {
   it("мережа заряджає батарею вночі", () => {
     const g = flowGraph({ pv: 0, load: 500, bat: -2000, grid: 2500 });
     expect(g.links).toEqual([{ from: "grid", to: "load", w: 500 }, { from: "grid", to: "charge", w: 2000 }]);
+  });
+  it("Budmayster: сонце + мікроінвертор живлять споживання і заряд, решта заряду з мережі", () => {
+    const g = flowGraph({ pv: 24590, load: 26588, bat: -23640, grid: 16151, gen: 10650 });
+    expect(g.sources.map((s) => s.kind)).toEqual(["pv", "gen", "grid"]);
+    expect(g.links).toEqual([
+      { from: "pv", to: "load", w: 24590 }, { from: "gen", to: "load", w: 1998 },
+      { from: "gen", to: "charge", w: 8652 }, { from: "grid", to: "charge", w: 14988 },
+    ]);
+    // сток заряду покритий повністю: з gen у балансі нев'язки більше немає
+    expect(g.links.filter((l) => l.to === "charge").reduce((a, l) => a + l.w, 0)).toBe(23640);
   });
   it("лінки ніколи не перевищують джерело", () => {
     const g = flowGraph({ pv: 1000, load: 3000, bat: 500, grid: 0 });

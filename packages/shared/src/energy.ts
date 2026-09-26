@@ -10,6 +10,15 @@ export function gridDown(m: Metrics): boolean {
   return Math.max(...volts) < 100;
 }
 
+/**
+ * Чи задіяний GEN-порт інвертора (мікроінвертор або генератор). У станцій, де до нього нічого не під'єднано,
+ * усі регістри GEN нулі; лічильники живуть і вночі, тому джерело не зникає з екрана після заходу сонця.
+ */
+export function genUsed(m: Metrics): boolean {
+  const w = num(m, "gen_w");
+  return w !== null && (Math.abs(w) > 20 || (num(m, "gen_total_kwh") ?? 0) > 0 || (num(m, "gen_day_kwh") ?? 0) > 0);
+}
+
 export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" | "load" }
 
 /**
@@ -19,7 +28,8 @@ export interface RuntimeEstimate { hours: number; method: "capacity" | "slope" |
  * null, якщо батарея не розряджається або даних замало.
  * Продаж у мережу: коли мережа є і батарея розряджається В МЕРЕЖУ (grid_w < 0), її поточний розряд і падіння SOC
  * нічого не кажуть про автономію — при відключенні експорт зупиниться, і батарею витрачатиме лише споживання,
- * не покрите сонцем. Тому в цьому режимі рахуємо від (load - pv), а метод «за швидкістю» не застосовуємо.
+ * не покрите сонцем (панелі + GEN-порт, якщо там мікроінвертор). Тому в цьому режимі рахуємо від (load - pv - gen),
+ * а метод «за швидкістю» не застосовуємо.
  */
 const EXPORT_W = 200;
 export function estimateRuntime(m: Metrics, opts: { capacityKwh?: number | null; minSoc?: number; socHistory?: [number, number][]; assumeLoad?: boolean } = {}): RuntimeEstimate | null {
@@ -31,7 +41,7 @@ export function estimateRuntime(m: Metrics, opts: { capacityKwh?: number | null;
   const gridW = num(m, "grid_w");
   const selling = !gridDown(m) && gridW !== null && gridW < -EXPORT_W && batW !== null && batW > 50;
   if (selling) {
-    const drain = loadW === null ? null : Math.max(0, loadW - (num(m, "pv_w") ?? 0));
+    const drain = loadW === null ? null : Math.max(0, loadW - (num(m, "pv_w") ?? 0) - Math.max(0, num(m, "gen_w") ?? 0));
     return cap && drain !== null && drain > 50 ? { hours: (usablePct / 100) * cap * 1000 / drain, method: "load" } : null;
   }
   if (cap && batW !== null && batW > 50) {
