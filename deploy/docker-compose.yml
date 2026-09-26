@@ -34,7 +34,13 @@ services:
       POSTGRES_USER: deye
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: deye
-    command: postgres -c shared_buffers=128MB -c max_connections=40
+    # timescaledb-tune рахує пам'ять лише при першій ініціалізації тому (сервер тоді мав 2 GB), тому
+    # ключові параметри тримаємо тут. Під 7.8 GB RAM / 12 vCPU і hypertable telemetry на кілька GB.
+    command: >-
+      postgres -c max_connections=40
+      -c shared_buffers=2GB -c effective_cache_size=5GB -c work_mem=24MB -c maintenance_work_mem=512MB
+      -c max_worker_processes=32 -c max_parallel_workers=8 -c max_parallel_workers_per_gather=4
+    shm_size: 1gb
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U deye"]

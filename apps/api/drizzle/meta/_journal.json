@@ -127,6 +127,13 @@
       "when": 1790076324777,
       "tag": "0017_image_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790162724777,
+      "tag": "0018_rollups_timescale",
+      "breakpoints": true
     }
   ]
 }

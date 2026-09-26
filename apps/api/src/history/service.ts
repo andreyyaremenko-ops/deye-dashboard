@@ -1,6 +1,11 @@
 /**
  * Історія телеметрії. date_bin замість time_bucket, щоб працювало і в PGlite (тести),
  * і в Timescale. Доступ обмежений тарифом: history_days = 0 -> 403.
+ *
+ * Графіки читають ролапи (continuous aggregates telemetry_5m / telemetry_1h, міграція 0018), а не
+ * сиру telemetry: інакше кожен запит агрегує мільйони рядків. Межі бакетів збігаються, бо origin
+ * у time_bucket і в нашому date_bin один — 2000-01-01. Якщо ролапів немає (PGlite у тестах,
+ * Postgres без Timescale), усе працює як раніше, просто повільніше.
  */
 import { sql, eq, and, lt, inArray } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
@@ -16,6 +21,25 @@ const MAX_DAYS: Record<string, number> = { "1m": 2, "5m": 14, "15m": 31, "1h": 9
 export const TZ = "Europe/Kyiv";
 const METRIC_RE = /^[a-z0-9_]{1,40}$/;
 
+/** Ролапи Timescale; порядок важливий для першого наповнення в migrate.ts. */
+export const ROLLUP_VIEWS = ["telemetry_5m", "telemetry_1h"] as const;
+/** З якого ролапу брати крок: найгрубіший, що ще ділить бакет націло. 1m — лише з сирих. */
+const ROLLUP_FOR: Record<string, (typeof ROLLUP_VIEWS)[number] | null> =
+  { "1m": null, "5m": "telemetry_5m", "15m": "telemetry_5m", "1h": "telemetry_1h", "1d": "telemetry_1h" };
+
+/**
+ * Чи є ролапи. Перевіряємо раз на процес: у проді база одна, у тестах PGlite їх ніколи немає
+ * (міграцію з "timescale" в імені хелпер тестів пропускає).
+ */
+let rollupsReady: Promise<boolean> | null = null;
+function hasRollups(db: Db): Promise<boolean> {
+  rollupsReady ??= db
+    .execute(sql`select to_regclass('public.telemetry_5m') is not null and to_regclass('public.telemetry_1h') is not null as ok`)
+    .then((r) => asRows<{ ok: boolean }>(r)[0]?.ok === true)
+    .catch(() => false);
+  return rollupsReady;
+}
+
 /** db.execute: postgres-js повертає масив, драйвер PGlite — { rows }. */
 function asRows<T>(res: unknown): T[] {
   return Array.isArray(res) ? (res as T[]) : ((res as { rows?: T[] }).rows ?? []);
@@ -29,11 +53,20 @@ export async function series(db: Db, deviceId: string, metrics: string[], from: 
   if (!interval) throw badRequest("bad step");
   if (!metrics.length || metrics.some((m) => !METRIC_RE.test(m))) throw badRequest("bad metrics");
   if (to.getTime() - from.getTime() > MAX_DAYS[step]! * 86400_000) throw badRequest(`range too long for step ${step}`);
-  const rows = await db.execute(sql`
-    select date_bin(${interval}::interval, time, timestamp '2000-01-01') as bucket, metric, avg(value)::float as v
-    from telemetry
-    where device_id = ${deviceId} and metric in (${sql.join(metrics.map((m) => sql`${m}`), sql`, `)}) and time >= ${from.toISOString()}::timestamptz and time < ${to.toISOString()}::timestamptz
-    group by 1, 2 order by 1`);
+  const list = sql.join(metrics.map((m) => sql`${m}`), sql`, `);
+  const rollup = (await hasRollups(db)) ? ROLLUP_FOR[step] : null;
+  const rows = rollup
+    // середнє з ролапу — sum/count, а не середнє середніх: бакети можуть мати різну кількість замірів
+    ? await db.execute(sql`
+      select date_bin(${interval}::interval, bucket, timestamp '2000-01-01') as bucket, metric, (sum(s) / sum(c))::float as v
+      from ${sql.raw(rollup)}
+      where device_id = ${deviceId} and metric in (${list}) and bucket >= ${from.toISOString()}::timestamptz and bucket < ${to.toISOString()}::timestamptz
+      group by 1, 2 order by 1`)
+    : await db.execute(sql`
+      select date_bin(${interval}::interval, time, timestamp '2000-01-01') as bucket, metric, avg(value)::float as v
+      from telemetry
+      where device_id = ${deviceId} and metric in (${list}) and time >= ${from.toISOString()}::timestamptz and time < ${to.toISOString()}::timestamptz
+      group by 1, 2 order by 1`);
   const byT = new Map<string, SeriesPoint>();
   for (const r of asRows<{ bucket: Date | string; metric: string; v: number }>(rows)) {
     const t = new Date(r.bucket).toISOString();
@@ -46,12 +79,21 @@ export async function series(db: Db, deviceId: string, metrics: string[], from: 
 /** Денні підсумки: лічильники "за день" скидаються опівночі за локальним часом інвертора -> max за добу. */
 export async function daily(db: Db, deviceId: string, days: number) {
   if (days < 1 || days > 92) throw badRequest("bad days");
-  const rows = await db.execute(sql`
-    select (time at time zone ${TZ})::date as day, metric, max(value)::float as v
-    from telemetry
-    where device_id = ${deviceId} and metric in ('pv_day_kwh','gen_day_kwh','load_day_kwh','grid_buy_day_kwh','grid_sell_day_kwh','bat_charge_day_kwh','bat_discharge_day_kwh')
-      and time >= (now() at time zone ${TZ})::date - ${days}::int
-    group by 1, 2 order by 1`);
+  const daySet = sql`('pv_day_kwh','gen_day_kwh','load_day_kwh','grid_buy_day_kwh','grid_sell_day_kwh','bat_charge_day_kwh','bat_discharge_day_kwh')`;
+  const rows = (await hasRollups(db))
+    // max по годинах — той самий max по добі, бо доба ділиться на години націло
+    ? await db.execute(sql`
+      select (bucket at time zone ${TZ})::date as day, metric, max(mx)::float as v
+      from telemetry_1h
+      where device_id = ${deviceId} and metric in ${daySet}
+        and bucket >= (now() at time zone ${TZ})::date - ${days}::int
+      group by 1, 2 order by 1`)
+    : await db.execute(sql`
+      select (time at time zone ${TZ})::date as day, metric, max(value)::float as v
+      from telemetry
+      where device_id = ${deviceId} and metric in ${daySet}
+        and time >= (now() at time zone ${TZ})::date - ${days}::int
+      group by 1, 2 order by 1`);
   const byDay = new Map<string, Record<string, number | string>>();
   for (const r of asRows<{ day: Date | string; metric: string; v: number }>(rows)) {
     const d = typeof r.day === "string" ? r.day.slice(0, 10) : new Date(r.day).toISOString().slice(0, 10);
