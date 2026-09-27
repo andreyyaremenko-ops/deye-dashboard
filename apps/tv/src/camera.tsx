@@ -79,9 +79,13 @@ function Player({ src, fit }: { src: string; fit: string }) {
     let retry: number | undefined;
     let wait = 3000;
     let resetting = false;
+    let native = false, nativeFailed = false;
     const again = () => {
       if (!alive || resetting) return;
       clearTimeout(retry);
+      // canPlayType інколи каже «maybe», а ТБ потім не тягне HLS (MEDIA_ERR_SRC_NOT_SUPPORTED):
+      // не крутимо той самий нативний шлях по колу, а одразу пробуємо hls.js
+      if (native && v.error?.code === 4) { nativeFailed = true; retry = window.setTimeout(start, 0); return; }
       retry = window.setTimeout(() => { wait = Math.min(wait * 2, 60_000); start(); }, wait);
     };
 
@@ -93,12 +97,14 @@ function Player({ src, fit }: { src: string; fit: string }) {
       if (!alive) return;
       destroy?.(); destroy = undefined;
       // Tizen/webOS/Safari: HLS у самому <video>, без зайвих 116 kB бібліотеки
-      if (v.canPlayType("application/vnd.apple.mpegurl")) {
+      if (!nativeFailed && v.canPlayType("application/vnd.apple.mpegurl")) {
+        native = true;
         v.src = src;
         v.play().catch(() => {});
         destroy = () => reset();
         return;
       }
+      native = false;
       void import("hls.js/light").then(({ default: Hls }) => {
         if (!alive) return;
         if (!Hls.isSupported()) { setFailed(true); return; }
