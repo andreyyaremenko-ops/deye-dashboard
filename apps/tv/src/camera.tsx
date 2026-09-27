@@ -57,7 +57,7 @@ export function CameraWidget({ cls, token, props }: Props) {
     {!plain && <div class="title"><span>{title}</span>{list.length > 1 && <span class="cam-name">{name}</span>}</div>}
     <div class="cam-box">
       {cam?.hlsUrl
-        ? <Player src={cam.hlsUrl} fit={fit} />
+        ? <Player key={cam.id} src={cam.hlsUrl} fit={fit} />
         : <div class="cam-msg">{note ?? "підключення…"}</div>}
       {plain && list.length > 1 && <div class="cam-tag">{name}</div>}
       {cam?.hlsUrl && list.length > 1 && <div class="cam-dots">{list.map((c, n) => <i key={c} class={n === i ? "on" : ""} />)}</div>}
@@ -78,11 +78,16 @@ function Player({ src, fit }: { src: string; fit: string }) {
     let destroy: (() => void) | undefined;
     let retry: number | undefined;
     let wait = 3000;
+    let resetting = false;
     const again = () => {
-      if (!alive) return;
+      if (!alive || resetting) return;
       clearTimeout(retry);
       retry = window.setTimeout(() => { wait = Math.min(wait * 2, 60_000); start(); }, wait);
     };
+
+    // елемент після MSE лишається з відкликаним blob у src і з v.error — без скидання
+    // наступний потік падає з MEDIA_ERR_SRC_NOT_SUPPORTED
+    const reset = () => { resetting = true; v.removeAttribute("src"); v.load(); resetting = false; };
 
     const start = () => {
       if (!alive) return;
@@ -91,7 +96,7 @@ function Player({ src, fit }: { src: string; fit: string }) {
       if (v.canPlayType("application/vnd.apple.mpegurl")) {
         v.src = src;
         v.play().catch(() => {});
-        destroy = () => { v.removeAttribute("src"); v.load(); };
+        destroy = () => reset();
         return;
       }
       void import("hls.js/light").then(({ default: Hls }) => {
@@ -107,7 +112,7 @@ function Player({ src, fit }: { src: string; fit: string }) {
         hls.loadSource(src);
         hls.attachMedia(v);
         v.play().catch(() => {});
-        destroy = () => hls.destroy();
+        destroy = () => { hls.destroy(); reset(); };
       }).catch(() => { if (alive) setFailed(true); });
     };
 
