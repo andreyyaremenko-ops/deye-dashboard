@@ -110,11 +110,12 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
             </label>;
           })}</div>}
       </Field>
-      {chosen.length > 1 && <div className="row small">
-        <Field label="Зміна камери, с"><input type="number" min={5} max={600} value={Number(ctx.p.rotateS ?? 20)} onChange={(e) => ctx.set({ rotateS: Math.max(0, +e.currentTarget.value) })} /></Field>
+      <div className="row small">
+        {chosen.length > 1 && <Field label="Зміна камери, с"><input type="number" min={5} max={600} value={Number(ctx.p.rotateS ?? 20)} onChange={(e) => ctx.set({ rotateS: Math.max(0, +e.currentTarget.value) })} /></Field>}
         <Select ctx={ctx} k="fit" label="Кадр" fallback="cover" options={[["cover", "заповнити картку"], ["contain", "вмістити цілком"]]} />
-      </div>}
-      {chosen.length <= 1 && <Select ctx={ctx} k="fit" label="Кадр" fallback="cover" options={[["cover", "заповнити картку"], ["contain", "вмістити цілком"]]} />}
+        <Select ctx={ctx} k="quality" label="Потік" fallback="sub" options={[["sub", "додатковий (легкий)"], ["main", "основний (важкий)"]]} />
+      </div>
+      {ctx.p.quality === "main" && <Hint>Основний потік — це повний кадр камери: у типового 4-мегапіксельного реєстратора 2688×1520 і ~5 Мбіт/с на камеру замість ~0.1 Мбіт/с. Трафік іде через наш сервер, а старі телевізори такий кадр можуть не витягнути. Для віджета на частину екрана додаткового зазвичай досить.</Hint>}
       {chosen.length > 0 && <Field label="Підписи камер (по одному на рядок, у порядку вибору)">
         <textarea rows={Math.min(4, chosen.length)} value={names.join("\n")} onChange={(e) => ctx.set({ names: e.currentTarget.value.split(/\r?\n/) })} placeholder={chosen.join("\n")} />
       </Field>}

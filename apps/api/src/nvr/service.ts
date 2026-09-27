@@ -13,7 +13,7 @@ import { nvrServers, screens } from "../db/schema.ts";
 import { badRequest, conflict, forbidden, notFound } from "../lib/errors.ts";
 import { requireRole } from "../orgs/service.ts";
 import type { StateStore } from "../state/store.ts";
-import { NvrError, httpNvrClient, normalizeBaseUrl, type NvrCamera, type NvrClient } from "./client.ts";
+import { NvrError, httpNvrClient, normalizeBaseUrl, type NvrCamera, type NvrClient, type NvrQuality } from "./client.ts";
 
 type Db = PgDatabase<any, any, any>;
 
@@ -69,23 +69,34 @@ export async function listCameras(db: Db, orgId: string, client: NvrClient = htt
   catch (e) { throw httpError(e); }
 }
 
-/** Камери, на які посилаються віджети екрана (у порядку появи, без повторів). */
-export function camerasOf(cfg: ScreenConfig): string[] {
-  const ids = cfg.scenes.flatMap((sc) => sc.widgets
+export interface CameraRef { id: string; quality: NvrQuality }
+
+/**
+ * Камери, на які посилаються віджети екрана: пара «камера + якість», бо один і той самий
+ * потік у субякості й основній — це різні посилання. Субпотік іде першим: старі бандли ТБ
+ * шукають камеру лише за id і так лишаються на дешевшому потоці.
+ */
+export function camerasOf(cfg: ScreenConfig): CameraRef[] {
+  const refs = cfg.scenes.flatMap((sc) => sc.widgets
     .filter((w) => w.type === "camera")
-    .flatMap((w) => (Array.isArray(w.props.cameras) ? w.props.cameras : [])))
-    .filter((x): x is string => typeof x === "string" && x.length > 0);
-  return [...new Set(ids)];
+    .flatMap((w) => {
+      const quality: NvrQuality = w.props.quality === "main" ? "main" : "sub";
+      const ids = Array.isArray(w.props.cameras) ? w.props.cameras : [];
+      return ids.filter((x): x is string => typeof x === "string" && x.length > 0).map((id) => ({ id, quality }));
+    }));
+  const seen = new Set<string>();
+  return refs.filter((r) => { const k = `${r.id}:${r.quality}`; if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => (a.quality === b.quality ? 0 : a.quality === "sub" ? -1 : 1));
 }
 
 async function screenRow(db: Db, viewToken: string) {
   const [row] = await db.select({ orgId: screens.orgId, config: screens.config }).from(screens).where(eq(screens.viewToken, viewToken));
   if (!row) throw notFound("Screen not found");
   const parsed = screenConfigSchema.safeParse(row.config);
-  return { orgId: row.orgId, cameras: parsed.success ? camerasOf(parsed.data) : [] };
+  return { orgId: row.orgId, cameras: parsed.success ? camerasOf(parsed.data) : [] as CameraRef[] };
 }
 
-export interface ScreenCamera { id: string; hlsUrl: string | null; expiresAt: string | null; error?: string }
+export interface ScreenCamera { id: string; quality: NvrQuality; hlsUrl: string | null; expiresAt: string | null; error?: string }
 
 /**
  * Готові посилання для всіх камер екрана одним запитом: телевізор не ходить у NVR на кожне перемикання.
@@ -96,20 +107,20 @@ export async function screenCameras(db: Db, store: StateStore, viewToken: string
   if (!cameras.length) return [];
   const s = await serverOf(db, orgId);
   const prefix = `/api/public/screens/${viewToken}/nvr`;
-  return Promise.all(cameras.map(async (id) => {
+  return Promise.all(cameras.map(async ({ id, quality }) => {
     try {
-      const live = await cachedLive(store, orgId, id, () => client.liveUrl(s.baseUrl, s.token, id));
+      const live = await cachedLive(store, orgId, id, quality, () => client.liveUrl(s.baseUrl, s.token, id, quality));
       const u = new URL(live.hlsUrl);
       if (!u.pathname.startsWith(STREAM_PREFIX)) throw new NvrError("NVR віддав посилання поза /s/", "bad_response");
-      return { id, hlsUrl: `${prefix}${u.pathname}${u.search}`, expiresAt: live.expiresAt || null };
+      return { id, quality, hlsUrl: `${prefix}${u.pathname}${u.search}`, expiresAt: live.expiresAt || null };
     } catch (e) {
-      return { id, hlsUrl: null, expiresAt: null, error: e instanceof NvrError ? e.message : "камера недоступна" };
+      return { id, quality, hlsUrl: null, expiresAt: null, error: e instanceof NvrError ? e.message : "камера недоступна" };
     }
   }));
 }
 
-async function cachedLive(store: StateStore, orgId: string, camera: string, load: () => Promise<{ hlsUrl: string; expiresAt: string }>) {
-  const key = `nvr:${orgId}:${camera}`;
+async function cachedLive(store: StateStore, orgId: string, camera: string, quality: NvrQuality, load: () => Promise<{ hlsUrl: string; expiresAt: string }>) {
+  const key = `nvr:${orgId}:${camera}:${quality}`;
   const hit = await store.getFeed<{ hlsUrl: string; expiresAt: string }>(key);
   if (hit) return hit;
   const live = await load();

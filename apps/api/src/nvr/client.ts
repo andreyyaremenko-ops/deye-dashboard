@@ -10,6 +10,8 @@ export class NvrError extends Error {
 }
 
 export interface NvrCamera { id: string; online: boolean; substream: boolean }
+/** sub — 640x360 і ~35-165 кбіт/с, main — повний кадр камери (у ksm 2688x1520 і 5.6 Мбіт/с). */
+export type NvrQuality = "sub" | "main";
 export interface NvrLive { camera: string; quality: string; hlsUrl: string; expiresAt: string }
 
 const TIMEOUT_MS = 10_000;
@@ -45,9 +47,11 @@ export async function listCameras(baseUrl: string, token: string): Promise<NvrCa
   });
 }
 
-export async function liveUrl(baseUrl: string, token: string, camera: string): Promise<NvrLive> {
+export async function liveUrl(baseUrl: string, token: string, camera: string, quality: NvrQuality = "sub"): Promise<NvrLive> {
+  // без параметра NVR віддає субпотік; невідоме значення він теж зводить до субпотоку
+  const q = quality === "main" ? "?quality=main" : "";
   const j = await call<{ camera?: string; quality?: string; hls_url?: string; expires_at?: string }>(
-    baseUrl, token, `/api/v1/cameras/${encodeURIComponent(camera)}/live`);
+    baseUrl, token, `/api/v1/cameras/${encodeURIComponent(camera)}/live${q}`);
   if (typeof j.hls_url !== "string") throw new NvrError("NVR не віддав hls_url", "bad_response");
   return { camera: j.camera ?? camera, quality: j.quality ?? "", hlsUrl: j.hls_url, expiresAt: j.expires_at ?? "" };
 }

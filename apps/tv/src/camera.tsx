@@ -10,7 +10,7 @@
  */
 import { useEffect, useRef, useState } from "preact/hooks";
 
-export interface ScreenCamera { id: string; hlsUrl: string | null; expiresAt: string | null; error?: string }
+export interface ScreenCamera { id: string; quality: "sub" | "main"; hlsUrl: string | null; expiresAt: string | null; error?: string }
 
 interface Props { cls: string; token: string; props: Record<string, unknown> }
 
@@ -23,6 +23,8 @@ export function CameraWidget({ cls, token, props }: Props) {
   const plain = props.card === false;
   const title = String(props.title ?? "Камери");
   const fit = props.fit === "contain" ? "contain" : "cover";
+  // сервер віддає пари «камера + якість»: той самий потік у sub і main — різні посилання
+  const quality = props.quality === "main" ? "main" : "sub";
 
   const [feed, setFeed] = useState<ScreenCamera[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function CameraWidget({ cls, token, props }: Props) {
     void load();
     const t = setInterval(load, RELOAD_MS);
     return () => { alive = false; clearInterval(t); };
-  }, [token, list.join(",")]);
+  }, [token, list.join(","), quality]);
 
   // ротація камер
   useEffect(() => {
@@ -49,7 +51,7 @@ export function CameraWidget({ cls, token, props }: Props) {
   }, [list.length, rotateS]);
 
   const id = list[Math.min(i, list.length - 1)] ?? null;
-  const cam = feed?.find((c) => c.id === id) ?? null;
+  const cam = feed?.find((c) => c.id === id && (c.quality ?? "sub") === quality) ?? null;
   const name = (names[Math.min(i, list.length - 1)] ?? "").trim() || id || "";
   const note = !list.length ? "камери не вибрані" : err ?? cam?.error ?? (feed && !cam ? "камера недоступна" : null);
 
@@ -57,7 +59,7 @@ export function CameraWidget({ cls, token, props }: Props) {
     {!plain && <div class="title"><span>{title}</span>{list.length > 1 && <span class="cam-name">{name}</span>}</div>}
     <div class="cam-box">
       {cam?.hlsUrl
-        ? <Player key={cam.id} src={cam.hlsUrl} fit={fit} />
+        ? <Player key={`${cam.id}:${quality}`} src={cam.hlsUrl} fit={fit} />
         : <div class="cam-msg">{note ?? "підключення…"}</div>}
       {plain && list.length > 1 && <div class="cam-tag">{name}</div>}
       {cam?.hlsUrl && list.length > 1 && <div class="cam-dots">{list.map((c, n) => <i key={c} class={n === i ? "on" : ""} />)}</div>}

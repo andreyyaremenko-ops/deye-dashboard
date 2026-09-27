@@ -11,16 +11,17 @@ const client: NvrClient = {
     if (baseUrl.includes("down")) throw new NvrError("NVR не відповідає", "unreachable");
     return [{ id: "cam001", online: true, substream: true }, { id: "cam002", online: false, substream: true }];
   },
-  async liveUrl(baseUrl, token, camera) {
+  async liveUrl(baseUrl, token, camera, quality = "sub") {
     if (camera === "cam002") throw new NvrError("NVR не знає такої камери", "not_found");
-    return { camera, quality: "sub", hlsUrl: `https://nvr.example/s/4.1.${camera}.sig/hls/${camera}sub/index.m3u8?q=1`, expiresAt: new Date(Date.now() + 86400_000).toISOString() };
+    const path = quality === "main" ? camera : `${camera}sub`;
+    return { camera, quality, hlsUrl: `https://nvr.example/s/4.1.${camera}.sig/hls/${path}/index.m3u8?q=1`, expiresAt: new Date(Date.now() + 86400_000).toISOString() };
   },
 };
 
-const withCamera = (cameras: string[]) => ({
+const withCamera = (cameras: string[], props: Record<string, unknown> = {}) => ({
   backgroundId: null, widgets: [], radioUrl: null, theme: "dark" as const,
   scenes: [{ id: "main", name: "", durationS: 30, backgroundId: null, theme: "dark" as const, schedule: null, onOutage: false,
-    widgets: [{ id: "c1", type: "camera" as const, x: 2, y: 2, w: 40, h: 30, props: { cameras } }] }],
+    widgets: [{ id: "c1", type: "camera" as const, x: 2, y: 2, w: 40, h: 30, props: { cameras, ...props } }] }],
 });
 
 describe("камери закладу (NVR)", () => {
@@ -73,6 +74,7 @@ describe("камери закладу (NVR)", () => {
     expect(r.statusCode).toBe(200);
     const [c1, c2] = r.json().cameras;
     expect(c1.id).toBe("cam001");
+    expect(c1.quality).toBe("sub");
     expect(c1.hlsUrl).toBe(`/api/public/screens/${viewToken}/nvr/s/4.1.cam001.sig/hls/cam001sub/index.m3u8?q=1`);
     expect(JSON.stringify(r.json())).not.toContain("nvr.example");   // домен NVR на телевізор не потрапляє
     // камера, яку NVR не віддав, не ламає решту
@@ -127,6 +129,20 @@ describe("камери закладу (NVR)", () => {
     expect(r.json().error).toBe("too_many_cameras");
   });
 
+  it("основний потік: окреме посилання, субпотік попереду для старих бандлів ТБ", async () => {
+    await owner.patch(`/api/orgs/${orgId}/screens/${screenId}`, {
+      config: { ...withCamera(["cam001"], { quality: "main" }), scenes: [
+        ...withCamera(["cam001"], { quality: "main" }).scenes,
+        { id: "s2", name: "", durationS: 30, backgroundId: null, theme: "dark" as const, schedule: null, onOutage: false,
+          widgets: [{ id: "c2", type: "camera" as const, x: 2, y: 2, w: 40, h: 30, props: { cameras: ["cam001"] } }] },
+      ] },
+    });
+    const list = (await t.app.inject({ method: "GET", url: `/api/public/screens/${viewToken}/cameras` })).json().cameras;
+    expect(list.map((c: { quality: string }) => c.quality)).toEqual(["sub", "main"]);
+    expect(list[0].hlsUrl).toContain("/hls/cam001sub/");
+    expect(list[1].hlsUrl).toContain("/hls/cam001/");
+  });
+
   it("camerasOf збирає камери з усіх сцен без повторів", () => {
     const cfg = screenConfigSchema.parse({
       backgroundId: null, widgets: [], radioUrl: null,
@@ -136,6 +152,6 @@ describe("камери закладу (NVR)", () => {
                              { id: "3", type: "clock", x: 0, y: 0, w: 10, h: 10, props: {} }] },
       ],
     });
-    expect(camerasOf(cfg)).toEqual(["cam1", "cam2", "cam3"]);
+    expect(camerasOf(cfg)).toEqual([{ id: "cam1", quality: "sub" }, { id: "cam2", quality: "sub" }, { id: "cam3", quality: "sub" }]);
   });
 });
