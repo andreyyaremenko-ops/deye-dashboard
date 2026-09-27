@@ -22,6 +22,7 @@ function isNight(m: M | undefined): boolean {
 import { ChartWidget } from "./chart.tsx";
 import { FlowWidget, GEN_LABEL } from "./flow.tsx";
 import { MpptWidget } from "./mppt.tsx";
+import { CameraWidget } from "./camera.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
@@ -31,7 +32,7 @@ interface Props { type: string; state: DeviceState | undefined; props: Record<st
   device?: { batteryKwh: number | null; minSoc: number; pvKwp?: number | null }; socHistory?: [number, number][];
   feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null; menus?: Record<string, PublicMenu> }
 
-const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather"]);
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera"]);
 export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
@@ -121,6 +122,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
     }
     case "mppt":
       return <MpptWidget cls={cls} state={m} props={props} stale={stale} night={isNight(m)} />;
+    case "camera":
+      return <CameraWidget cls={cls} token={token ?? ""} props={props} />;
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

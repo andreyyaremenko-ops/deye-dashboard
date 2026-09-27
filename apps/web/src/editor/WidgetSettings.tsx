@@ -1,17 +1,17 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
 import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
-import type { Device, MenuSummary } from "../api.ts";
+import type { Device, MenuSummary, NvrCamera } from "../api.ts";
 import { Field } from "../components/ui.tsx";
 import { kindOf, type Widget } from "./widgetTypes.ts";
 
 type Theme = "dark" | "light";
 type Props = Record<string, unknown>;
-interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme; menus: MenuSummary[] }
+interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme; menus: MenuSummary[]; cameras: NvrCamera[] }
 
-export function WidgetSettings({ widget, devices, menus = [], theme, onChange }: { widget: Widget; devices: Device[]; menus?: MenuSummary[]; theme: Theme; onChange: (w: Widget) => void }) {
+export function WidgetSettings({ widget, devices, menus = [], cameras = [], theme, onChange }: { widget: Widget; devices: Device[]; menus?: MenuSummary[]; cameras?: NvrCamera[]; theme: Theme; onChange: (w: Widget) => void }) {
   const p = widget.props ?? {};
-  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme, menus };
+  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme, menus, cameras };
   const pos = (k: "x" | "y" | "w" | "h") => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...widget, [k]: +e.currentTarget.value });
   return <>
     {(kindOf(widget.type)?.needsDevice || (kindOf(widget.type)?.optionalDevice && devices.length > 0)) && <Field label="Пристрій">
@@ -91,6 +91,36 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     <Text ctx={ctx} k="genLabel" label="Підпис GEN-порту" placeholder="Мікроінвертор" />
     <Hint>Орієнтовний розмір: схема 30×42 %, картки 34×44 %, кільце 26×46 %, потоки 38×30 %, рядок 50×14 %, смуги 26×24 %. Автономія в підсумку зʼявиться, якщо в пристрої вказано ємність батареї. Окреме джерело на GEN-порту (мікроінвертор, генератор) додається саме, якщо інвертор його бачить.</Hint>
   </>,
+  camera: (ctx) => {
+    const chosen = Array.isArray(ctx.p.cameras) ? (ctx.p.cameras as unknown[]).map(String) : [];
+    const names = Array.isArray(ctx.p.names) ? (ctx.p.names as unknown[]).map(String) : [];
+    const toggle = (id: string) => ctx.set({ cameras: chosen.includes(id) ? chosen.filter((c) => c !== id) : [...chosen, id] });
+    return <>
+      <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Камери" />{Card(ctx)}</div>
+      <Field label={`Камери${chosen.length ? ` (${chosen.length})` : ""}`}>
+        {ctx.cameras.length === 0
+          ? <p className="muted small">NVR не налаштований або не віддав камер — див. «Камери (NVR)» на сторінці організації.</p>
+          : <div className="camlist">{ctx.cameras.map((c) => {
+            const n = chosen.indexOf(c.id);
+            return <label key={c.id} className={c.online ? "" : "off"}>
+              <input type="checkbox" checked={n >= 0} onChange={() => toggle(c.id)} />
+              <span>{c.id}</span>
+              {n >= 0 && <b>{n + 1}</b>}
+              {!c.online && <i>офлайн</i>}
+            </label>;
+          })}</div>}
+      </Field>
+      {chosen.length > 1 && <div className="row small">
+        <Field label="Зміна камери, с"><input type="number" min={5} max={600} value={Number(ctx.p.rotateS ?? 20)} onChange={(e) => ctx.set({ rotateS: Math.max(0, +e.currentTarget.value) })} /></Field>
+        <Select ctx={ctx} k="fit" label="Кадр" fallback="cover" options={[["cover", "заповнити картку"], ["contain", "вмістити цілком"]]} />
+      </div>}
+      {chosen.length <= 1 && <Select ctx={ctx} k="fit" label="Кадр" fallback="cover" options={[["cover", "заповнити картку"], ["contain", "вмістити цілком"]]} />}
+      {chosen.length > 0 && <Field label="Підписи камер (по одному на рядок, у порядку вибору)">
+        <textarea rows={Math.min(4, chosen.length)} value={names.join("\n")} onChange={(e) => ctx.set({ names: e.currentTarget.value.split(/\r?\n/) })} placeholder={chosen.join("\n")} />
+      </Field>}
+      <Hint>Потік іде через наш сервер, ключ NVR на телевізор не потрапляє. Орієнтовний розмір 44×34 %. На телевізорах, що тягнуть лише один медіаелемент, відеофон автоматично стане кадром.</Hint>
+    </>;
+  },
   mppt: (ctx) => {
     const names = Array.isArray(ctx.p.names) ? (ctx.p.names as unknown[]).map(String) : [];
     return <>

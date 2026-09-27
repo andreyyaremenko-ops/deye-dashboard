@@ -209,6 +209,19 @@ export const radioStations = pgTable("radio_stations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [uniqueIndex("radio_stations_org_url_idx").on(t.orgId, t.url)]);
 
+/**
+ * NVR закладу (відеореєстратор із HTTP API) — один на організацію. Токен зберігаємо як є:
+ * ним ми ходимо в чуже API від імені закладу, хеш тут не годиться. На ТБ він не потрапляє:
+ * екран отримує лише готове HLS-посилання через наш проксі.
+ */
+export const nvrServers = pgTable("nvr_servers", {
+  orgId: uuid("org_id").primaryKey().references(() => organizations.id, { onDelete: "cascade" }),
+  baseUrl: text("base_url").notNull(),
+  token: text("token").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // --- AI-меню: розпізнане з фото меню закладу + згенеровані фото страв ---
 
 export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
@@ -320,6 +333,6 @@ export const aiUsage = pgTable("ai_usage", {
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
-  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations,
+  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations, nvrServers,
 };
 export { sql };

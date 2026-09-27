@@ -1,7 +1,7 @@
 import { track } from "../analytics.ts";
 import { useEffect, useState } from "react";
 import { orgRoles, type OrgRole } from "@deye/shared";
-import { api, type Billing, type Invite, type Member, type Org } from "../api.ts";
+import { api, type Billing, type Invite, type Member, type NvrSettings, type Org } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, fmtDate, useAction } from "../components/ui.tsx";
 
 const ROLE: Record<OrgRole, string> = { owner: "власник", admin: "адмін", staff: "персонал" };
@@ -108,5 +108,42 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
         {b.payments.map((p) => <tr key={p.id}><td data-l="Дата">{fmtDate(p.createdAt)}</td><td data-l="Тариф">{p.planId} · {p.months} міс.</td><td data-l="Сума">{uah(p.amount)}</td><td data-l="Статус">{STATUS_UA[p.status] ?? p.status}</td><td className="actions">{p.status === "created" && p.pageUrl && <a href={p.pageUrl} className="btn btn-ghost">Сплатити</a>}</td></tr>)}
       </tbody></table>}
     </Card>
+    <NvrCard org={org} />
   </>;
+}
+
+/**
+ * Камери закладу: адреса NVR і ключ доступу. Ключ лишається на сервері — телевізор
+ * отримує лише готове посилання на потік через наш проксі, тому працює й тоді,
+ * коли реєстратор відкритий не для всіх IP.
+ */
+function NvrCard({ org }: { org: Org }) {
+  const [cur, setCur] = useState<NvrSettings | null>(null);
+  const [baseUrl, setBaseUrl] = useState("");
+  const [token, setToken] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+  const isAdmin = org.role !== "staff";
+  const load = async () => { const r = await api.get<NvrSettings | null>(`/api/orgs/${org.id}/nvr`); setCur(r); setBaseUrl(r?.baseUrl ?? ""); };
+  useEffect(() => { if (isAdmin) void load(); }, [org.id, isAdmin]);
+
+  const save = useAction(async () => {
+    const r = await api.put<{ cameras: number; online: number }>(`/api/orgs/${org.id}/nvr`, { baseUrl, token });
+    setResult(`Підключено: камер ${r.cameras}, онлайн ${r.online}`);
+    setToken(""); await load();
+  });
+  const remove = useAction(async () => { if (!confirm("Прибрати NVR? Віджети камер перестануть показувати потік.")) return; await api.del(`/api/orgs/${org.id}/nvr`); setResult(null); setCur(null); setBaseUrl(""); });
+
+  if (!isAdmin) return null;
+  return <Card title="Камери (NVR)">
+    <p className="muted small">Адреса реєстратора і ключ доступу. Ключ зберігається на сервері й на телевізор не потрапляє — потік іде через наш проксі. Після збереження камери зʼявляться у віджеті «Камери» в редакторі екрана.</p>
+    {result && <div className="ok">{result}</div>}
+    {cur && <p className="muted small">Зараз: <b>{cur.baseUrl}</b> · ключ {cur.tokenHint} · оновлено {fmtDate(cur.updatedAt)}</p>}
+    <div className="row">
+      <Field label="Адреса NVR"><input value={baseUrl} onChange={(e) => setBaseUrl(e.currentTarget.value)} placeholder="https://nvr.example.com" /></Field>
+      <Field label={cur ? "Новий ключ" : "Ключ доступу"}><input type="password" value={token} onChange={(e) => setToken(e.currentTarget.value)} placeholder="nvr_…" autoComplete="off" /></Field>
+      <Btn kind="primary" onClick={() => save.run(undefined)} disabled={save.busy || !baseUrl || !token}>{save.busy ? "Перевіряємо…" : "Перевірити і зберегти"}</Btn>
+      {cur && <Btn onClick={() => remove.run(undefined)} disabled={remove.busy}>Прибрати</Btn>}
+    </div>
+    <ErrorBox err={save.err ?? remove.err} />
+  </Card>;
 }

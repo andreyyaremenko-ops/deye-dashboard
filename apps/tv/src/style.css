@@ -268,6 +268,21 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .fb.idle { opacity: .5; } .fb-grid.off { opacity: 1; } .fb-grid.off .fb-l, .fb-grid.off .fb-v { color: #ff8a8e; }
 .w-flow.has-gen .fb { font-size: 1.2vw; } .w-flow.has-gen .fb-i .ico { width: 1.8vw; height: 1.8vw; }
 
+/* Камери: відео на всю картку, підпис і крапки ротації поверх нього */
+.w-camera { padding: 0; overflow: hidden; }
+.w-camera .title { padding: .6vw .8vw .3vw; margin: 0; display: flex; justify-content: space-between; gap: .6vw; }
+.cam-name { text-transform: none; letter-spacing: 0; font-weight: 700; color: #7ceee6; opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.w-camera.camera-plain { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+.cam-box { position: relative; flex: 1 1 0; min-height: 0; background: #05080f; overflow: hidden; }
+.theme-light .cam-box { background: #0b1220; }
+.cam-video { width: 100%; height: 100%; display: block; background: #05080f; }
+.cam-video.fit-cover { object-fit: cover; } .cam-video.fit-contain { object-fit: contain; }
+.cam-msg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 1vw; font-size: 1.1vw; color: rgba(255,255,255,.65); }
+.cam-tag { position: absolute; left: .6vw; bottom: .6vw; padding: .15vw .6vw; border-radius: .4vw; font-size: .95vw; color: #fff; background: rgba(5,8,15,.55); }
+.cam-dots { position: absolute; right: .6vw; bottom: .6vw; display: flex; gap: .3vw; }
+.cam-dots i { width: .5vw; height: .5vw; border-radius: 50%; background: rgba(255,255,255,.35); }
+.cam-dots i.on { background: #7ceee6; }
+
 /* Стрінги (MPPT): на кожен вхід — підпис і потужність зліва, смуга й вольти·ампери справа.
    Числа в різних рядках-блоках, тому довгі значення (16.6 kW, 720 V · 20.0 A) не налазять. */
 .w-mppt .title { margin-bottom: .2vw; }

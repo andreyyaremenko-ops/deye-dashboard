@@ -134,6 +134,13 @@
       "when": 1790162724777,
       "tag": "0018_rollups_timescale",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790521541838,
+      "tag": "0019_nvr_servers",
+      "breakpoints": true
     }
   ]
 }

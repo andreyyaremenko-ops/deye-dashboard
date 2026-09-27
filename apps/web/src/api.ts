@@ -72,6 +72,10 @@ export interface Billing {
 }
 
 // --- AI-меню ---
+/** Камера NVR закладу (список для редактора екрана). */
+export interface NvrCamera { id: string; online: boolean; substream: boolean }
+export interface NvrSettings { baseUrl: string; tokenHint: string; updatedAt: string }
+
 export interface MenuSummary {
   id: string; name: string; status: "importing" | "draft" | "published"; styleId: string | null;
   publishedAt: string | null; createdAt: string; updatedAt: string; items: number;

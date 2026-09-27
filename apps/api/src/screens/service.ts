@@ -4,6 +4,7 @@ import { screenConfigSchema, type ScreenConfig } from "@deye/shared";
 import { backgrounds, devices, menus, organizations, plans, screens } from "../db/schema.ts";
 import { randomToken } from "../lib/crypto.ts";
 import { randomInt } from "node:crypto";
+import { MAX_WIDGET_CAMERAS } from "../nvr/service.ts";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
 import { menuPayloads } from "../menus/service.ts";
@@ -40,6 +41,12 @@ async function validateConfig(db: Db, orgId: string, input: unknown): Promise<Sc
   if (ids.length) {
     const own = await db.select({ id: devices.id }).from(devices).where(and(eq(devices.orgId, orgId), inArray(devices.id, ids)));
     if (own.length !== ids.length) throw badRequest("Widget references a device not in this organization");
+  }
+  // камери не звіряємо з NVR (це запит у чуже API на кожне збереження) — лише обмежуємо кількість у віджеті
+  for (const sc of cfg.scenes) for (const w of sc.widgets) {
+    if (w.type !== "camera") continue;
+    const cams = Array.isArray(w.props.cameras) ? w.props.cameras : [];
+    if (cams.length > MAX_WIDGET_CAMERAS) throw badRequest(`Widget allows ${MAX_WIDGET_CAMERAS} cameras`, "too_many_cameras");
   }
   const { plan } = await getOrgWithPlan(db, orgId);
   if (cfg.radioUrl && !plan.limits.radio) throw conflict("Radio is not included in the plan", "plan_limit");

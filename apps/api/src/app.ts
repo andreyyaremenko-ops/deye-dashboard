@@ -28,6 +28,10 @@ export interface AppDeps {
   imageProviders?: string[];
   /** перевірка радіостріму при додаванні власної станції (тести підміняють) */
   radioProbe?: (url: string) => Promise<import("./radio/probe.ts").ProbeResult>;
+  /** клієнт до NVR закладу (тести підміняють на заглушку) */
+  nvr?: import("./nvr/client.ts").NvrClient;
+  /** запит на NVR для проксі стріму (тести підміняють) */
+  nvrFetch?: typeof fetch;
   /** геокодер для кабінету (Open-Meteo) */
   geocodeBase?: string;
   logger?: boolean | object;

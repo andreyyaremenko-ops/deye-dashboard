@@ -82,8 +82,10 @@ export function App() {
   const preview = bg?.preview ? media(bg.preview) : null;
   const image = isImage && best && !lite ? media(best) : null;   // фото-фон: нерухомий кадр, радіо не заважає
   const mode = screen.config.tvVideo ?? "auto";
-  // радіо + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
-  const posterOnly = !!radioUrl && (mode === "poster" || (mode === "auto" && singleMedia));
+  // камера в сцені — теж медіаелемент, і вона важливіша за рухомий фон
+  const hasCamera = scene.widgets.some((w) => w.type === "camera" && Array.isArray(w.props?.cameras) && w.props.cameras.length > 0);
+  // радіо/камера + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
+  const posterOnly = (!!radioUrl || hasCamera) && (mode === "poster" || (mode === "auto" && singleMedia));
   const src = !lite && !posterOnly && video ? media(video) : null;
   // повноекранний банер тривоги, якщо в будь-якій сцені є віджет тривоги з увімкненим оверлеєм
   const overlay = scenesOf(screen.config).some((sc) => sc.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false));
