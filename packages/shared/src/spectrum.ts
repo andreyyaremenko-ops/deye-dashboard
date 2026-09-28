@@ -22,7 +22,8 @@ export const VIZ_THEMES: VizTheme[] = [
   { id: "ivory", name: "Срібло", bg: "#0c0c0c", a: [168, 162, 158], b: [255, 250, 245] },
 ];
 
-export const VIZ_SENS = { min: 0.4, max: 3, default: 1.2 };
+/** Ефір стиснений по динаміці, тому вже на 1.2 усі смуги впираються в стелю — за замовчуванням нижче. */
+export const VIZ_SENS = { min: 0.4, max: 3, default: 0.8 };
 
 export const vizMode = (v: unknown): VizMode => (VIZ_MODES.some((m) => m.id === v) ? (v as VizMode) : "bars");
 export const vizTheme = (v: unknown): VizTheme => VIZ_THEMES.find((t) => t.id === v) ?? VIZ_THEMES[0]!;
