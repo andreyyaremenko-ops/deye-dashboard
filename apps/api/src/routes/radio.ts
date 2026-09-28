@@ -6,6 +6,9 @@ import * as radio from "../radio/service.ts";
 import { probeStream } from "../radio/probe.ts";
 import { member, orgIdParams, orgParams, tokenParams, type Deps } from "./common.ts";
 
+/** Скільки чекаємо на відповідь станції; саме програвання потім не обмежене. */
+const CONNECT_TIMEOUT_MS = 15_000;
+
 /** Радіо закладу: каталог + власні станції. Додавання перевіряє стрім (див. radio/probe.ts). */
 export async function radioRoutes(app: FastifyInstance, deps: Deps) {
   const { db, store } = deps;
@@ -46,7 +49,13 @@ export async function radioRoutes(app: FastifyInstance, deps: Deps) {
   app.get("/api/public/screens/:token/radio/stream", async (req, reply) => {
     const { token } = tokenParams.parse(req.params);
     const target = await radio.streamTarget(db, token);
-    const res = await call(target, { headers: { "user-agent": "deye-dashboard/1.0" }, signal: AbortSignal.timeout(20_000) });
+    // Дедлайн лише на встановлення зʼєднання. Ставити його на весь запит не можна: стрім нескінченний,
+    // і AbortSignal.timeout обірвав би тіло посеред ефіру (ловилось як стабільна тиша на 26-й секунді).
+    const ac = new AbortController();
+    const connect = setTimeout(() => ac.abort(), CONNECT_TIMEOUT_MS);
+    // телевізор пішов зі сторінки — відпускаємо станцію, інакше зʼєднання накопичуються
+    reply.raw.on("close", () => ac.abort());
+    const res = await call(target, { headers: { "user-agent": "deye-dashboard/1.0" }, signal: ac.signal }).finally(() => clearTimeout(connect));
     reply.code(res.status);
     reply.header("content-type", res.headers.get("content-type") ?? "audio/mpeg");
     reply.header("cache-control", "no-store");
