@@ -7,16 +7,18 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./brand": "./src/brand.ts",
     "./chart": "./src/chart.ts",
     "./energy": "./src/energy.ts",
-    "./brand": "./src/brand.ts",
     "./feeds": "./src/feeds.ts",
-    "./menu": "./src/menu.ts",
-    "./menu-data": "./src/menu-data.ts",
-    "./menu-ai": "./src/menu-ai.ts",
     "./flow": "./src/flow.ts",
-    "./strings": "./src/strings.ts",
-    "./scenes": "./src/scenes.ts"
+    "./menu": "./src/menu.ts",
+    "./menu-ai": "./src/menu-ai.ts",
+    "./menu-data": "./src/menu-data.ts",
+    "./radio": "./src/radio.ts",
+    "./scenes": "./src/scenes.ts",
+    "./spectrum": "./src/spectrum.ts",
+    "./strings": "./src/strings.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

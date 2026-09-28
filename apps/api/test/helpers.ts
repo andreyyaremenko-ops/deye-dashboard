@@ -15,7 +15,7 @@ import type { Mail } from "../src/mail/index.ts";
 export const INTERNAL = { user: "api", pass: "internal-test-pass" };
 
 export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null; feeds?: (store: MemoryStateStore, db: ReturnType<typeof drizzle>) => import("../src/feeds/hub.ts").FeedHub; alertsWebhookSecret?: string; radioProbe?: import("../src/app.ts").AppDeps["radioProbe"]; imageProviders?: string[];
-  nvr?: import("../src/nvr/client.ts").NvrClient; nvrFetch?: typeof fetch } = {}) {
+  nvr?: import("../src/nvr/client.ts").NvrClient; nvrFetch?: typeof fetch; radioFetch?: typeof fetch } = {}) {
   const pg = new PGlite();
   const db = drizzle(pg, { schema });
   const dir = join(import.meta.dirname, "../drizzle");
@@ -38,6 +38,7 @@ export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts"
     alertsWebhookSecret: opts.alertsWebhookSecret ?? null,
     radioProbe: opts.radioProbe,
     imageProviders: opts.imageProviders ?? ["xai", "openai"],
+    radioFetch: opts.radioFetch,
     nvr: opts.nvr,
     nvrFetch: opts.nvrFetch,
   });

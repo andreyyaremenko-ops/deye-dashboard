@@ -23,6 +23,7 @@ import { ChartWidget } from "./chart.tsx";
 import { FlowWidget, GEN_LABEL } from "./flow.tsx";
 import { MpptWidget } from "./mppt.tsx";
 import { CameraWidget } from "./camera.tsx";
+import { VizWidget } from "./viz.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
@@ -30,10 +31,12 @@ import type { Feeds, PublicMenu } from "./types.ts";
 
 interface Props { type: string; state: DeviceState | undefined; props: Record<string, unknown>; token?: string; deviceId?: string;
   device?: { batteryKwh: number | null; minSoc: number; pvKwp?: number | null }; socHistory?: [number, number][];
-  feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null; menus?: Record<string, PublicMenu> }
+  feeds?: Feeds; hasLocation?: boolean; outageSince?: number | null; menus?: Record<string, PublicMenu>;
+  /** адреса станції, що грає на екрані — для підпису у віджеті спектра */
+  radioUrl?: string | null }
 
-const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera"]);
-export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus }: Props) {
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum"]);
+export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus, radioUrl }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
   const stale = NO_DEVICE.has(type) ? false : !state || state.stale;
@@ -124,6 +127,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       return <MpptWidget cls={cls} state={m} props={props} stale={stale} night={isNight(m)} />;
     case "camera":
       return <CameraWidget cls={cls} token={token ?? ""} props={props} />;
+    case "spectrum":
+      return <VizWidget cls={cls} props={props} radioUrl={radioUrl ?? null} />;
     case "chart":
       return <ChartWidget token={token ?? ""} deviceId={deviceId} cls={cls} stale={stale} hours={Number(props.hours ?? 24)} />;
     default:

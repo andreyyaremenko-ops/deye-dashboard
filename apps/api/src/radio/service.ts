@@ -2,12 +2,14 @@
  * Радіо екрана: каталог RADIO_STATIONS + власні станції закладу.
  * Стрім грає сам телевізор напряму зі станції — сервер лише перевіряє адресу при додаванні.
  */
+import { createHash } from "node:crypto";
 import { and, asc, count, eq } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
 import { RADIO_STATIONS, planLimitsOf, screenConfigSchema } from "@deye/shared";
 import { radioStations, screens } from "../db/schema.ts";
 import { badRequest, conflict, isUniqueViolation, notFound } from "../lib/errors.ts";
 import { getOrgWithPlan, requireRole } from "../orgs/service.ts";
+import type { StateStore } from "../state/store.ts";
 import { ProbeError, type ProbeResult } from "./probe.ts";
 
 type Db = PgDatabase<any, any, any>;
@@ -66,4 +68,55 @@ export async function deleteStation(db: Db, orgId: string, actorId: string, id: 
   const using = rows.filter((r) => screenConfigSchema.safeParse(r.config).data?.radioUrl === st.url).map((r) => r.name);
   if (using.length) throw conflict(`Станція грає на екранах: ${using.join(", ")}. Спершу змініть там радіо.`, "radio_in_use");
   await db.delete(radioStations).where(eq(radioStations.id, id));
+}
+
+// --- Звук для віджета спектра ---
+
+/**
+ * Віджет спектра читає звук через AnalyserNode, а той на чужому домені без CORS бачить саму тишу.
+ * Тому екрану з таким віджетом ми або лишаємо пряму адресу (станція віддає Access-Control-Allow-Origin),
+ * або підставляємо наш проксі — тоді потік стає свій, і аналізатор працює. Без віджета спектра нічого
+ * не міняємо: радіо як і раніше грає напряму, трафік через нас не йде.
+ */
+const CORS_TTL_S = 6 * 3600;
+const CORS_TIMEOUT_MS = 6000;
+
+async function corsAllowed(url: string, store: StateStore, origin: string, call: typeof fetch): Promise<boolean> {
+  const key = `radio:cors:${createHash("sha256").update(url).digest("hex").slice(0, 16)}`;
+  const hit = await store.getFeed<{ ok: boolean }>(key);
+  if (hit) return hit.ok;
+  let ok = false;
+  try {
+    const r = await call(url, { headers: { origin, range: "bytes=0-1" }, signal: AbortSignal.timeout(CORS_TIMEOUT_MS) });
+    const acao = r.headers.get("access-control-allow-origin");
+    ok = acao === "*" || acao === origin;
+    await r.body?.cancel().catch(() => {});
+  } catch { ok = false; }
+  await store.setFeed(key, { ok }, CORS_TTL_S);
+  return ok;
+}
+
+async function screenRadio(db: Db, viewToken: string) {
+  const [row] = await db.select({ config: screens.config }).from(screens).where(eq(screens.viewToken, viewToken));
+  if (!row) throw notFound("Screen not found");
+  const cfg = screenConfigSchema.safeParse(row.config).data;
+  const wantsSpectrum = !!cfg?.scenes.some((sc) => sc.widgets.some((w) => w.type === "spectrum"));
+  return { url: cfg?.radioUrl ?? null, wantsSpectrum };
+}
+
+export interface ScreenRadio { url: string | null; proxied: boolean; analyser: boolean }
+
+export async function radioForScreen(db: Db, store: StateStore, viewToken: string, origin: string, call: typeof fetch = fetch): Promise<ScreenRadio> {
+  const { url, wantsSpectrum } = await screenRadio(db, viewToken);
+  if (!url) return { url: null, proxied: false, analyser: false };
+  if (!wantsSpectrum) return { url, proxied: false, analyser: false };
+  if (await corsAllowed(url, store, origin, call)) return { url, proxied: false, analyser: true };
+  return { url: `/api/public/screens/${viewToken}/radio/stream`, proxied: true, analyser: true };
+}
+
+/** Адреса станції цього екрана — більше проксі нікуди не ходить. */
+export async function streamTarget(db: Db, viewToken: string): Promise<string> {
+  const { url } = await screenRadio(db, viewToken);
+  if (!url) throw notFound("Radio is off for this screen");
+  return url;
 }

@@ -162,3 +162,80 @@ describe("власні радіостанції закладу", () => {
     expect(over.json().error).toBe("plan_limit");
   });
 });
+
+describe("звук для віджета спектра", () => {
+  let t: TestApp;
+  let owner: ReturnType<typeof api>;
+  let orgId: string;
+  const seen: string[] = [];
+
+  // cors.example віддає Access-Control-Allow-Origin, plain.example — ні
+  const radioFetch = (async (u: URL | string, init?: RequestInit) => {
+    const url = String(u);
+    seen.push(url);
+    const headers: Record<string, string> = { "content-type": "audio/mpeg" };
+    if (url.includes("cors.example")) headers["access-control-allow-origin"] = String((init?.headers as Record<string, string>)?.origin ?? "*");
+    return new Response("ID3audio", { status: 200, headers });
+  }) as typeof fetch;
+
+  const screenWith = async (radioUrl: string | null, spectrum: boolean) => {
+    const sc = (await owner.post(`/api/orgs/${orgId}/screens`, { name: `Екран ${Math.random()}` })).json();
+    const widgets = spectrum ? [{ id: "v1", type: "spectrum", x: 2, y: 2, w: 30, h: 20, props: { mode: "bars" } }] : [];
+    await owner.patch(`/api/orgs/${orgId}/screens/${sc.id}`, {
+      config: { backgroundId: null, widgets: [], radioUrl, theme: "dark",
+        scenes: [{ id: "main", name: "", durationS: 30, backgroundId: null, theme: "dark", schedule: null, onOutage: false, widgets }] },
+    });
+    return sc.viewToken as string;
+  };
+  const radioOf = async (token: string) => (await t.app.inject({ method: "GET", url: `/api/public/screens/${token}/radio` })).json();
+
+  beforeAll(async () => {
+    t = await makeTestApp({ radioFetch, radioProbe: async (url: string) => ({ url, contentType: "audio/mpeg", name: "St" }) });
+    const o = await signUp(t.app, "owner@viz.test"); owner = api(t.app, o.cookie);
+    orgId = (await owner.post("/api/orgs", { name: "Бар" })).json().id;
+    // Pro: радіо входить у тариф; екран приймає лише станцію з каталогу або власну
+    await t.db.update(organizations).set({ planId: "pro" }).where(eq(organizations.id, orgId));
+    for (const url of ["https://plain.example/live", "https://cors.example/live"]) {
+      await owner.post(`/api/orgs/${orgId}/radio`, { title: url.includes("cors") ? "З CORS" : "Без CORS", url });
+    }
+  });
+  afterAll(async () => { await t.close(); });
+
+  it("без віджета спектра адреса лишається прямою і станцію не чіпаємо", async () => {
+    seen.length = 0;
+    const token = await screenWith("https://plain.example/live", false);
+    expect(await radioOf(token)).toEqual({ url: "https://plain.example/live", proxied: false, analyser: false });
+    expect(seen).toEqual([]);   // зайвого запиту до станції немає
+  });
+
+  it("станція з CORS грає напряму, аналізатор доступний", async () => {
+    const token = await screenWith("https://cors.example/live", true);
+    expect(await radioOf(token)).toEqual({ url: "https://cors.example/live", proxied: false, analyser: true });
+  });
+
+  it("станція без CORS іде через наш проксі", async () => {
+    const token = await screenWith("https://plain.example/live", true);
+    const r = await radioOf(token);
+    expect(r).toEqual({ url: `/api/public/screens/${token}/radio/stream`, proxied: true, analyser: true });
+
+    const stream = await t.app.inject({ method: "GET", url: r.url });
+    expect(stream.statusCode).toBe(200);
+    expect(stream.headers["content-type"]).toBe("audio/mpeg");
+    expect(stream.body).toBe("ID3audio");
+    expect(seen).toContain("https://plain.example/live");
+  });
+
+  it("перевірка CORS кешується: друга видача не стукає в станцію", async () => {
+    const token = await screenWith("https://cors.example/live", true);
+    seen.length = 0;
+    await radioOf(token);
+    expect(seen.filter((u) => u.includes("cors.example"))).toEqual([]);
+  });
+
+  it("радіо вимкнене — нічого не віддаємо, проксі мовчить", async () => {
+    const token = await screenWith(null, true);
+    expect(await radioOf(token)).toEqual({ url: null, proxied: false, analyser: false });
+    const stream = await t.app.inject({ method: "GET", url: `/api/public/screens/${token}/radio/stream` });
+    expect(stream.statusCode).toBe(404);
+  });
+});

@@ -1,6 +1,7 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
 import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
+import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
 import type { Device, MenuSummary, NvrCamera } from "../api.ts";
 import { Field } from "../components/ui.tsx";
 import { kindOf, type Widget } from "./widgetTypes.ts";
@@ -90,6 +91,20 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Потік енергії" />{Card(ctx)}</div>
     <Text ctx={ctx} k="genLabel" label="Підпис GEN-порту" placeholder="Мікроінвертор" />
     <Hint>Орієнтовний розмір: схема 30×42 %, картки 34×44 %, кільце 26×46 %, потоки 38×30 %, рядок 50×14 %, смуги 26×24 %. Автономія в підсумку зʼявиться, якщо в пристрої вказано ємність батареї. Окреме джерело на GEN-порту (мікроінвертор, генератор) додається саме, якщо інвертор його бачить.</Hint>
+  </>,
+  spectrum: (ctx) => <>
+    <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Зараз грає" />{Card(ctx)}</div>
+    <div className="row small">
+      <Select ctx={ctx} k="mode" label="Режим" fallback="bars" options={VIZ_MODES.map((m) => [m.id, m.label] as [string, string])} />
+      <Select ctx={ctx} k="theme" label="Кольори" fallback="ember" options={VIZ_THEMES.map((t) => [t.id, t.name] as [string, string])} />
+    </div>
+    <div className="row small">
+      <Field label={`Чутливість ${Number(ctx.p.sensitivity ?? VIZ_SENS.default).toFixed(1)}`}>
+        <input type="range" min={VIZ_SENS.min} max={VIZ_SENS.max} step={0.1} value={Number(ctx.p.sensitivity ?? VIZ_SENS.default)} onChange={(e) => ctx.set({ sensitivity: +e.currentTarget.value })} />
+      </Field>
+      <Toggle ctx={ctx} k="showName" label="Назва станції" on="показувати" off="приховати" />
+    </div>
+    <Hint>Показує звук радіо цього екрана — увімкніть радіо в налаштуваннях екрана. Станції без CORS ми програємо через свій сервер, щоб дістати спектр; якщо звуку немає, віджет плавно анімує сам і пише «без спектра». Орієнтовний розмір 34×26 %.</Hint>
   </>,
   camera: (ctx) => {
     const chosen = Array.isArray(ctx.p.cameras) ? (ctx.p.cameras as unknown[]).map(String) : [];

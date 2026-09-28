@@ -7,6 +7,7 @@ import { Pair, clearToken, savedToken, saveToken } from "./pair.tsx";
 import { AlertOverlay } from "./feeds.tsx";
 import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
+import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -35,13 +36,37 @@ export function App() {
 
   const radioUrl = live?.screen?.config.radioUrl ?? null;
   const radioVolume = live?.screen?.config.radioVolume ?? 0.6;
+  // віджет спектра десь на екрані -> звук має пройти через аналізатор, а для цього бути «своїм»
+  const wantsViz = !!live?.screen && scenesOf(live.screen.config).some((sc) => sc.widgets.some((w) => w.type === "spectrum"));
+  const [source, setSource] = useState<{ url: string; proxied: boolean; analyser: boolean } | null>(null);
+  useEffect(() => {
+    if (!token || !radioUrl) { setSource(null); return; }
+    let alive = true;
+    // сервер вирішує: пряма адреса (станція дала CORS) чи наш проксі; якщо не відповів — граємо як раніше
+    const plain = { url: radioUrl, proxied: false, analyser: false };
+    void fetch(`/api/public/screens/${token}/radio`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((j: { url: string | null; proxied: boolean; analyser: boolean }) => { if (alive) setSource(j.url ? { url: j.url, proxied: j.proxied, analyser: j.analyser } : null); })
+      .catch(() => { if (alive) setSource(plain); });
+    return () => { alive = false; };
+  }, [token, radioUrl, wantsViz]);
+
+  const srcUrl = source?.url ?? null;
+  const wantCors = !!source?.analyser && !source.proxied;
   useEffect(() => {
     const el = audio.current;
-    if (!el || !radioUrl) { setNeedTap(false); return; }
+    if (!el || !srcUrl) { setNeedTap(false); return; }
     el.volume = radioVolume;
     let retry = 2000, timer: number | undefined, blocked = false;
-    let wanted = false, stopping = false;
-    const start = () => { if (el.src !== radioUrl) { el.src = radioUrl; el.load(); } wanted = true; el.play().then(() => { blocked = false; setNeedTap(false); retry = 2000; }).catch(() => { blocked = true; setNeedTap(true); }); };
+    let wanted = false, stopping = false, corsDropped = false;
+    const start = () => {
+      // crossOrigin лише коли станція справді дала CORS: інакше елемент не завантажиться взагалі
+      const want = wantCors && !corsDropped ? "anonymous" : null;
+      if ((el.crossOrigin ?? null) !== want) { el.crossOrigin = want; if (el.getAttribute("src")) { el.removeAttribute("src"); el.load(); } }
+      if (el.src !== srcUrl) { el.src = srcUrl; el.load(); }
+      wanted = true;
+      el.play().then(() => { blocked = false; setNeedTap(false); retry = 2000; if (source?.analyser) attachSpectrum(el); }).catch(() => { blocked = true; setNeedTap(true); });
+    };
     // паузу поставили не ми: якщо в цей момент грає відеофон — ТБ не тягне обидва; переходимо на кадр і повертаємо радіо
     const onPause = () => {
       if (!wanted || stopping || blocked) return;
@@ -51,10 +76,15 @@ export function App() {
     };
     el.addEventListener("pause", onPause);
     // Автозапуск зі звуком заборонено: будь-яка кнопка пульта / дотик вмикає (як в акваріумі)
-    const kick = () => { if (blocked) start(); };
+    const kick = () => { resumeSpectrum(); if (blocked) start(); };
     for (const ev of ["pointerdown", "touchstart", "keydown"]) addEventListener(ev, kick, true);
     // обрив стріму: перезапуск із наростаючою паузою
-    const onFail = () => { if (blocked) return; clearTimeout(timer); timer = window.setTimeout(() => { retry = Math.min(retry * 2, 60_000); start(); }, retry); };
+    const onFail = () => {
+      if (blocked) return;
+      // станція передумала щодо CORS — радіо важливіше за спектр, вмикаємось без нього
+      if (wantCors && !corsDropped && el.error) { corsDropped = true; clearTimeout(timer); start(); return; }
+      clearTimeout(timer); timer = window.setTimeout(() => { retry = Math.min(retry * 2, 60_000); start(); }, retry);
+    };
     el.addEventListener("error", onFail); el.addEventListener("stalled", onFail); el.addEventListener("ended", onFail);
     start();
     return () => {
@@ -63,7 +93,7 @@ export function App() {
       el.removeEventListener("pause", onPause); el.removeEventListener("error", onFail); el.removeEventListener("stalled", onFail); el.removeEventListener("ended", onFail);
       el.pause(); el.removeAttribute("src"); el.load();
     };
-  }, [radioUrl]);
+  }, [srcUrl, wantCors]);
   useEffect(() => { if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
 
   if (isPairPage || !token) return <Pair />;
@@ -98,12 +128,12 @@ export function App() {
         <div key={w.id} class="slot" style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}>
           <Widget type={w.type} state={w.deviceId ? live.states.get(w.deviceId) : undefined} props={w.type === "text" || w.type === "menu" ? { ...w.props, theme: scene.theme } : w.props} token={token} deviceId={w.deviceId}
             device={screen.devices?.find((d) => d.id === w.deviceId)} socHistory={w.deviceId ? live.socHistory.get(w.deviceId) : undefined}
-            feeds={live.feeds} menus={screen.menus} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} />
+            feeds={live.feeds} menus={screen.menus} hasLocation={!!screen.location} outageSince={w.deviceId ? live.outageSince.get(w.deviceId) : undefined} radioUrl={radioUrl} />
         </div>
       ))}
     </div>
     {overlay && <AlertOverlay feed={live.feeds.alert} />}
-    {radioUrl && <audio ref={audio} preload="none" />}
+    {srcUrl && <audio ref={audio} preload="none" />}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
     {screen.branding && <div class="brand">SunHunter TV · tv.sun-hunter.men</div>}
     {screen.branding && <Plaque />}

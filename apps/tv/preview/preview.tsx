@@ -4,6 +4,7 @@
  *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
  *   AI-меню: /preview/?type=menu&photos=0&cols=3&out=strike   (фото беруться з /media, тут їх нема — картки без фото)
+ *   спектр: /preview/?type=spectrum&mode=bars|mirror|circle|orbit&theme=ember|tide|dusk|moss|ivory   (без радіо — синтетична хвиля)
  */
 import { render } from "preact";
 import "../src/style.css";
@@ -62,6 +63,8 @@ render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradien
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "28%", height: "60%" }}><Widget type="text" state={undefined} props={menuProps} /></div>
     : q.get("type") === "mppt"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "34%", height: "26%" }}><Widget type="mppt" state={state} props={{ card: q.get("card") !== "0", showVA: q.get("va") !== "0", names: (q.get("names") ?? "").split(",").filter(Boolean) }} /></div>
+    : q.get("type") === "spectrum"
+    ? <div class="slot" style={{ left: "3%", top: "5%", width: "34%", height: "26%" }}><Widget type="spectrum" state={undefined} props={{ mode: q.get("mode") ?? "bars", theme: q.get("theme") ?? "ember", sensitivity: Number(q.get("sens") ?? 1.2), card: q.get("card") !== "0", showName: q.get("name") !== "0" }} radioUrl="https://online.radiorelax.ua/RadioRelax" /></div>
     : q.get("type") === "energy_today"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "20%", height: "26%" }}><Widget type="energy_today" state={state} props={{}} /></div>
     : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0", genLabel: q.get("gen") ?? "" }} device={{ batteryKwh: 15, minSoc: 20, pvKwp: 10 }} /></div>}

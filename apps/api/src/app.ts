@@ -28,6 +28,8 @@ export interface AppDeps {
   imageProviders?: string[];
   /** перевірка радіостріму при додаванні власної станції (тести підміняють) */
   radioProbe?: (url: string) => Promise<import("./radio/probe.ts").ProbeResult>;
+  /** запит на радіостанцію: перевірка CORS і проксі стріму для віджета спектра (тести підміняють) */
+  radioFetch?: typeof fetch;
   /** клієнт до NVR закладу (тести підміняють на заглушку) */
   nvr?: import("./nvr/client.ts").NvrClient;
   /** запит на NVR для проксі стріму (тести підміняють) */
