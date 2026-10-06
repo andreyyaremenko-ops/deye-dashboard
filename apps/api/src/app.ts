@@ -34,6 +34,8 @@ export interface AppDeps {
   nvr?: import("./nvr/client.ts").NvrClient;
   /** запит на NVR для проксі стріму (тести підміняють) */
   nvrFetch?: typeof fetch;
+  /** живі сесії з інверторами Anenji (порт 8899) — для адмінки; у тестах і мок-режимі немає */
+  anenjiSessions?: () => import("./anenji/session.ts").SessionInfo[];
   /** геокодер для кабінету (Open-Meteo) */
   geocodeBase?: string;
   logger?: boolean | object;

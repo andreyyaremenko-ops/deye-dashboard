@@ -41,7 +41,10 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
     return reply.code(201).send(await fw.uploadFirmware(db, deps.mediaRoot, meta, file.file));
   });
 
-  // сирі кадри Solarman-стіків (аналіз протоколу)
+  // живі сесії з інверторами Anenji: обгортка, адреса в лінії RS485, серійник, остання помилка
+  app.get("/api/admin/anenji", async () => deps.anenjiSessions?.() ?? []);
+
+  // сирі кадри Solarman-стіків і логерів Anenji (аналіз протоколу)
   app.get("/api/admin/logger-frames", async (req) => {
     const q = z.object({ serial: z.coerce.number().optional(), limit: z.coerce.number().min(1).max(500).default(50) }).parse(req.query);
     const rows = await db.select().from(loggerFrames).where(q.serial ? eq(loggerFrames.serial, q.serial) : undefined).orderBy(desc(loggerFrames.receivedAt)).limit(q.limit);

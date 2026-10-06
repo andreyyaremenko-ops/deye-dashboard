@@ -6,6 +6,7 @@ import { db, sql } from "./db/client.ts";
 import { dispatch, type IngestDeps } from "./mqtt/ingest.ts";
 import { RedisStateStore } from "./state/store.ts";
 import { startLoggerServer } from "./solarman/server.ts";
+import { startAnenjiServer } from "./anenji/server.ts";
 import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
@@ -17,8 +18,11 @@ const store = new RedisStateStore(config.REDIS_URL);
 const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL, alertsKey: config.ALERTS_API_KEY ?? null, alertsApi: config.ALERTS_API,
   webhookUrl: config.ALERTS_API_KEY && config.PUBLIC_URL.startsWith("https://") ? webhookUrlFor(config.PUBLIC_URL, config.ALERTS_API_KEY) : null,
   log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
+let anenji: ReturnType<typeof startAnenjiServer> | null = null;
 const app = await buildApp({
-  db, auth, store, feeds, alertsWebhookSecret: config.ALERTS_API_KEY ? webhookSecret(config.ALERTS_API_KEY) : null,
+  db, auth, store, feeds,
+  anenjiSessions: () => anenji?.list() ?? [],
+  alertsWebhookSecret: config.ALERTS_API_KEY ? webhookSecret(config.ALERTS_API_KEY) : null,
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
@@ -61,7 +65,13 @@ setTimeout(() => {
 // Solarman-стіки в режимі TCP-Client (config_hide.html): порт 10000, сервер опитує сам
 const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGER_PORT);
 
-app.addHook("onClose", async () => { feeds.stop(); stickServer.server.close(); client.end(true); await store.close(); await sql.end(); });
+// Логери Anenji/SRNE: порт 8899, прозорий Modbus RTU (сервер сам майстер у лінії)
+anenji = startAnenjiServer({ db, ingest, log: app.log }, config.ANENJI_PORT);
+
+app.addHook("onClose", async () => {
+  feeds.stop(); stickServer.server.close(); anenji?.server.close(); client.end(true);
+  await store.close(); await sql.end();
+});
 
 try {
   await app.listen({ port: config.API_PORT, host: "0.0.0.0" });

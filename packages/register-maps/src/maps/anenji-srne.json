@@ -1,0 +1,392 @@
+{
+  "id": "anenji-srne",
+  "name": "Anenji / SRNE hybrid (протокол SRNE V1.7)",
+  "deviceType": 1001,
+  "pollRanges": [
+    [
+      20,
+      24
+    ],
+    [
+      256,
+      274
+    ],
+    [
+      528,
+      529
+    ],
+    [
+      530,
+      550
+    ],
+    [
+      554,
+      567
+    ],
+    [
+      61485,
+      61490
+    ],
+    [
+      61496,
+      61502
+    ],
+    [
+      61510,
+      61514
+    ]
+  ],
+  "fields": [
+    {
+      "key": "cpu1_ver",
+      "reg": 20
+    },
+    {
+      "key": "cpu2_ver",
+      "reg": 21
+    },
+    {
+      "key": "hw_ctrl_ver",
+      "reg": 22
+    },
+    {
+      "key": "hw_power_ver",
+      "reg": 23
+    },
+    {
+      "key": "bat_soc",
+      "reg": 256,
+      "unit": "%"
+    },
+    {
+      "key": "bat_v",
+      "reg": 257,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "bat_a",
+      "reg": 258,
+      "scale": -0.1,
+      "signed": true,
+      "unit": "A"
+    },
+    {
+      "key": "pv1_v",
+      "reg": 263,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "pv1_a",
+      "reg": 264,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "pv1_w",
+      "reg": 265,
+      "unit": "W"
+    },
+    {
+      "key": "charge_mode",
+      "reg": 267,
+      "enum": {
+        "0": "off",
+        "1": "quick",
+        "2": "const_v",
+        "4": "float",
+        "6": "li_activate"
+      }
+    },
+    {
+      "key": "bat_charge_w",
+      "reg": 270,
+      "unit": "W"
+    },
+    {
+      "key": "pv2_v",
+      "reg": 271,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "pv2_a",
+      "reg": 272,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "pv2_w",
+      "reg": 273,
+      "unit": "W"
+    },
+    {
+      "key": "state",
+      "reg": 528,
+      "enum": {
+        "0": "self_check",
+        "1": "standby",
+        "2": "self_check",
+        "3": "self_check",
+        "4": "normal",
+        "5": "normal",
+        "6": "normal",
+        "7": "normal",
+        "8": "normal",
+        "9": "standby",
+        "10": "fault"
+      }
+    },
+    {
+      "key": "work_mode",
+      "reg": 528,
+      "enum": {
+        "0": "power_up",
+        "1": "waiting",
+        "2": "init",
+        "3": "soft_start",
+        "4": "mains",
+        "5": "inverter",
+        "6": "to_mains",
+        "7": "to_inverter",
+        "8": "bat_activate",
+        "9": "off",
+        "10": "fault"
+      }
+    },
+    {
+      "key": "bus_v",
+      "reg": 530,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "grid_v_l1",
+      "reg": 531,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "grid_a_l1",
+      "reg": 532,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "grid_hz",
+      "reg": 533,
+      "scale": 0.01,
+      "unit": "Hz"
+    },
+    {
+      "key": "load_v_l1",
+      "reg": 534,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "inv_a_l1",
+      "reg": 535,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "inv_hz",
+      "reg": 536,
+      "scale": 0.01,
+      "unit": "Hz"
+    },
+    {
+      "key": "load_a_l1",
+      "reg": 537,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "load_pf",
+      "reg": 538,
+      "scale": 0.01,
+      "signed": true
+    },
+    {
+      "key": "load_w",
+      "reg": 539,
+      "unit": "W"
+    },
+    {
+      "key": "load_va",
+      "reg": 540,
+      "unit": "VA"
+    },
+    {
+      "key": "grid_charge_a",
+      "reg": 542,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "load_pct",
+      "reg": 543,
+      "unit": "%"
+    },
+    {
+      "key": "temp_dc_c",
+      "reg": 544,
+      "scale": 0.1,
+      "signed": true,
+      "unit": "C"
+    },
+    {
+      "key": "temp_heatsink_c",
+      "reg": 545,
+      "scale": 0.1,
+      "signed": true,
+      "unit": "C"
+    },
+    {
+      "key": "temp_trans_c",
+      "reg": 546,
+      "scale": 0.1,
+      "signed": true,
+      "unit": "C"
+    },
+    {
+      "key": "pv_charge_a",
+      "reg": 548,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "grid_v_l2",
+      "reg": 554,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "load_v_l2",
+      "reg": 556,
+      "scale": 0.1,
+      "unit": "V"
+    },
+    {
+      "key": "inv_a_l2",
+      "reg": 558,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "load_a_l2",
+      "reg": 560,
+      "scale": 0.1,
+      "unit": "A"
+    },
+    {
+      "key": "load_w_l2",
+      "reg": 562,
+      "unit": "W"
+    },
+    {
+      "key": "load_va_l2",
+      "reg": 564,
+      "unit": "VA"
+    },
+    {
+      "key": "load_pct_l2",
+      "reg": 566,
+      "unit": "%"
+    },
+    {
+      "key": "bat_charge_day_ah",
+      "reg": 61485,
+      "unit": "Ah"
+    },
+    {
+      "key": "bat_discharge_day_ah",
+      "reg": 61486,
+      "unit": "Ah"
+    },
+    {
+      "key": "pv_day_kwh",
+      "reg": 61487,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "load_day_kwh",
+      "reg": 61488,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "pv_total_kwh",
+      "reg": 61497,
+      "hiReg": 61496,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "load_total_kwh",
+      "reg": 61499,
+      "hiReg": 61498,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_charge_day_ah",
+      "reg": 61500,
+      "unit": "Ah"
+    },
+    {
+      "key": "grid_buy_day_kwh",
+      "reg": 61501,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_charge_total_kwh",
+      "reg": 61511,
+      "hiReg": 61510,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    },
+    {
+      "key": "grid_buy_total_kwh",
+      "reg": 61513,
+      "hiReg": 61512,
+      "words": 2,
+      "scale": 0.1,
+      "unit": "kWh"
+    }
+  ],
+  "derived": [
+    {
+      "key": "pv_w",
+      "sum": [
+        "pv1_w",
+        "pv2_w"
+      ],
+      "unit": "W"
+    },
+    {
+      "key": "bat_w",
+      "mul": [
+        "bat_v",
+        "bat_a"
+      ],
+      "unit": "W"
+    },
+    {
+      "key": "grid_w",
+      "mul": [
+        "grid_v_l1",
+        "grid_a_l1"
+      ],
+      "unit": "W"
+    }
+  ],
+  "_notes": "Anenji — перемаркований SRNE, тому карта за відкритою специфікацією SRNE V1.7 (apps/api/src/anenji/, порт 8899, прозорий Modbus RTU). Адреси тут десяткові: 0x0100=256 батарея/PV, 0x0210=528 стан, 0x0212=530 мережа/інвертор/навантаження, 0x022A=554 друга фаза, 0xF02D=61485 лічильники енергії. ЩЕ НЕ ПІДТВЕРДЖЕНО реальним дампом: порядок слів у 32-бітних лічильниках (тут старше слово першим, тому reg = молодше, hiReg = базова адреса) і те, що на однофазній моделі load_w (0x021B) — це все навантаження, а не одне плече. 0x0211 (статус пароля) у частини прошивок глухо таймаутить усередині блоку, тому стан (0x0210) читаємо окремим діапазоном. На моделях з одним MPPT хвіст PV2 (0x010F..0x0111) віддає виняток 0x02 — сесія сама вкорочує читання. Знак струму батареї в SRNE протилежний нашому (у них + = заряд), тому bat_a має відʼємний масштаб; після цього bat_w = bat_v * bat_a < 0 на заряді, як у Deye. Батарея за добу в SRNE лише в ампер-годинах (0xF02D/0xF02E), у кВт·г її немає."
+}

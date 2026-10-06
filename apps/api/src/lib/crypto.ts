@@ -23,6 +23,11 @@ export function sha256(value: string): string {
   return createHash("sha256").update(value).digest("base64url");
 }
 
+/** hex-варіант: потрібен там, де з хеша роблять id у форматі 12 hex-символів. */
+export function sha256hex(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 export function randomToken(bytes = 32): string {
   return randomBytes(bytes).toString("base64url");
 }

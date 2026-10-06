@@ -30,8 +30,8 @@ describe("схема + seed", () => {
     await seed(db);
     expect((await db.select().from(plans)).map((p) => p.id).sort()).toEqual(["free", "max", "pro"]);
     const models = await db.select().from(inverterModels);
-    expect(models.map((m) => m.id).sort()).toEqual(["deye-hp3", "deye-hp3-p105", "deye-lp1", "deye-lp3"]);
-    expect(models[0]!.registerMap.length).toBeGreaterThan(50);
+    expect(models.map((m) => m.id).sort()).toEqual(["anenji-srne", "deye-hp3", "deye-hp3-p105", "deye-lp1", "deye-lp3"]);
+    expect(models.find((m) => m.id === "deye-hp3")!.registerMap.length).toBeGreaterThan(50);
   });
 
   it("організація за замовчуванням на free, пристрій без організації, стан", async () => {

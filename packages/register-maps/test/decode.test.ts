@@ -228,3 +228,74 @@ describe("signed / words / offset", () => {
     expect(m).toEqual({ bat_soc: 55 });
   });
 });
+
+/**
+ * Anenji (SRNE V1.7). Реального дампа ще немає — перевіряємо саму карту на синтетичному кадрі:
+ * знак струму батареї (у SRNE + = заряд, у нас навпаки), похідні добутки і порядок слів
+ * у 32-бітних лічильниках (старше слово першим).
+ */
+describe("anenji-srne: карта за специфікацією", () => {
+  const anenji = maps["anenji-srne"]!;
+  /** Інвертор на мережі заряджає батарею: 1.2 кВт з мережі, PV спить, навантаження 450 Вт. */
+  const onGrid = new Map<number, number>([
+    [0x0100, 64], [0x0101, 512], [0x0102, 150],                     // SOC 64 %, 51.2 V, +15.0 A = заряд
+    [0x0107, 0], [0x0108, 0], [0x0109, 0],
+    [0x010f, 0], [0x0110, 0], [0x0111, 0],
+    [0x010b, 1], [0x010e, 768],
+    [0x0210, 4],                                                     // 4 = робота від мережі
+    [0x0213, 2301], [0x0214, 73], [0x0215, 4998],                    // 230.1 V, 7.3 A, 49.98 Hz
+    [0x0216, 2298], [0x0217, 0], [0x0218, 5000], [0x0219, 20],
+    [0x021b, 450], [0x021c, 470], [0x021f, 7],
+    [0x0220, 0xffec], [0x0221, 385],                                 // -2.0 °C (знакові) і 38.5 °C
+    [0x02f0, 0],
+    [0xf02f, 128], [0xf030, 94],                                     // 12.8 і 9.4 кВт·г за добу
+    [0xf038, 1], [0xf039, 0x1a90], [0xf03a, 0], [0xf03b, 0x30d4],    // 7233.6 і 1250.0 кВт·г усього
+    [0xf03d, 31], [0xf048, 0], [0xf049, 0x1f40],
+  ]);
+
+  it("знак струму батареї перевернуто, bat_w відʼємний на заряді", () => {
+    const m = decode(anenji, onGrid);
+    expect(m.bat_v).toBe(51.2);
+    expect(m.bat_a).toBe(-15);                 // SRNE: +150 = заряд 15 A; у наших метриках заряд — мінус
+    expect(m.bat_w).toBe(-768);                // = bat_v * bat_a, збігається з 0x010E (повна потужність заряду)
+    expect(m.bat_charge_w).toBe(768);
+  });
+
+  it("мережа і навантаження: grid_w як добуток напруги на струм", () => {
+    const m = decode(anenji, onGrid);
+    expect(m.grid_v_l1).toBe(230.1);
+    expect(m.grid_w).toBeCloseTo(1679.7, 1);   // 230.1 * 7.3
+    expect(m.load_w).toBe(450);
+    expect(m.grid_hz).toBe(49.98);
+    expect(m.pv_w).toBe(0);
+    expect(m.state).toBe("normal");
+    expect(m.work_mode).toBe("mains");
+    expect(m.temp_dc_c).toBe(-2);
+    expect(m.temp_heatsink_c).toBe(38.5);
+  });
+
+  it("лічильники: старше слово першим", () => {
+    const m = decode(anenji, onGrid);
+    expect(m.pv_day_kwh).toBe(12.8);
+    expect(m.load_day_kwh).toBe(9.4);
+    expect(m.pv_total_kwh).toBe(7233.6);       // 0x00011a90 = 72336 -> 7233.6 кВт·г
+    expect(m.load_total_kwh).toBe(1250);
+    expect(m.grid_buy_day_kwh).toBe(3.1);
+    expect(m.grid_buy_total_kwh).toBe(800);
+  });
+
+  it("на однофазній моделі без другого MPPT і другої фази похідних не вигадує", () => {
+    const only = new Map<number, number>([[0x0100, 55], [0x0101, 500], [0x0102, 0], [0x0109, 1200]]);
+    const m = decode(anenji, only);
+    expect(m.pv_w).toBeUndefined();            // немає pv2_w — суми теж немає
+    expect(m.grid_w).toBeUndefined();          // немає напруги мережі — добутку немає
+    expect(m.bat_w).toBe(0);
+    expect(m.load_w_l2).toBeUndefined();
+  });
+
+  it("карта не плутається з Deye за типом пристрою", () => {
+    expect(mapForDeviceType(anenji.deviceType)?.id).toBe("anenji-srne");
+    for (const t of [3, 5, 6]) expect(mapForDeviceType(t)?.id).not.toBe("anenji-srne");
+    expect(anenji.pollRanges.every(([lo, hi]) => hi > lo && hi - lo <= 20)).toBe(true);   // SRNE гарантує 20 регістрів за раз
+  });
+});

@@ -2,6 +2,7 @@
  * Карти регістрів Deye і парсер сирих регістрів у метрики.
  * Пристрій шле сирі регістри, уся інтерпретація тут (і в БД inverter_models).
  */
+import anenjiSrne from "./maps/anenji-srne.json" with { type: "json" };
 import deyeHp3 from "./maps/deye-hp3.json" with { type: "json" };
 import deyeHp3P105 from "./maps/deye-hp3-p105.json" with { type: "json" };
 import deyeLp1 from "./maps/deye-lp1.json" with { type: "json" };
@@ -28,8 +29,8 @@ export interface RegisterMap {
   deviceType: number;
   pollRanges: [number, number][];
   fields: RegisterField[];
-  /** похідні метрики, обчислюються після основних */
-  derived?: { key: string; sum?: string[]; unit?: string }[];
+  /** похідні метрики, обчислюються після основних: сума або добуток уже декодованих полів */
+  derived?: { key: string; sum?: string[]; mul?: string[]; scale?: number; unit?: string }[];
   /** варіант прошивки: береться, якщо протокол пристрою (регістр 2) не менший */
   protocolMin?: number;
 }
@@ -62,6 +63,7 @@ function buildVariant(v: RegisterMapVariant, base: RegisterMap): RegisterMap {
 export type Metrics = Record<string, number | string>;
 
 export const maps: Record<string, RegisterMap> = {
+  [anenjiSrne.id]: anenjiSrne as unknown as RegisterMap,
   [deyeHp3.id]: deyeHp3 as unknown as RegisterMap,
   [deyeLp1.id]: deyeLp1 as unknown as RegisterMap,
   [deyeLp3.id]: deyeLp3 as unknown as RegisterMap,
@@ -122,10 +124,12 @@ export function decode(map: RegisterMap, table: Map<number, number>): Metrics {
     if (v !== undefined) out[f.key] = v;
   }
   for (const d of map.derived ?? []) {
-    if (d.sum) {
-      const parts = d.sum.map((k) => out[k]).filter((v): v is number => typeof v === "number");
-      if (parts.length === d.sum.length) out[d.key] = Math.round(parts.reduce((a, b) => a + b, 0) * 1000) / 1000;
-    }
+    const keys = d.sum ?? d.mul;
+    if (!keys) continue;
+    const parts = keys.map((k) => out[k]).filter((v): v is number => typeof v === "number");
+    if (parts.length !== keys.length) continue;   // немає хоч одного доданка — похідної теж немає
+    const v = (d.sum ? parts.reduce((a, b) => a + b, 0) : parts.reduce((a, b) => a * b, 1)) * (d.scale ?? 1);
+    out[d.key] = Math.round(v * 1000) / 1000;
   }
   return out;
 }
