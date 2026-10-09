@@ -34,7 +34,7 @@ const TIMEOUT_MS = 4000;
 const PROBE_TIMEOUT_MS = 2500;
 const MAX_SHRINK = 6;                  // стільки разів за цикл дозволено вкорочувати читання
 const DEAD_LINK_TIMEOUTS = 3;          // стільки таймаутів підряд — вважаємо лінію мертвою
-const HELLO_WAIT_MS = 800;             // даємо логеру сказати перше слово: по ньому видно обгортку
+const HELLO_WAIT_MS = 300;             // даємо логеру сказати перше слово: по ньому видно обгортку
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -42,7 +42,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export const anenjiDeviceId = (sn: string) => sha256hex(`anenji:${sn}`).slice(0, 12);
 export const anenjiClaimCode = (sn: string) => sn.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(-10);
 
-export interface SessionDeps { db: PgDatabase<any, any, any>; ingest: IngestDeps; log: IngestDeps["log"]; intervalMs?: number; /** пауза між запитами в лінії RS485; у тестах 0 */ gapMs?: number }
+export interface SessionDeps { db: PgDatabase<any, any, any>; ingest: IngestDeps; log: IngestDeps["log"]; intervalMs?: number; /** пауза між запитами в лінії RS485; у тестах 0 */ gapMs?: number; /** скільки чекати відповіді на пробу обгортки; у тестах коротко */ probeMs?: number }
 
 export interface SessionInfo {
   ip: string; framing: Framing | null; slave: number; sn: string;
@@ -84,13 +84,15 @@ export class AnenjiSession {
   /** Обгортка + адреса в лінії. Якщо логер уже показав себе кадром V5, з нього й починаємо. */
   private async negotiate(): Promise<boolean> {
     await sleep(HELLO_WAIT_MS);
-    const order: Framing[] = this.link.framing ? [this.link.framing] : ["rtu", "v5"];
+    // порядок важливий: шлюз Modbus TCP рве зʼєднання на голому RTU, а прозорий мост
+    // на зайвий MBAP лише пересилає його в лінію, де інвертор відкидає кадр по CRC
+    const order: Framing[] = this.link.framing ? [this.link.framing] : ["mtcp", "rtu", "v5"];
     // спершу обидві обгортки на адресі 1 (так налаштовані майже всі), і лише потім решта адрес
     const combos = [...order.map((framing) => ({ framing, slave: SLAVES[0]! })),
                     ...order.flatMap((framing) => SLAVES.slice(1).map((slave) => ({ framing, slave })))];
     for (const { framing, slave } of combos) {
       if (this.stopped) return false;
-      const r = await this.link.read(slave, REG_PROBE, 1, PROBE_TIMEOUT_MS, framing);
+      const r = await this.link.read(slave, REG_PROBE, 1, this.deps.probeMs ?? PROBE_TIMEOUT_MS, framing);
       // виняток — теж відповідь: пристрій на лінії є, просто регістр йому не до душі
       if (r.ok || (!r.ok && r.reason === "exception")) {
         this.framing = framing; this.slave = slave;
@@ -245,6 +247,12 @@ export class AnenjiSession {
     if (this.timer) clearTimeout(this.timer);
     this.link.stop();
     if (this.deviceId) void handleStatus(this.deps.ingest, this.deviceId, "offline").catch(() => {});
-    this.deps.log.info({ ip: this.ip, sn: this.sn, reason }, "anenji: сесія завершена");
+    // byteIn = 0 і обрив одразу після нашого запису — підпис логера, якому не сподобалась обгортка
+    this.deps.log.info({
+      ip: this.ip, sn: this.sn, reason, framing: this.framing, polls: this.polls,
+      bytesIn: this.link.bytesIn, bytesOut: this.link.bytesOut,
+      msSinceWrite: this.link.lastWriteAt ? Date.now() - this.link.lastWriteAt : null,
+      lastError: this.lastError,
+    }, "anenji: сесія завершена");
   }
 }

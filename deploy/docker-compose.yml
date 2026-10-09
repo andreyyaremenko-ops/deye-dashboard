@@ -71,6 +71,7 @@ services:
     ports:
       - "10000:10000"               # Solarman-стіки в режимі push (Server B), TCP
       - "8899:8899"                 # логери Anenji/SRNE: прозорий Modbus RTU, TCP
+      - "8899:8899/udp"             # ESP32 біля інвертора: готові метрики в JSON, UDP
     env_file: .env
     environment:
       PUBLIC_URL: https://${DOMAIN}

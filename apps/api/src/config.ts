@@ -9,7 +9,8 @@ const schema = z.object({
   API_PORT: z.coerce.number().default(3000),
   MEDIA_ROOT: z.string().default("/media"),
   LOGGER_PORT: z.coerce.number().default(10000),
-  ANENJI_PORT: z.coerce.number().default(8899),   // логери Anenji/SRNE: прозорий Modbus RTU
+  ANENJI_PORT: z.coerce.number().default(8899),   // логери Anenji/SRNE: прозорий Modbus RTU (TCP)
+  UDPJSON_PORT: z.coerce.number().default(8899),  // ESP32 з готовими метриками в JSON (UDP)
   MONO_TOKEN: z.string().optional(),                       // токен monobank acquiring (тестовий з api.monobank.ua або бойовий)
   MONO_API: z.string().default("https://api.monobank.ua"),
   ALERTS_API_KEY: z.string().optional(),                   // api.ukrainealarm.com: офіційне джерело тривог

@@ -36,6 +36,8 @@ export interface AppDeps {
   nvrFetch?: typeof fetch;
   /** живі сесії з інверторами Anenji (порт 8899) — для адмінки; у тестах і мок-режимі немає */
   anenjiSessions?: () => import("./anenji/session.ts").SessionInfo[];
+  /** пристрої, що шлють готові метрики в JSON по UDP — для адмінки */
+  udpSenders?: () => import("./udpjson/server.ts").UdpSenderInfo[];
   /** геокодер для кабінету (Open-Meteo) */
   geocodeBase?: string;
   logger?: boolean | object;

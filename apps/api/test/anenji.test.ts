@@ -9,7 +9,8 @@ import { and, eq } from "drizzle-orm";
 import { makeTestApp, type TestApp } from "./helpers.ts";
 import { startAnenjiServer } from "../src/anenji/server.ts";
 import { anenjiClaimCode, anenjiDeviceId, ANENJI_MODEL_ID } from "../src/anenji/session.ts";
-import { asciiLowByte, buildRtuException, buildRtuRead, buildRtuReadReply, parseRtuRead, rtuResponseLen } from "../src/anenji/rtu.ts";
+import { asciiLowByte, buildMbapException, buildMbapRead, buildMbapReadReply, buildRtuException, buildRtuRead, buildRtuReadReply,
+  mbapResponseLen, parseMbapRead, parseRtuRead, rtuResponseLen } from "../src/anenji/rtu.ts";
 import { clearModelCache } from "../src/mqtt/ingest.ts";
 import { modbusCrc, splitFrames } from "../src/solarman/client.ts";
 import { devices, loggerFrames, telemetry } from "../src/db/schema.ts";
@@ -44,6 +45,17 @@ function answer(req: Buffer): Buffer | null {
   if (want.some(ABSENT)) return buildRtuException(SLAVE, 0x02);
   if (want.some((r) => !REGS.has(r))) return buildRtuException(SLAVE, 0x02);
   return buildRtuReadReply(SLAVE, want.map((r) => REGS.get(r)!));
+}
+
+/** Те саме, але кадром MBAP: так відповідає мост у режимі шлюзу Modbus TCP ⇄ RTU. */
+function answerMbap(req: Buffer): Buffer | null {
+  if (req.length < 12 || req.readUInt16BE(2) !== 0) return null;
+  const txid = req.readUInt16BE(0), unit = req[6]!;
+  if (unit !== SLAVE) return null;
+  const start = req.readUInt16BE(8), count = req.readUInt16BE(10);
+  const want = Array.from({ length: count }, (_, i) => start + i);
+  if (want.some(ABSENT) || want.some((r) => !REGS.has(r))) return buildMbapException(unit, 0x02, txid);
+  return buildMbapReadReply(unit, want.map((r) => REGS.get(r)!), txid);
 }
 
 /** Обгортка Solarman V5 над відповіддю: так робить логер типу LSW-3. */
@@ -93,6 +105,18 @@ describe("Modbus RTU", () => {
     expect(rtuResponseLen(Buffer.from([1, 3]))).toBe(0);
     expect(rtuResponseLen(Buffer.from([1, 3, 6]))).toBe(11);
   });
+  it("MBAP: заголовок без CRC, виняток і чужий protocol id", () => {
+    const req = buildMbapRead(1, 0x0100, 18, 0x1234);
+    expect(req.toString("hex")).toBe("123400000006010301000012");   // txid, protocol id 0, довжина 6
+    const rep = buildMbapReadReply(1, [64, 512, 150], 0x1234);
+    expect(mbapResponseLen(rep)).toBe(rep.length);
+    expect(parseMbapRead(rep, 1, 3)).toEqual({ ok: true, regs: [64, 512, 150] });
+    expect(parseMbapRead(buildMbapException(1, 2, 0x1234), 1, 3)).toEqual({ ok: false, reason: "exception", code: 2 });
+    const wrong = Buffer.from(rep); wrong.writeUInt16BE(1, 2);
+    expect(parseMbapRead(wrong, 1, 3)).toEqual({ ok: false, reason: "bad" });
+    // голий RTU, прочитаний як MBAP, саме на цьому й спотикається: protocol id = 0x0100
+    expect(buildRtuRead(1, 0x0100, 1).readUInt16BE(2)).not.toBe(0);
+  });
   it("серійник SRNE — ASCII в молодших байтах", () => {
     const regs = [...SN].map((c) => 0xff00 | c.charCodeAt(0));
     expect(asciiLowByte([...regs, 0x20, 0x00])).toBe(SN);
@@ -100,22 +124,37 @@ describe("Modbus RTU", () => {
 });
 
 /** Піднімає сервер і підключає до нього фейковий логер у заданій обгортці. */
-async function connectFake(t: TestApp, framing: "rtu" | "v5") {
+async function connectFake(t: TestApp, framing: "rtu" | "v5" | "mtcp", strict = false) {
   const published: string[] = [];
   const ingest = { db: t.db, store: t.store, publish: async (topic: string) => { published.push(topic); }, log: { info() {}, warn() {} }, minIntervalMs: 0 };
-  const srv = startAnenjiServer({ db: t.db, ingest, log: ingest.log, intervalMs: 200, gapMs: 0 }, 0, "127.0.0.1");
+  const srv = startAnenjiServer({ db: t.db, ingest, log: ingest.log, intervalMs: 200, gapMs: 0, probeMs: 300 }, 0, "127.0.0.1");
   await new Promise<void>((r) => srv.server.once("listening", () => r()));
   const port = (srv.server.address() as net.AddressInfo).port;
   const sock = net.connect(port, "127.0.0.1");
   await new Promise<void>((r) => sock.once("connect", () => r()));
   if (framing === "v5") sock.write(helloV5());
   let buf = Buffer.alloc(0);
+  let closedBy = "";
   sock.on("data", (d) => {
     buf = Buffer.concat([buf, d]);
+    if (framing === "mtcp") {
+      while (buf.length >= 12) {
+        const req = Buffer.from(buf.subarray(0, 12)); buf = Buffer.from(buf.subarray(12));
+        // справжній шлюз на кадр із protocol id ≠ 0 (тобто на голий RTU) рве зʼєднання
+        if (strict && req.readUInt16BE(2) !== 0) { closedBy = "protocol id"; sock.destroy(); return; }
+        const rep = answerMbap(req);
+        if (rep) sock.write(rep);
+      }
+      return;
+    }
     if (framing === "rtu") {
+      // як справжній інвертор у лінії: кадр без правильної CRC (наприклад проба MBAP,
+      // яку прозорий мост просто пересилає) відкидається побайтово
       while (buf.length >= 8) {
-        const req = buf.subarray(0, 8); buf = buf.subarray(8);
-        const rep = answer(Buffer.from(req));
+        const cand = buf.subarray(0, 8);
+        if (modbusCrc(cand.subarray(0, 6)) !== cand.readUInt16LE(6)) { buf = buf.subarray(1); continue; }
+        buf = buf.subarray(8);
+        const rep = answer(Buffer.from(cand));
         if (rep) sock.write(rep);
       }
       return;
@@ -127,7 +166,7 @@ async function connectFake(t: TestApp, framing: "rtu" | "v5") {
       if (rep) sock.write(wrapV5(rep, f.seq));
     }
   });
-  return { srv, sock, port, published };
+  return { srv, sock, port, published, closedBy: () => closedBy };
 }
 
 const metricsOf = async (t: TestApp, deviceId: string) => {
@@ -226,5 +265,33 @@ describe("Anenji за логером з обгорткою Solarman V5", () => {
   it("кадр логера збережено в logger_frames для аналізу протоколу", async () => {
     const rows = await t.db.select().from(loggerFrames).where(and(eq(loggerFrames.serial, V5_SERIAL), eq(loggerFrames.control, 0x4110)));
     expect(rows.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Anenji за мостом у режимі шлюзу Modbus TCP", () => {
+  let t: TestApp; let f: Awaited<ReturnType<typeof connectFake>>;
+  const deviceId = anenjiDeviceId(SN);
+  beforeAll(async () => {
+    t = await makeTestApp(); clearModelCache();
+    f = await connectFake(t, "mtcp", true);   // strict: рве зʼєднання на голому RTU
+    await new Promise((r) => setTimeout(r, 2500));
+  });
+  afterAll(async () => { f.sock.destroy(); f.srv.server.close(); await t.close(); });
+
+  it("обгортку MBAP знайдено з першої проби, зʼєднання не обірвано", () => {
+    const [s] = f.srv.list();
+    expect(s?.framing).toBe("mtcp");
+    expect(s?.slave).toBe(1);
+    expect(s?.sn).toBe(SN);
+    expect(s?.polls).toBeGreaterThan(0);
+    expect(f.closedBy()).toBe("");            // голий RTU ми так і не надіслали
+  });
+
+  it("телеметрія така сама, як через прозорий мост", async () => {
+    const m = await metricsOf(t, deviceId);
+    expect(m.get("bat_w")).toBe(-768);
+    expect(m.get("load_w")).toBe(450);
+    expect(m.get("grid_w")).toBeCloseTo(1679.7, 1);
+    expect(m.get("pv_total_kwh")).toBe(7233.6);
   });
 });

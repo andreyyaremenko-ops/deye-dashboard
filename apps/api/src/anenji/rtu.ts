@@ -66,3 +66,61 @@ export function buildRtuException(slave: number, code: number, func = FUNC_READ_
 export function asciiLowByte(regs: number[]): string {
   return regs.map((v) => String.fromCharCode(v & 0xff)).join("").replace(/[^\x20-\x7e]/g, "").trim();
 }
+
+// ---------------- Modbus TCP (MBAP)
+//
+// Частина мостів працює не прозоро, а шлюзом Modbus TCP ⇄ RTU: на TCP-боці вони чекають
+// кадр із заголовком MBAP (без CRC), а в лінію самі додають адресу й контрольну суму.
+// Такий шлюз, отримавши голий RTU, бачить protocol id ≠ 0 і зазвичай рве зʼєднання.
+//
+// Запит:    txid(2,BE) 0000 len(2,BE) unit func startHi startLo cntHi cntLo
+// Відповідь: txid(2,BE) 0000 len(2,BE) unit func байтів дані...
+
+const MBAP_HEADER = 6;
+
+export function buildMbapRead(unit: number, start: number, count: number, txid: number, func = FUNC_READ_HOLDING): Buffer {
+  const out = Buffer.alloc(MBAP_HEADER + 6);
+  out.writeUInt16BE(txid & 0xffff, 0);
+  out.writeUInt16BE(0, 2);
+  out.writeUInt16BE(6, 4);
+  out[6] = unit; out[7] = func;
+  out.writeUInt16BE(start & 0xffff, 8);
+  out.writeUInt16BE(count, 10);
+  return out;
+}
+
+/** Довжина кадру MBAP на початку буфера; 0 — байтів ще мало. */
+export function mbapResponseLen(buf: Buffer): number {
+  if (buf.length < MBAP_HEADER) return 0;
+  return MBAP_HEADER + buf.readUInt16BE(4);
+}
+
+export function parseMbapRead(frame: Buffer, unit: number, count: number): RtuResult {
+  if (frame.length < MBAP_HEADER + 2) return { ok: false, reason: "bad" };
+  if (frame.readUInt16BE(2) !== 0) return { ok: false, reason: "bad" };
+  const pdu = frame.subarray(MBAP_HEADER);
+  if (pdu[0] !== unit) return { ok: false, reason: "bad" };
+  if (pdu[1]! & 0x80) return { ok: false, reason: "exception", code: pdu[2] };
+  if (pdu[1] !== FUNC_READ_HOLDING || pdu[2] !== count * 2 || pdu.length !== 3 + count * 2) return { ok: false, reason: "bad" };
+  const regs: number[] = [];
+  for (let i = 0; i < count; i++) regs.push(pdu.readUInt16BE(3 + 2 * i));
+  return { ok: true, regs };
+}
+
+/** Відповідь шлюзу — для тестів і фейкового моста. */
+export function buildMbapReadReply(unit: number, regs: number[], txid: number): Buffer {
+  const pdu = Buffer.alloc(3 + regs.length * 2);
+  pdu[0] = unit; pdu[1] = FUNC_READ_HOLDING; pdu[2] = regs.length * 2;
+  regs.forEach((v, i) => pdu.writeUInt16BE(v & 0xffff, 3 + 2 * i));
+  const out = Buffer.alloc(MBAP_HEADER + pdu.length);
+  out.writeUInt16BE(txid & 0xffff, 0); out.writeUInt16BE(0, 2); out.writeUInt16BE(pdu.length, 4);
+  pdu.copy(out, MBAP_HEADER);
+  return out;
+}
+
+export function buildMbapException(unit: number, code: number, txid: number, func = FUNC_READ_HOLDING): Buffer {
+  const out = Buffer.alloc(MBAP_HEADER + 3);
+  out.writeUInt16BE(txid & 0xffff, 0); out.writeUInt16BE(0, 2); out.writeUInt16BE(3, 4);
+  out[6] = unit; out[7] = func | 0x80; out[8] = code;
+  return out;
+}

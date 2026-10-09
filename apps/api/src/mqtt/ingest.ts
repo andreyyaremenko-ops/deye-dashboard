@@ -4,7 +4,7 @@
  */
 import { eq, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { decode, decodeIdentity, mapForDeviceType, rangesToTable, type RegisterMap } from "@deye/register-maps";
+import { decode, decodeIdentity, mapForDeviceType, rangesToTable, type Metrics, type RegisterMap } from "@deye/register-maps";
 import { deviceInfoSchema, telemetryPayloadSchema } from "@deye/shared";
 import { devices, deviceState, inverterModels, telemetry, telemetryRaw } from "../db/schema.ts";
 import { recordMonthBaseline } from "../stats/counters.ts";
@@ -79,16 +79,37 @@ export async function handleTelemetry(deps: IngestDeps, deviceId: string, raw: B
   const map = modelId ? await loadModel(deps.db, modelId) : undefined;
   if (!map) return { ok: true as const, parsed: false as const, modelId: null };
   const metrics = decode(map, table);
+  await persistMetrics(deps, deviceId, metrics, now);
+  return { ok: true as const, parsed: true as const, modelId, metrics };
+}
+
+/** Метрики -> telemetry + device_state + StateStore (WS) + база лічильників місяця. */
+async function persistMetrics(deps: IngestDeps, deviceId: string, metrics: Metrics, now: Date) {
   const numeric = Object.entries(metrics).filter((e): e is [string, number] => typeof e[1] === "number");
   if (numeric.length) {
     await deps.db.insert(telemetry).values(numeric.map(([metric, value]) => ({ time: now, deviceId, metric, value })));
   }
-  const snapshot = { deviceId, updatedAt: now.toISOString(), metrics };
   await deps.db.insert(deviceState).values({ deviceId, updatedAt: now, state: metrics })
     .onConflictDoUpdate({ target: deviceState.deviceId, set: { updatedAt: now, state: metrics } });
-  await deps.store.set(snapshot);
+  await deps.store.set({ deviceId, updatedAt: now.toISOString(), metrics });
   await recordMonthBaseline(deps.db, deviceId, metrics, now);
-  return { ok: true as const, parsed: true as const, modelId, metrics };
+}
+
+/**
+ * Готові метрики, а не сирі регістри: пристрій усе порахував сам (ESP32 з JSON по UDP).
+ * Карта регістрів тут ні до чого, тому шлях коротший — лише те саме збереження і WS.
+ */
+export async function handleMetrics(deps: IngestDeps, deviceId: string, metrics: Metrics, now = new Date()) {
+  const min = deps.minIntervalMs ?? 2000;
+  const last = lastAccepted.get(deviceId) ?? 0;
+  if (now.getTime() - last < min) return { ok: false as const, reason: "rate_limited" as const };
+  lastAccepted.set(deviceId, now.getTime());
+
+  const [dev] = await deps.db.select({ id: devices.id }).from(devices).where(eq(devices.id, deviceId));
+  if (!dev) { deps.log.warn({ deviceId }, "metrics: unknown device"); return { ok: false as const, reason: "unknown_device" as const }; }
+  await deps.db.update(devices).set({ lastSeenAt: now, online: true }).where(eq(devices.id, deviceId));
+  await persistMetrics(deps, deviceId, metrics, now);
+  return { ok: true as const, metrics };
 }
 
 export async function handleStatus(deps: IngestDeps, deviceId: string, raw: Buffer | string, now = new Date()) {

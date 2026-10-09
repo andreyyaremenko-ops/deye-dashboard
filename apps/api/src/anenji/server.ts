@@ -25,6 +25,7 @@ export interface AnenjiServerDeps {
   log: IngestDeps["log"];
   intervalMs?: number;
   gapMs?: number;
+  probeMs?: number;
 }
 
 export function startAnenjiServer(deps: AnenjiServerDeps, port: number, host = "0.0.0.0") {

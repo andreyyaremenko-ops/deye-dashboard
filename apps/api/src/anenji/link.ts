@@ -1,18 +1,22 @@
 /**
  * Канал до інвертора через WiFi-логер, що сам підключився до нас (порт 8899).
  *
- * Логери бувають двох ґатунків, і наперед невідомо, який прийде:
- *   rtu — прозорий мост RS485↔TCP (Hi-Flying, USR, Elfin): у соціться голі кадри Modbus RTU;
- *   v5  — Solarman-обгортка (0xA5 … 0x15), той самий Modbus усередині кадру 0x4510/0x1510.
- * Тому перший запит вирішує: відповідь, що починається з 0xA5, означає v5, будь-яка інша — rtu.
- * Далі обгортка зафіксована і більше не вгадується.
+ * Логери бувають трьох ґатунків, і наперед невідомо, який прийде:
+ *   mtcp — шлюз Modbus TCP ⇄ RTU: на TCP-боці кадр із заголовком MBAP, без CRC;
+ *   rtu  — прозорий мост RS485↔TCP (Hi-Flying, USR, Elfin): у сокеті голі кадри Modbus RTU;
+ *   v5   — Solarman-обгортка (0xA5 … 0x15), той самий Modbus усередині кадру 0x4510/0x1510.
+ *
+ * Пробуємо саме в такому порядку, бо він єдиний безпечний: шлюз Modbus TCP, отримавши голий
+ * RTU, бачить protocol id ≠ 0 і рве зʼєднання, а прозорий мост на зайві байти MBAP лише
+ * пересилає їх у лінію, де інвертор відкидає їх по контрольній сумі. Відповідь, що
+ * починається з 0xA5, завжди означає v5. Далі обгортка зафіксована і більше не вгадується.
  */
 import type net from "node:net";
 import { buildReadHolding, parseReadResponse, splitFrames } from "../solarman/client.ts";
 import { buildResponse, CONTROL_NAMES, type V5Frame } from "../solarman/v5.ts";
-import { buildRtuRead, parseRtuRead, rtuResponseLen, type RtuResult } from "./rtu.ts";
+import { buildMbapRead, buildRtuRead, mbapResponseLen, parseMbapRead, parseRtuRead, rtuResponseLen, type RtuResult } from "./rtu.ts";
 
-export type Framing = "rtu" | "v5";
+export type Framing = "mtcp" | "rtu" | "v5";
 
 /** Таймаут — окрема причина: по ній видно, що регістр глухий, а не що інвертор відмовив. */
 export type ReadResult = RtuResult | { ok: false; reason: "timeout" };
@@ -24,10 +28,11 @@ interface Pending {
   resolve: (r: ReadResult) => void;
   timer: NodeJS.Timeout;
   seq: number;
+  framing: Framing;
 }
 
 /** Байти, які прийшли не у відповідь на наш запит: журнал протоколу. */
-export type OnJunk = (buf: Buffer, kind: "rtu" | "v5", control?: number) => void;
+export type OnJunk = (buf: Buffer, kind: Framing, control?: number) => void;
 
 export class AnenjiLink {
   framing: Framing | null = null;
@@ -40,6 +45,10 @@ export class AnenjiLink {
   private pending: Pending | null = null;
   private seq = Math.floor(Math.random() * 200) + 1;
   private ackSeq = 0;
+  /** для діагностики обриву: скільки байтів пройшло і коли ми писали востаннє */
+  bytesIn = 0;
+  bytesOut = 0;
+  lastWriteAt = 0;
 
   constructor(sock: net.Socket, log: LinkLog, onJunk?: OnJunk) {
     this.sock = sock; this.log = log; this.onJunk = onJunk;
@@ -56,10 +65,12 @@ export class AnenjiLink {
       const timer = setTimeout(() => {
         if (this.pending?.seq === seq) { this.pending = null; resolve({ ok: false, reason: "timeout" }); }
       }, timeoutMs);
-      this.pending = { slave, count, resolve, timer, seq };
-      const req = use === "v5"
-        ? buildReadHolding(this.loggerSerial, seq, start, count, slave)
+      this.pending = { slave, count, resolve, timer, seq, framing: use };
+      const req = use === "v5" ? buildReadHolding(this.loggerSerial, seq, start, count, slave)
+        : use === "mtcp" ? buildMbapRead(slave, start, count, seq)
         : buildRtuRead(slave, start, count);
+      this.bytesOut += req.length;
+      this.lastWriteAt = Date.now();
       this.sock.write(req);
     });
   }
@@ -74,10 +85,13 @@ export class AnenjiLink {
   }
 
   private onData(chunk: Buffer) {
+    this.bytesIn += chunk.length;
     this.buf = Buffer.concat([this.buf, chunk]) as Buffer;
     for (;;) {
       if (!this.buf.length) return;
-      const asV5 = this.framing === "v5" || (this.framing === null && this.buf[0] === 0xa5);
+      // поки обгортка не зафіксована, розбираємо так, як щойно питали; 0xA5 завжди означає V5
+      const mode: Framing = this.framing ?? this.pending?.framing ?? "rtu";
+      const asV5 = mode === "v5" || this.buf[0] === 0xa5;
       if (asV5) {
         const { frames, rest } = splitFrames(this.buf);
         const moved = rest.length !== this.buf.length;
@@ -86,26 +100,29 @@ export class AnenjiLink {
         if (!moved) break;
         continue;
       }
-      const need = rtuResponseLen(this.buf);
+      const need = mode === "mtcp" ? mbapResponseLen(this.buf) : rtuResponseLen(this.buf);
       if (!need || this.buf.length < need) break;
       const frame = Buffer.from(this.buf.subarray(0, need));
       this.buf = Buffer.from(this.buf.subarray(need)) as Buffer;
-      this.deliverRtu(frame);
+      this.deliverRtu(frame, mode);
     }
     // захист від сміття, що ніколи не складеться в кадр
     if (this.buf.length > 4096) this.buf = Buffer.alloc(0) as Buffer;
   }
 
-  private deliverRtu(frame: Buffer) {
+  private deliverRtu(frame: Buffer, mode: Framing) {
     const p = this.pending;
-    if (!p) { this.onJunk?.(frame, "rtu"); return; }
-    const r = parseRtuRead(frame, p.slave, p.count);
+    if (!p) { this.onJunk?.(frame, mode); return; }
+    const r = mode === "mtcp" ? parseMbapRead(frame, p.slave, p.count) : parseRtuRead(frame, p.slave, p.count);
     if (!r.ok && r.reason === "bad") {
       // чужий або битий кадр: краще дочекатися свого, ніж віддати хибну помилку
-      this.onJunk?.(frame, "rtu");
+      this.onJunk?.(frame, mode);
       return;
     }
-    if (this.framing === null) { this.framing = "rtu"; this.log.info({ framing: "rtu" }, "anenji: прозорий Modbus RTU"); }
+    if (this.framing === null) {
+      this.framing = mode;
+      this.log.info({ framing: mode }, mode === "mtcp" ? "anenji: шлюз Modbus TCP" : "anenji: прозорий Modbus RTU");
+    }
     this.settle(r);
   }
 

@@ -44,6 +44,9 @@ export async function adminRoutes(app: FastifyInstance, deps: Deps) {
   // живі сесії з інверторами Anenji: обгортка, адреса в лінії RS485, серійник, остання помилка
   app.get("/api/admin/anenji", async () => deps.anenjiSessions?.() ?? []);
 
+  // пристрої, що шлють готові метрики в JSON по UDP: адреса, скільки пакетів, що відкинуто
+  app.get("/api/admin/udp", async () => deps.udpSenders?.() ?? []);
+
   // сирі кадри Solarman-стіків і логерів Anenji (аналіз протоколу)
   app.get("/api/admin/logger-frames", async (req) => {
     const q = z.object({ serial: z.coerce.number().optional(), limit: z.coerce.number().min(1).max(500).default(50) }).parse(req.query);

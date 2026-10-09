@@ -7,6 +7,7 @@ import { dispatch, type IngestDeps } from "./mqtt/ingest.ts";
 import { RedisStateStore } from "./state/store.ts";
 import { startLoggerServer } from "./solarman/server.ts";
 import { startAnenjiServer } from "./anenji/server.ts";
+import { startUdpJsonServer } from "./udpjson/server.ts";
 import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
@@ -19,9 +20,11 @@ const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? 
   webhookUrl: config.ALERTS_API_KEY && config.PUBLIC_URL.startsWith("https://") ? webhookUrlFor(config.PUBLIC_URL, config.ALERTS_API_KEY) : null,
   log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
 let anenji: ReturnType<typeof startAnenjiServer> | null = null;
+let udpJson: ReturnType<typeof startUdpJsonServer> | null = null;
 const app = await buildApp({
   db, auth, store, feeds,
   anenjiSessions: () => anenji?.list() ?? [],
+  udpSenders: () => udpJson?.list() ?? [],
   alertsWebhookSecret: config.ALERTS_API_KEY ? webhookSecret(config.ALERTS_API_KEY) : null,
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
@@ -68,9 +71,12 @@ const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGE
 // Логери Anenji/SRNE: порт 8899, прозорий Modbus RTU (сервер сам майстер у лінії)
 anenji = startAnenjiServer({ db, ingest, log: app.log }, config.ANENJI_PORT);
 
+// ESP32 біля інвертора, що сам рахує метрики і шле їх у JSON: той самий номер порту, але UDP
+udpJson = startUdpJsonServer({ db, ingest, log: app.log }, config.UDPJSON_PORT);
+
 app.addHook("onClose", async () => {
   feeds.stop(); stickServer.server.close(); anenji?.server.close(); client.end(true);
-  await store.close(); await sql.end();
+  await udpJson?.close(); await store.close(); await sql.end();
 });
 
 try {
