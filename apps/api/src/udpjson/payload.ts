@@ -42,6 +42,13 @@ const DIRECT: [keyof UdpPayload, string][] = [
 
 const round = (v: number) => Math.round(v * 1000) / 1000;
 
+/**
+ * Лічильники енергії приходять уже в наших назвах (pv_day_kwh, load_total_kwh, …) і йдуть як є:
+ * за ними «за добу», графік по днях і місячна статистика. Ловимо за шаблоном, а не списком,
+ * щоб нове джерело (gen, bat_charge) підхоплювалось без зміни сервера.
+ */
+const COUNTER = /^(pv|load|grid_buy|grid_sell|gen|bat_charge|bat_discharge)_(day|total)_kwh$/;
+
 /** id пристрою: MAC уже у нашому форматі (12 hex), будь-яке інше імʼя — через хеш. */
 export function udpDeviceId(name: string): string {
   const mac = name.trim().toLowerCase();
@@ -58,6 +65,9 @@ export function toMetrics(p: UdpPayload): Metrics {
     if (typeof v === "number") m[to] = round(v);
   }
   if (typeof p.pv_w === "number") { m.pv_w = round(p.pv_w); m.pv1_w = round(p.pv_w); }
+  for (const [k, v] of Object.entries(p)) {
+    if (COUNTER.test(k) && typeof v === "number" && Number.isFinite(v) && v >= 0) m[k] = round(v);
+  }
   if (typeof p.bat_a === "number") {
     const a = round(-p.bat_a);                       // наш знак: мінус = заряд
     m.bat_a = a;

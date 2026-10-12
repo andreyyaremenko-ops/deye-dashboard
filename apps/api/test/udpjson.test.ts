@@ -44,6 +44,19 @@ describe("розбір JSON з ESP32", () => {
     expect(day.pv_w).toBe(3400);
   });
 
+  it("лічильники кВт·г ідуть як є, сміття серед них — ні", () => {
+    const m = toMetrics(udpPayloadSchema.parse({ ...NIGHT, pv_day_kwh: 6.08, load_day_kwh: 7.67, grid_buy_day_kwh: 0,
+      pv_total_kwh: 1234.5, bogus_day_kwh: 5, load_day_kwh_x: 1, grid_sell_day_kwh: -3, gen_day_kwh: "7" }));
+    expect(m.pv_day_kwh).toBe(6.08);
+    expect(m.load_day_kwh).toBe(7.67);
+    expect(m.grid_buy_day_kwh).toBe(0);
+    expect(m.pv_total_kwh).toBe(1234.5);
+    expect(m.bogus_day_kwh).toBeUndefined();
+    expect(m.load_day_kwh_x).toBeUndefined();
+    expect(m.grid_sell_day_kwh).toBeUndefined();    // відʼємний лічильник — битий
+    expect(m.gen_day_kwh).toBeUndefined();          // рядок — не число
+  });
+
   it("невідомі поля не ламають пакет, биті числа ламають", () => {
     const m = toMetrics(udpPayloadSchema.parse({ ...NIGHT, future_field: 42, note: "hi" }));
     expect(m.load_w).toBe(252);
