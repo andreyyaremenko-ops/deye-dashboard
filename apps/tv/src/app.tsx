@@ -8,6 +8,7 @@ import { AlertOverlay } from "./feeds.tsx";
 import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
 import { attachSpectrum, resumeSpectrum } from "./audio.ts";
+import { nativeTv } from "./native.ts";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -27,6 +28,8 @@ export function App() {
   // ТБ, що не грає відео і радіо разом: визначено за UA або за фактом (радіо стало на паузу, щойно пішло відео)
   const [singleMedia, setSingleMedia] = useState(isSingleMediaTv);
   const audio = useRef<HTMLAudioElement>(null);
+  // Android-застосунок: радіо грає він сам, без CORS, проксі і без суперечки з відео за медіаелемент
+  const native = useMemo(nativeTv, []);
 
   useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
 
@@ -41,6 +44,7 @@ export function App() {
   const [source, setSource] = useState<{ url: string; proxied: boolean; analyser: boolean } | null>(null);
   useEffect(() => {
     if (!token || !radioUrl) { setSource(null); return; }
+    if (native) { setSource({ url: new URL(radioUrl, location.href).href, proxied: false, analyser: false }); return; }
     let alive = true;
     // сервер вирішує: пряма адреса (станція дала CORS) чи наш проксі; якщо не відповів — граємо як раніше
     const plain = { url: radioUrl, proxied: false, analyser: false };
@@ -54,6 +58,12 @@ export function App() {
   const srcUrl = source?.url ?? null;
   const wantCors = !!source?.analyser && !source.proxied;
   useEffect(() => {
+    if (!native || !srcUrl) return;
+    native.radioPlay(srcUrl, radioVolume);
+    return () => native.radioStop();
+  }, [srcUrl]);
+  useEffect(() => {
+    if (native) return;
     const el = audio.current;
     if (!el || !srcUrl) { setNeedTap(false); return; }
     el.volume = radioVolume;
@@ -94,7 +104,7 @@ export function App() {
       el.pause(); el.removeAttribute("src"); el.load();
     };
   }, [srcUrl, wantCors]);
-  useEffect(() => { if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
+  useEffect(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
 
   if (isPairPage || !token) return <Pair />;
   if (live?.error && /не знайдено|перевипущене/.test(live.error)) { clearToken(); }
@@ -115,7 +125,7 @@ export function App() {
   // камера в сцені — теж медіаелемент, і вона важливіша за рухомий фон
   const hasCamera = scene.widgets.some((w) => w.type === "camera" && Array.isArray(w.props?.cameras) && w.props.cameras.length > 0);
   // радіо/камера + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
-  const posterOnly = (!!radioUrl || hasCamera) && (mode === "poster" || (mode === "auto" && singleMedia));
+  const posterOnly = ((!!radioUrl && !native) || hasCamera) && (mode === "poster" || (mode === "auto" && singleMedia));
   const src = !lite && !posterOnly && video ? media(video) : null;
   // повноекранний банер тривоги, якщо в будь-якій сцені є віджет тривоги з увімкненим оверлеєм
   const overlay = scenesOf(screen.config).some((sc) => sc.widgets.some((w) => w.type === "alert" && w.props?.overlay !== false));
@@ -133,7 +143,7 @@ export function App() {
       ))}
     </div>
     {overlay && <AlertOverlay feed={live.feeds.alert} />}
-    {srcUrl && <audio ref={audio} preload="none" />}
+    {srcUrl && !native && <audio ref={audio} preload="none" />}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
     {screen.branding && <div class="brand">SunHunter TV · tv.sun-hunter.men</div>}
     {screen.branding && <Plaque />}

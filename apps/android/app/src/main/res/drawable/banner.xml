@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- банер для рядка застосунків Android TV, 320×180 -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" tools:ignore="VectorRaster"
+    android:width="320dp" android:height="180dp"
+    android:viewportWidth="320" android:viewportHeight="180">
+    <path android:fillColor="#101826" android:pathData="M0,0h320v180h-320z" />
+    <path android:fillColor="#FFB020" android:pathData="M160,90m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0" />
+    <path android:strokeColor="#FFB020" android:strokeWidth="7" android:strokeLineCap="round"
+        android:pathData="M160,26v14M160,140v14M96,90h14M210,90h14M114.7,44.7l9.9,9.9M195.4,125.4l9.9,9.9M114.7,135.3l9.9,-9.9M195.4,54.6l9.9,-9.9" />
+</vector>
