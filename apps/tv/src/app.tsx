@@ -9,6 +9,7 @@ import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
 import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 import { nativeTv } from "./native.ts";
+import { VIDEO_CONFLICT } from "./camera.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -32,6 +33,16 @@ export function App() {
   const native = useMemo(nativeTv, []);
 
   useEffect(() => { if (token) return startLive(token, setLive); }, [token]);
+  // камера не декодується, поки грає відеофон: декодерів на ТБ не вистачає на двох -> фон стає кадром.
+  // Не запамʼятовуємо, як із радіо: камеру могли просто перемкнути на важкий потік.
+  useEffect(() => {
+    const on = () => {
+      const v = document.querySelector<HTMLVideoElement>("video.bgv.on");
+      if (v && !v.paused && !v.ended) { setSingleMedia(true); console.warn("camera cannot decode next to video: switching to poster background"); }
+    };
+    addEventListener(VIDEO_CONFLICT, on);
+    return () => removeEventListener(VIDEO_CONFLICT, on);
+  }, []);
 
   // сцени: відключення світла на будь-якому пристрої екрана закріплює сцену з позначкою «при відключенні»
   const outage = !!live?.screen && live.screen.deviceIds.some((id) => { const st = live.states.get(id); return !!st && !st.stale && gridDown(st.metrics); });
