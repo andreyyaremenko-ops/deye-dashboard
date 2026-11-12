@@ -119,3 +119,17 @@ export function detectAirAlert(mem: AirMemory, feed: AlertFeed | null): AlertEve
   if (was.active && !raised) return [];
   return [{ kind: "air_alert", level, text: ["Повітряна тривога", feed.oblast, level ? LEVEL_TEXT[level] : ""].filter(Boolean).join(" · ") }];
 }
+
+/**
+ * Перевірка сповіщень з кабінету («Перевірити»): сервер пересилає екрану лише вид події, ТБ програє його
+ * як справжній — тим самим голосом чи сигналом і банером із позначкою «Тест».
+ */
+export const ALERT_TESTS: { kind: AlertKind; label: string; event: AlertEvent }[] = [
+  { kind: "grid_down", label: "Зникло світло", event: { kind: "grid_down", text: "Тест · Зникла мережа" } },
+  { kind: "grid_up", label: "Світло зʼявилось", event: { kind: "grid_up", text: "Тест · Мережа відновилась" } },
+  { kind: "soc_low", label: "Критичний заряд", event: { kind: "soc_low", text: "Тест · Критичний заряд батареї" } },
+  { kind: "pv_high", label: "Потужна генерація", event: { kind: "pv_high", text: "Тест · Потужна генерація" } },
+  { kind: "air_alert", label: "Повітряна тривога", event: { kind: "air_alert", level: "red", text: "Тест · Повітряна тривога · ракетна небезпека" } },
+  { kind: "air_clear", label: "Відбій тривоги", event: { kind: "air_clear", text: "Тест · Відбій тривоги" } },
+];
+export const isAlertKind = (v: unknown): v is AlertKind => ALERT_TESTS.some((t) => t.kind === v);

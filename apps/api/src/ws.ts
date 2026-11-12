@@ -42,6 +42,8 @@ export async function registerWs(app: FastifyInstance, deps: AppDeps) {
         send({ type: "config", screen: { ...fresh, states: st.map((s) => ({ ...s, stale: isStale(s) })), feeds: fd } });
       } catch { socket.close(1008, "screen gone"); }
     });
+    // разові повідомлення з кабінету (перевірка сповіщень) — пересилаємо як є
+    const unsubMsg = deps.store.subscribeScreenMessages((id, msg) => { if (id === screenId) send(msg); });
     // погода/тривога оновились: шлемо лише те, що стосується локації цього екрана
     const unsubFeeds = deps.store.subscribeFeeds(async (key) => {
       const kind = feedMatches(key, location);
@@ -61,7 +63,7 @@ export async function registerWs(app: FastifyInstance, deps: AppDeps) {
       void deps.store.touchViewer(screenId, viewer);
       if (++beats % 12 === 0) void markViewed();
     }, 25_000);
-    const cleanup = () => { unsub(); unsubScreen(); unsubFeeds(); clearInterval(ping); void deps.store.removeViewer(screenId, viewer.connId); };
+    const cleanup = () => { unsub(); unsubScreen(); unsubMsg(); unsubFeeds(); clearInterval(ping); void deps.store.removeViewer(screenId, viewer.connId); };
     socket.on("close", cleanup);
     socket.on("error", cleanup);
   });

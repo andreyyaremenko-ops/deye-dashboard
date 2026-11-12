@@ -85,7 +85,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
           <WidgetSettings widget={selected} devices={devices} menus={menus} cameras={cameras} theme={scene.theme} onChange={updateWidget} />
         </Card>}
         <Card title={`Сцена: ${sceneTitle(scene, idx)}`}><SceneSettings org={org} scene={scene} index={idx} many={cfg.scenes.length > 1} canEdit={canEdit} update={updateScene} /></Card>
-        <Card title="Екран"><ScreenSettings org={org} cfg={cfg} radio={radio} reloadRadio={reloadRadio} canEdit={canEdit} update={update} /></Card>
+        <Card title="Екран"><ScreenSettings org={org} screenId={screen.id} cfg={cfg} radio={radio} reloadRadio={reloadRadio} canEdit={canEdit} update={update} /></Card>
         <PairCard org={org} screen={screen} canEdit={canEdit} />
       </aside>
     </div>

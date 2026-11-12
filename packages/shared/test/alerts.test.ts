@@ -104,3 +104,13 @@ describe("повітряна тривога", () => {
     expect(detectAirAlert(mem, feed(true))).toEqual([]);
   });
 });
+
+describe("перевірка сповіщень з кабінету", () => {
+  it("кожен вид події має тест, текст позначений «Тест», вид збігається з подією", async () => {
+    const { ALERT_TESTS, isAlertKind } = await import("../src/alerts.ts");
+    const kinds: string[] = ["grid_down", "grid_up", "soc_low", "pv_high", "air_alert", "air_clear"];
+    expect(ALERT_TESTS.map((t) => t.kind).sort()).toEqual([...kinds].sort());
+    for (const t of ALERT_TESTS) { expect(t.event.kind).toBe(t.kind); expect(t.event.text.startsWith("Тест")).toBe(true); }
+    expect(isAlertKind("grid_up")).toBe(true); expect(isAlertKind("boom")).toBe(false);
+  });
+});

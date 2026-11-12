@@ -138,6 +138,18 @@ describe("екрани, тарифні ліміти, публічний токе
     expect(body.states).toEqual([]);
   });
 
+  it("перевірка сповіщень: подія йде телевізорам екрана, невідомий вид — 400, чужий — 403", async () => {
+    await t.store.touchViewer(screenId, { connId: "tv1", ip: "1.2.3.4", ua: "Tizen", since: new Date().toISOString(), lastSeen: new Date().toISOString() });
+    const r = await owner.post(`/api/orgs/${orgId}/screens/${screenId}/test-alert`, { kind: "grid_down" });
+    expect(r.statusCode).toBe(200);
+    expect(r.json()).toEqual({ sent: 1 });
+    expect(t.store.sentToScreens.at(-1)).toEqual({ screenId, msg: { type: "test_alert", kind: "grid_down" } });
+    expect((await owner.post(`/api/orgs/${orgId}/screens/${screenId}/test-alert`, { kind: "boom" })).statusCode).toBe(400);
+    expect((await other.post(`/api/orgs/${orgId}/screens/${screenId}/test-alert`, { kind: "grid_up" })).statusCode).toBe(403);
+    expect((await other.post(`/api/orgs/${otherOrg}/screens/${screenId}/test-alert`, { kind: "grid_up" })).statusCode).toBe(404);
+    expect(t.store.sentToScreens).toHaveLength(1);
+  });
+
   it("чужий не бачить і не редагує екран", async () => {
     expect((await other.get(`/api/orgs/${orgId}/screens`)).statusCode).toBe(403);
     expect((await other.del(`/api/orgs/${orgId}/screens/${screenId}`)).statusCode).toBe(403);

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { startLive, type LiveStore } from "./live.ts";
+import { startLive, TEST_ALERT_EVENT, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
 import { Background, GradientBackground, isSingleMediaTv, rememberSingleMedia } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
@@ -9,7 +9,7 @@ import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
 import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 import { nativeTv } from "./native.ts";
-import { detectAirAlert, detectAlerts, newAirMemory, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
+import { ALERT_TESTS, detectAirAlert, detectAlerts, newAirMemory, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
 import { chimesReady, playChime, unlockChimes } from "./chime.ts";
 import { playVoice, preloadVoices, voiceClips } from "./voice.ts";
 
@@ -163,6 +163,18 @@ export function App() {
     }
     announce(events);
   }, [live]);
+  // «Перевірити» в кабінеті: подія як справжня; якщо звук вимкнено чи браузер його ще не дозволив — пишемо про це
+  useEffect(() => {
+    const onTest = (e: Event) => {
+      const t = ALERT_TESTS.find((x) => x.kind === (e as CustomEvent).detail);
+      if (!t) return;
+      if (!alertSounds) setToast({ kind: t.kind, text: `${t.event.text} — звукові сповіщення вимкнені в налаштуваннях екрана` });
+      else if (!chimesReady()) setToast({ kind: t.kind, text: `${t.event.text} — звук ще не дозволено: натисніть будь-яку кнопку пульта` });
+      else announce([t.event]);
+    };
+    addEventListener(TEST_ALERT_EVENT, onTest);
+    return () => removeEventListener(TEST_ALERT_EVENT, onTest);
+  });
   // повітряна тривога в області екрана (стрічка є, коли в екрана задано локацію)
   useEffect(() => { announce(detectAirAlert(airMem.current, live?.feeds.alert ?? null)); }, [live?.feeds.alert]);
   useEffect(() => {

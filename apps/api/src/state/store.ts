@@ -24,6 +24,9 @@ export interface StateStore {
   /** Екран змінено в кабінеті -> усі WS-клієнти цього екрана перечитують конфіг. */
   notifyScreen(screenId: string): Promise<void>;
   subscribeScreens(handler: (screenId: string) => void): () => void;
+  /** Разове повідомлення телевізорам екрана поверх WS (перевірка сповіщень з кабінету). */
+  sendToScreen(screenId: string, msg: Record<string, unknown>): Promise<void>;
+  subscribeScreenMessages(handler: (screenId: string, msg: Record<string, unknown>) => void): () => void;
   /** Зовнішні стрічки (погода, тривоги): кеш із TTL + сповіщення про оновлення за ключем. */
   /** Телевізори, підключені до екрана по WS (для «показується / ні» в кабінеті й адмінці). */
   touchViewer(screenId: string, v: Viewer): Promise<void>;
@@ -47,6 +50,9 @@ export class MemoryStateStore implements StateStore {
   notified: string[] = [];
   async notifyScreen(id: string) { this.notified.push(id); this.ee.emit("screen", id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  sentToScreens: { screenId: string; msg: Record<string, unknown> }[] = [];
+  async sendToScreen(screenId: string, msg: Record<string, unknown>) { this.sentToScreens.push({ screenId, msg }); this.ee.emit("screenmsg", screenId, msg); }
+  subscribeScreenMessages(h: (screenId: string, msg: Record<string, unknown>) => void) { this.ee.on("screenmsg", h); return () => this.ee.off("screenmsg", h); }
   viewerMap = new Map<string, Map<string, Viewer>>();
   async touchViewer(id: string, v: Viewer) { const m = this.viewerMap.get(id) ?? new Map(); m.set(v.connId, v); this.viewerMap.set(id, m); }
   async removeViewer(id: string, connId: string) { this.viewerMap.get(id)?.delete(connId); }
@@ -63,6 +69,7 @@ export class MemoryStateStore implements StateStore {
 const CHANNEL = "device_state";
 const SCREEN_CHANNEL = "screen_update";
 const FEED_CHANNEL = "feed_update";
+const SCREEN_MSG_CHANNEL = "screen_msg";
 
 export class RedisStateStore implements StateStore {
   private pub: Redis;
@@ -71,10 +78,14 @@ export class RedisStateStore implements StateStore {
   constructor(url: string) {
     this.pub = new Redis(url, { lazyConnect: false, maxRetriesPerRequest: 2 });
     this.sub = new Redis(url);
-    this.sub.subscribe(CHANNEL, SCREEN_CHANNEL, FEED_CHANNEL);
+    this.sub.subscribe(CHANNEL, SCREEN_CHANNEL, FEED_CHANNEL, SCREEN_MSG_CHANNEL);
     this.sub.on("message", (ch: string, msg: string) => {
       if (ch === SCREEN_CHANNEL) { this.ee.emit("screen", msg); return; }
       if (ch === FEED_CHANNEL) { this.ee.emit("feed", msg); return; }
+      if (ch === SCREEN_MSG_CHANNEL) {
+        try { const o = JSON.parse(msg) as { screenId: string; msg: Record<string, unknown> }; this.ee.emit("screenmsg", o.screenId, o.msg); } catch { /* ignore */ }
+        return;
+      }
       try { this.ee.emit("state", JSON.parse(msg)); } catch { /* ignore */ }
     });
   }
@@ -94,6 +105,8 @@ export class RedisStateStore implements StateStore {
   subscribe(h: (s: DeviceStateSnapshot) => void) { this.ee.on("state", h); return () => this.ee.off("state", h); }
   async notifyScreen(id: string) { await this.pub.publish(SCREEN_CHANNEL, id); }
   subscribeScreens(h: (id: string) => void) { this.ee.on("screen", h); return () => this.ee.off("screen", h); }
+  async sendToScreen(screenId: string, msg: Record<string, unknown>) { await this.pub.publish(SCREEN_MSG_CHANNEL, JSON.stringify({ screenId, msg })); }
+  subscribeScreenMessages(h: (screenId: string, msg: Record<string, unknown>) => void) { this.ee.on("screenmsg", h); return () => this.ee.off("screenmsg", h); }
   // hash на екран: connId -> JSON; відпалі поля чистяться при читанні, ключ живе годину після останнього touch
   async touchViewer(id: string, v: Viewer) { await this.pub.multi().hset(`viewers:${id}`, v.connId, JSON.stringify(v)).expire(`viewers:${id}`, 3600).exec(); }
   async removeViewer(id: string, connId: string) { await this.pub.hdel(`viewers:${id}`, connId); }

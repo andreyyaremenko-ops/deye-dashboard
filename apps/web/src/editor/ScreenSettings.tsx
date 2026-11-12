@@ -1,12 +1,13 @@
 /** Картка «Екран»: спільне для всіх сцен — порядок ротації, локація, радіо і режим відео при радіо. */
 import { useEffect, useRef, useState } from "react";
 import type { ScreenConfig } from "@deye/shared";
+import { ALERT_TESTS } from "@deye/shared/alerts";
 import { api, type Org, type OrgRadio, type OwnStation } from "../api.ts";
 import { Btn, ErrorBox, Field } from "../components/ui.tsx";
 import { LocationPicker } from "./LocationPicker.tsx";
 
-export function ScreenSettings({ org, cfg, radio, reloadRadio, canEdit, update }: {
-  org: Org; cfg: ScreenConfig; radio: OrgRadio; reloadRadio: () => Promise<void>; canEdit: boolean; update: (patch: Partial<ScreenConfig>) => void;
+export function ScreenSettings({ org, screenId, cfg, radio, reloadRadio, canEdit, update }: {
+  org: Org; screenId: string; cfg: ScreenConfig; radio: OrgRadio; reloadRadio: () => Promise<void>; canEdit: boolean; update: (patch: Partial<ScreenConfig>) => void;
 }) {
   const radioAllowed = org.plan.limits.radio;
   const [manage, setManage] = useState(false);
@@ -51,7 +52,34 @@ export function ScreenSettings({ org, cfg, radio, reloadRadio, canEdit, update }
       <span className="muted small">Голосом: повітряна тривога в області екрана (з рівнем — ракетна небезпека чи дронова загроза) і відбій, зникло й зʼявилось світло, потужна генерація — за порогом у налаштуваннях пристрою (% від номіналу панелей); критичний заряд — сигналом. Тривоги потребують локації екрана. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунку для Android TV — одразу.</span>
     </Field>
     {cfg.alertSounds && <Field label={`Гучність сповіщень ${Math.round((cfg.alertVolume ?? 0.8) * 100)}%`}><input type="range" min={0.1} max={1} step={0.05} value={cfg.alertVolume ?? 0.8} onChange={(e) => update({ alertVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
+    {cfg.alertSounds && <TestAlert org={org} screenId={screenId} />}
   </>;
+}
+
+/** «Перевірити»: телевізори, що зараз показують екран, програють подію як справжню з банером «Тест». */
+function TestAlert({ org, screenId }: { org: Org; screenId: string }) {
+  const [kind, setKind] = useState<string>(ALERT_TESTS[0]!.kind);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<unknown>(null);
+  const run = async () => {
+    setBusy(true); setErr(null); setMsg(null);
+    try {
+      const r = await api.post<{ sent: number }>(`/api/orgs/${org.id}/screens/${screenId}/test-alert`, { kind });
+      setMsg(r.sent ? `Надіслано на ${r.sent} ${r.sent === 1 ? "телевізор" : r.sent < 5 ? "телевізори" : "телевізорів"}` : "Зараз цей екран не відкритий на жодному телевізорі");
+    } catch (e) { setErr(e); } finally { setBusy(false); }
+  };
+  return <Field label="Перевірити сповіщення">
+    <div className="row small">
+      <select value={kind} onChange={(e) => setKind(e.currentTarget.value)}>
+        {ALERT_TESTS.map((t) => <option key={t.kind} value={t.kind}>{t.label}</option>)}
+      </select>
+      <Btn onClick={() => void run()} disabled={busy}>{busy ? "Надсилаю…" : "Перевірити"}</Btn>
+    </div>
+    {msg && <span className="muted small">{msg}</span>}
+    <ErrorBox err={err} />
+    <span className="muted small">Звучить на телевізорах, що показують екран зараз, з написом «Тест». Зміни гучності чи ввімкнення спершу збережіть. Якщо браузер ТБ ще не дозволив звук, на екрані зʼявиться підказка натиснути кнопку пульта.</span>
+  </Field>;
 }
 
 /** Власні станції закладу: додати за адресою стріму (сервер перевіряє), прослухати, видалити. */

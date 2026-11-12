@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireUser } from "../auth/plugin.ts";
 import * as scr from "../screens/service.ts";
+import { ALERT_TESTS } from "@deye/shared/alerts";
 import { member, orgParams, orgScreenParams, withViewers, type Deps } from "./common.ts";
 
 export async function screenRoutes(app: FastifyInstance, deps: Deps) {
@@ -29,6 +30,14 @@ export async function screenRoutes(app: FastifyInstance, deps: Deps) {
     const s = await scr.rotateToken(db, orgId, u.id, screenId);
     await store.notifyScreen(screenId);
     return s;
+  });
+  // перевірка сповіщень: телевізори екрана програють подію як справжню, з банером «Тест»; у відповіді — скільки ТБ її отримали
+  app.post("/api/orgs/:orgId/screens/:screenId/test-alert", async (req) => {
+    const { orgId, screenId } = await member(deps, req, orgScreenParams, "staff");
+    const { kind } = z.object({ kind: z.enum(ALERT_TESTS.map((t) => t.kind) as [string, ...string[]]) }).parse(req.body);
+    await scr.screenInOrg(db, orgId, screenId);
+    await store.sendToScreen(screenId, { type: "test_alert", kind });
+    return { sent: (await store.viewers(screenId)).length };
   });
   app.post("/api/orgs/:orgId/screens/:screenId/pair-code", async (req) => {
     const u = requireUser(req); const { orgId, screenId } = orgScreenParams.parse(req.params);

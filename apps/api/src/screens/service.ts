@@ -91,6 +91,13 @@ export async function updateScreen(db: Db, orgId: string, actorId: string, id: s
   return s;
 }
 
+/** Екран організації (для дій без зміни: перевірка сповіщень); чужий — 404. */
+export async function screenInOrg(db: Db, orgId: string, id: string) {
+  const [s] = await db.select({ id: screens.id }).from(screens).where(and(eq(screens.id, id), eq(screens.orgId, orgId)));
+  if (!s) throw notFound("Screen not found");
+  return s;
+}
+
 export async function rotateToken(db: Db, orgId: string, actorId: string, id: string) {
   await requireRole(db, orgId, actorId, "admin");
   const [s] = await db.update(screens).set({ viewToken: randomToken(32), pairCode: null, pairCodeExpiresAt: null, updatedAt: new Date() })

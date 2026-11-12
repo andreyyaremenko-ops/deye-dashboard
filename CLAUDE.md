@@ -92,6 +92,9 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   (`devices.alert_soc`, `alert_pv_pct` = % від `pv_kwp`; null вимикає), звук — у конфігу екрана (`alertSounds`,
   за замовчуванням вимкнено, `alertVolume`). Сигнал синтезує Web Audio (`apps/tv/src/chime.ts`), не медіаелемент:
   на Tizen інакше він зупинив би радіо/відео. Радіо на час сигналу притишується, на екрані банер на 20 с.
+  Кнопка «Перевірити» (налаштування екрана): `POST /api/orgs/:org/screens/:id/test-alert {kind}` -> `store.sendToScreen`
+  (Redis-канал `screen_msg`) -> WS `{type:"test_alert",kind}` -> ТБ програє `ALERT_TESTS` як справжню подію з банером «Тест»;
+  якщо звук вимкнено чи браузер ще не дозволив його — лише банер із причиною. Відповідь — скільки ТБ зараз підключено.
 - Голосові сповіщення (2026-11-13): фрази голосом Kateryna (ElevenLabs, eleven_multilingual_v2) — `apps/tv/public/sounds/*.mp3`,
   назви — транслітерація тексту (КМУ 2010). Програються через той самий AudioContext (`apps/tv/src/voice.ts`: fetch +
   decodeAudioData з колбеками для старих ТБ), не через `<audio>`; файл, що не завантажився, замінює сигнал chime.ts.
