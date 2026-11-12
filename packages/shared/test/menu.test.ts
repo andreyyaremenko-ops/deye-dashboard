@@ -39,11 +39,13 @@ describe("menuStyle", () => {
     expect(menuStyle({ look: "chalk", surface: "slate" }).surface).toBe("slate");
     expect(menuStyle({ surface: "wood" }).surface).toBeNull();
   });
-  it("неонова рамка лише в неоні", () => {
+  it("рамки: кожне оформлення має свої", () => {
     expect(menuStyle({ look: "neon" }).frame).toBe("none");
     expect(menuStyle({ look: "neon", frame: "double" }).frame).toBe("double");
     expect(menuStyle({ look: "neon", frame: "zigzag" }).frame).toBe("none");
     expect(menuStyle({ look: "chalk", frame: "single" }).frame).toBe("none");
+    expect(menuStyle({ look: "chalk", frame: "ornate" }).frame).toBe("ornate");
+    expect(menuStyle({ frame: "ornate" }).frame).toBe("none");
   });
   it("неонова вивіска: до 4 рядків, Pacifico і рожевий за замовчуванням, без картки — без стіни", () => {
     const s = neonSignStyle({ text: "  Кавʼярня \n\n«Сонце»\n3\n4\n5" });

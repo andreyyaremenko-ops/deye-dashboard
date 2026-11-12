@@ -37,18 +37,25 @@ export const CHALK_SURFACES = [
   { id: "slate", label: "Сіро-синій сланець" },
 ] as const;
 
-/** Неонові рамки-трубки навколо меню (лише в оформленні «неон»): одна кольором заголовка або дві — ще й кольором тексту. */
+/** Неонові рамки-трубки навколо меню: одна кольором заголовка або дві — ще й кольором тексту. */
 export const NEON_FRAMES = [
   { id: "none", label: "без рамки" },
   { id: "single", label: "одна трубка" },
   { id: "double", label: "дві трубки" },
 ] as const;
-export type NeonFrameId = (typeof NEON_FRAMES)[number]["id"];
+/** Крейдяні рамки від руки (лінії заходять за кути, як на справжній дошці); завитки — кольором заголовка. */
+export const CHALK_FRAMES = [
+  { id: "none", label: "без рамки" },
+  { id: "line", label: "лінія від руки" },
+  { id: "double", label: "подвійна лінія" },
+  { id: "dashed", label: "пунктир" },
+  { id: "ornate", label: "із завитками в кутах" },
+] as const;
 
 export const MENU_LOOKS = [
-  { id: "standard", label: "Звичайне", font: "system", color: null, accent: null, surfaces: [] },
-  { id: "neon", label: "Неонова вивіска", font: "comfortaa", color: "#7df9ff", accent: "#ff4fc8", surfaces: NEON_SURFACES },
-  { id: "chalk", label: "Крейдою на дошці", font: "amatic", color: "#f2efe6", accent: "#ffe27a", surfaces: CHALK_SURFACES },
+  { id: "standard", label: "Звичайне", font: "system", color: null, accent: null, surfaces: [], frames: [] },
+  { id: "neon", label: "Неонова вивіска", font: "comfortaa", color: "#7df9ff", accent: "#ff4fc8", surfaces: NEON_SURFACES, frames: NEON_FRAMES },
+  { id: "chalk", label: "Крейдою на дошці", font: "amatic", color: "#f2efe6", accent: "#ffe27a", surfaces: CHALK_SURFACES, frames: CHALK_FRAMES },
 ] as const;
 export type MenuLookId = (typeof MENU_LOOKS)[number]["id"];
 
@@ -66,8 +73,8 @@ export interface MenuStyle {
   look: MenuLookId;
   /** фон неону чи дошки (клас `surf-<id>`); null у звичайного оформлення */
   surface: string | null;
-  /** неонова рамка (клас `nfr-<id>`); поза неоном завжди none */
-  frame: NeonFrameId;
+  /** рамка з каталогу оформлення (`NEON_FRAMES` / `CHALK_FRAMES`); у звичайного й для чужого id — none */
+  frame: string;
   fontId: MenuFontId;
   fontFamily: string;
   /** розмір рядка меню у vw (значення повзунка) */
@@ -104,7 +111,8 @@ export function menuStyle(props: Record<string, unknown>, theme: "dark" | "light
   if (look.id === "standard" && (bgHex || alpha !== null)) background = hexToRgba(bgHex ?? (theme === "light" ? "#ffffff" : "#0a101c"), alpha ?? (theme === "light" ? 0.7 : 0.55));
   const font = MENU_FONTS.find((f) => f.id === fontId)!;
   const cssSize = Math.round(fontSize * ("scale" in font ? font.scale : 1) * 100) / 100;
-  const frame = look.id === "neon" ? (NEON_FRAMES.find((f) => f.id === props.frame)?.id ?? "none") : "none";
+  const frames: readonly { id: string }[] = look.frames;
+  const frame = frames.find((f) => f.id === props.frame)?.id ?? "none";
   return { look: look.id, surface: lookSurface(look.id, props.surface), frame, fontId, fontFamily: font.family, fontSize, cssSize, color, accent, background };
 }
 

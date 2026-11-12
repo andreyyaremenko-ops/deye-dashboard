@@ -1,6 +1,6 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
-import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, NEON_FRAMES, NEON_SIGN_FLICKER, NEON_SURFACES, menuStyle, neonSignStyle } from "@deye/shared/menu";
+import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, NEON_SIGN_FLICKER, NEON_SURFACES, menuStyle, neonSignStyle } from "@deye/shared/menu";
 import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
 import { OUTAGE_GROUPS, OUTAGE_REGIONS } from "@deye/shared/outages";
 import type { Device, MenuSummary, NvrCamera } from "../api.ts";
@@ -53,14 +53,20 @@ const Card = (ctx: Ctx) => <Toggle ctx={ctx} k="card" label="Картка" on="�
 const Look = (ctx: Ctx) => <Field label="Оформлення">
   <select value={menuStyle(ctx.p, ctx.theme).look} onChange={(e) => {
     const l = MENU_LOOKS.find((x) => x.id === e.currentTarget.value) ?? MENU_LOOKS[0];
-    ctx.set({ look: l.id, font: l.font, color: "", accent: "" });
+    ctx.set({ look: l.id, font: l.font, color: "", accent: "", frame: "none" });
   }}>
     {MENU_LOOKS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
   </select>
 </Field>;
-/** Неонова рамка: лише в оформленні «неон». */
-const Frame = (ctx: Ctx) => menuStyle(ctx.p, ctx.theme).look !== "neon" ? null
-  : <Select ctx={ctx} k="frame" label="Неонова рамка" fallback="none" options={NEON_FRAMES.map((f) => [f.id, f.label])} />;
+/** Рамка з каталогу оформлення: неонові трубки чи крейда від руки; у звичайного поля немає. */
+const Frame = (ctx: Ctx) => {
+  const st = menuStyle(ctx.p, ctx.theme);
+  const list = MENU_LOOKS.find((l) => l.id === st.look)?.frames ?? [];
+  if (!list.length) return null;
+  return <Field label={st.look === "chalk" ? "Крейдяна рамка" : "Неонова рамка"}><select value={st.frame} onChange={(e) => ctx.set({ frame: e.currentTarget.value })}>
+    {list.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+  </select></Field>;
+};
 /** Фон неону чи дошки; у звичайного оформлення поля немає. */
 const Surface = (ctx: Ctx) => {
   const st = menuStyle(ctx.p, ctx.theme);
@@ -196,7 +202,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
       {!ctx.menus.length && <Hint>Меню ще немає. Створіть його в розділі «Меню»: сфотографуйте паперове — позиції розпізнаються автоматично.</Hint>}
       <Text ctx={ctx} k="title" label="Заголовок" placeholder={chosen?.name ?? "Меню"} />
       {Look(ctx)}
-      {st.look !== "standard" && <Hint>{st.look === "neon" ? "Назви світяться «Кольором тексту», заголовок і ціни — другим кольором; рамки фото чергують блакитний, рожевий і жовтий. Неонова рамка бере ті самі два кольори." : "Текст зернистий, як крейда; фото — як приклеєні до дошки картки."}</Hint>}
+      {st.look !== "standard" && <Hint>{st.look === "neon" ? "Назви світяться «Кольором тексту», заголовок і ціни — другим кольором; рамки фото чергують блакитний, рожевий і жовтий. Неонова рамка бере ті самі два кольори." : "Текст зернистий, як крейда; фото — як приклеєні до дошки картки. Крейдяна рамка малюється кольором тексту, завитки — кольором заголовка."}</Hint>}
       <div className="row small">
         <Toggle ctx={ctx} k="photos" label="Фото страв" on="показувати" off="лише текст" />
         <Select ctx={ctx} k="outOfStock" label="Коли позиція закінчилась" fallback="hide" options={[["hide", "ховати"], ["strike", "перекреслювати"]]} />
@@ -218,7 +224,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
         <ColorField label="Заголовок і ціни" value={st.accent} fallback={st.color ?? themeFg} onChange={(v) => ctx.set({ accent: v ?? "" })} />
       </div>
       <div className="row small">{Card(ctx)}{Surface(ctx)}</div>
-      {st.look === "neon" && <div className="row small">{Frame(ctx)}</div>}
+      {st.look !== "standard" && <div className="row small">{Frame(ctx)}</div>}
       <Hint>Ціни й наявність беруться з розділу «Меню» і оновлюються на телевізорі одразу. Орієнтовний розмір 46×62 %.</Hint>
     </>;
   },

@@ -430,12 +430,24 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
     var(--board);
   box-shadow: inset 0 0 0 .08em #4a2f19, inset 0 0 2.5em rgba(0,0,0,.55), 0 0 0 .07em #3b2412, 0 .5vw 1.6vw rgba(0,0,0,.55); }
+/* крейдяні рамки (chalk.tsx): шар на весь віджет, вміст відсунуто від ліній */
+.w.cfr { position: relative; padding: 1.4em 1.6em; }
+.w.cfr-ornate { padding: 2.2em 2.6em; }
+.cf { position: absolute; top: .45em; right: .45em; bottom: .45em; left: .45em; pointer-events: none; opacity: .9; }
+.cf svg { position: absolute; overflow: visible; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; }
+.cf-box { top: 0; left: 0; width: 100%; height: 100%; stroke-width: 3.5px; }
+.cf-dashed .cf-box { stroke-dasharray: 16px 11px; }
+.cf-double .cf-box path:nth-child(n+5) { stroke-width: 2px; opacity: .8; }
+.cf-c { width: 2.3em; height: 2.3em; stroke-width: 4; }
+.cf-tl { top: .3em; left: .3em; } .cf-tr { top: .3em; right: .3em; transform: scaleX(-1); }
+.cf-br { bottom: .3em; right: .3em; transform: scale(-1, -1); } .cf-bl { bottom: .3em; left: .3em; transform: scaleY(-1); }
+
 /* дошки: зелена (за замовчуванням), чорна, сіро-синій сланець */
 .w.surf-blackboard { background-color: #171919; --board: linear-gradient(160deg, #222525, #121414); }
 .w.surf-slate { background-color: #26313a; --board: linear-gradient(160deg, #33414c, #212a32); }
 .theme-light .w.look-chalk { color: #f2efe6; }
 .w.look-chalk.menu-plain { background: transparent; border: 0; box-shadow: none; }
-.look-chalk > .menu-title, .look-chalk .dm-head, .look-chalk .dm-t, .look-chalk .dm-p, .look-chalk .menu-row, .look-chalk .menu-line, .look-chalk .menu-sub {
+.look-chalk .cf, .look-chalk > .menu-title, .look-chalk .dm-head, .look-chalk .dm-t, .look-chalk .dm-p, .look-chalk .menu-row, .look-chalk .menu-line, .look-chalk .menu-sub {
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 .look-chalk { text-shadow: 0 0 .06em rgba(255,255,255,.35); }

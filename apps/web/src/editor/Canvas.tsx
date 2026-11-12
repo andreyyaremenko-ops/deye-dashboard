@@ -32,7 +32,7 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   const up = () => setDrag(null);
 
   return <div ref={ref} className={`canvas theme-${theme}`} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerDown={() => onSelect(null)}>
-    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}${menuStyle(w.props ?? {}).frame !== "none" ? " cw-nfr" : ""}` : w.type === "neon_sign" ? " cw-look-neon cw-sign" : ""}`}
+    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}${menuStyle(w.props ?? {}).frame !== "none" ? ` cw-fr-${menuStyle(w.props ?? {}).look}` : ""}` : w.type === "neon_sign" ? " cw-look-neon cw-sign" : ""}`}
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
       <div className="cw-t">{labelOf(w.type)}</div>

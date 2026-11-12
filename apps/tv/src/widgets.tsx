@@ -28,6 +28,7 @@ import { VizWidget } from "./viz.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
 import { NeonSign } from "./neon.tsx";
+import { ChalkFrame } from "./chalk.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
 import type { Feeds, PublicMenu } from "./types.ts";
 
@@ -179,7 +180,8 @@ function MenuText({ cls, props }: { cls: string; props: Record<string, unknown> 
   if (st.accent) root["--na"] = st.accent;
   if (st.color) root["--nb"] = st.color;
   const accent = st.accent ? { color: st.accent } : undefined;
-  return <div class={`${cls} menu menu-${align} look-${st.look}${st.surface ? ` surf-${st.surface}` : ""}${st.frame !== "none" ? ` nfr-${st.frame}` : ""} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
+  return <div class={`${cls} menu menu-${align} look-${st.look}${st.surface ? ` surf-${st.surface}` : ""}${st.frame === "none" ? "" : st.look === "neon" ? ` nfr-${st.frame}` : ` cfr cfr-${st.frame}`} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
+    {st.look === "chalk" && st.frame !== "none" && <ChalkFrame kind={st.frame} color={st.color} accent={st.accent} />}
     {title && <div class="menu-title" style={accent}>{title}</div>}
     {lines.map((raw, i) => {
       const line = raw.trim();

@@ -103,7 +103,8 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   шрифт/кольори за замовчуванням — `MENU_LOOKS` у `shared/menu.ts`; фон, сяйво (text-shadow від currentColor) і зернистість
   (маска з SVG-шуму) — класи `look-*` у `apps/tv/src/style.css`. Фон картки (`bg`/`bgAlpha`) діє лише для `standard`;
   у неону й дошки замість нього `props.surface` (стіни `NEON_SURFACES`, дошки `CHALK_SURFACES`, класи `surf-*`). Неонові
-  рамки меню — `props.frame` = none|single|double (`NEON_FRAMES`, класи `nfr-*`, кольори з CSS-змінних `--na`/`--nb`).
+  рамки меню — `props.frame` = none|single|double (`NEON_FRAMES`, класи `nfr-*`, кольори з CSS-змінних `--na`/`--nb`);
+  у дошки той самий `props.frame` = line|double|dashed|ornate (`CHALK_FRAMES`, inline SVG у `apps/tv/src/chalk.tsx`).
   Віджет `neon_sign` (`apps/tv/src/neon.tsx`): назва закладу неоном, шрифт підганяється під розмір віджета (для окремої
   сцени 100×100). Широке сяйво — шар-градієнт `::before`, а не великий text-shadow: на великому шрифті той малюється плитками.
   Текстури з низькочастотним SVG-шумом — одна картинка `cover`, не плитка (шви видно).

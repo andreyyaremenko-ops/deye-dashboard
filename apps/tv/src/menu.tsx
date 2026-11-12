@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useState } from "preact/hooks";
 import { menuStyle } from "@deye/shared/menu";
+import { ChalkFrame } from "./chalk.tsx";
 import { formatPrice, type MenuPayload, type MenuSectionPayload } from "@deye/shared/menu-data";
 
 interface Props {
@@ -35,7 +36,9 @@ export function MenuWidget({ cls, menu, props, theme }: Props) {
 
   const st = menuStyle(props, theme);
   const plain = props.card === false;
-  const look = `look-${st.look}${st.surface ? ` surf-${st.surface}` : ""}${st.frame !== "none" ? ` nfr-${st.frame}` : ""}`;
+  const fr = st.frame === "none" ? "" : st.look === "neon" ? ` nfr-${st.frame}` : ` cfr cfr-${st.frame}`;
+  const look = `look-${st.look}${st.surface ? ` surf-${st.surface}` : ""}${fr}`;
+  const chalkFrame = st.look === "chalk" && st.frame !== "none" ? <ChalkFrame kind={st.frame} color={st.color} accent={st.accent} /> : null;
   const root: Record<string, string> = { fontFamily: st.fontFamily, fontSize: `${st.cssSize}vw` };
   if (st.color) root.color = st.color;
   if (st.background && !plain) root.background = st.background;
@@ -44,14 +47,15 @@ export function MenuWidget({ cls, menu, props, theme }: Props) {
   if (st.color) root["--nb"] = st.color;
   const accent = st.accent ? { color: st.accent } : undefined;
 
-  if (!menu) return <div class={`${cls} menu dm ${look}`} style={root}><div class="dm-empty">Меню ще не опубліковане</div></div>;
+  if (!menu) return <div class={`${cls} menu dm ${look}`} style={root}>{chalkFrame}<div class="dm-empty">Меню ще не опубліковане</div></div>;
   const section = sections[Math.min(idx, sections.length - 1)];
-  if (!section) return <div class={`${cls} menu dm ${look}`} style={root}><div class="dm-empty">{menu.name}</div></div>;
+  if (!section) return <div class={`${cls} menu dm ${look}`} style={root}>{chalkFrame}<div class="dm-empty">{menu.name}</div></div>;
 
   const cols = clamp(Number(props.columns ?? 0) || 0, 0, 4);
   const illustrative = section.items.some((i) => i.imageIsAi && i.image);
 
   return <div class={`${cls} menu dm ${look} menu-font-${st.fontId}${plain ? " menu-plain" : ""}${withPhotos ? "" : " dm-list"}`} style={root}>
+    {chalkFrame}
     <div class="dm-head">
       <div class="menu-title" style={accent}>{String(props.title ?? "").trim() || menu.name}</div>
       {sections.length > 1 && <div class="dm-sec" style={accent}>{section.name}</div>}
