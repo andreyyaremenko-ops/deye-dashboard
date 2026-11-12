@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { menuStyle, hexToRgba, MENU_FONT_SIZE } from "../src/menu.ts";
+import { menuStyle, hexToRgba, neonSignStyle, MENU_FONT_SIZE } from "../src/menu.ts";
 
 describe("menuStyle", () => {
   it("порожні props: системний шрифт, стандартний розмір, кольори теми", () => {
@@ -31,6 +31,27 @@ describe("menuStyle", () => {
     const c = menuStyle({ look: "chalk", font: "caveat", accent: "#a0e0ff" });
     expect(c.fontId).toBe("caveat"); expect(c.color).toBe("#f2efe6"); expect(c.accent).toBe("#a0e0ff");
     expect(menuStyle({ look: "disco" }).look).toBe("standard");
+  });
+  it("фон оформлення: перший за замовчуванням, чужий для оформлення не приймається", () => {
+    expect(menuStyle({ look: "neon" }).surface).toBe("brick");
+    expect(menuStyle({ look: "neon", surface: "wood" }).surface).toBe("wood");
+    expect(menuStyle({ look: "chalk", surface: "wood" }).surface).toBe("green");
+    expect(menuStyle({ look: "chalk", surface: "slate" }).surface).toBe("slate");
+    expect(menuStyle({ surface: "wood" }).surface).toBeNull();
+  });
+  it("неонова рамка лише в неоні", () => {
+    expect(menuStyle({ look: "neon" }).frame).toBe("none");
+    expect(menuStyle({ look: "neon", frame: "double" }).frame).toBe("double");
+    expect(menuStyle({ look: "neon", frame: "zigzag" }).frame).toBe("none");
+    expect(menuStyle({ look: "chalk", frame: "single" }).frame).toBe("none");
+  });
+  it("неонова вивіска: до 4 рядків, Pacifico і рожевий за замовчуванням, без картки — без стіни", () => {
+    const s = neonSignStyle({ text: "  Кавʼярня \n\n«Сонце»\n3\n4\n5" });
+    expect(s.lines).toEqual(["Кав’ярня", "«Сонце»", "3", "4"]);
+    expect(s.fontId).toBe("pacifico"); expect(s.color).toBe("#ff4fc8"); expect(s.surface).toBe("brick"); expect(s.flicker).toBe("soft");
+    expect(neonSignStyle({}).lines).toEqual(["Назва закладу"]);
+    expect(neonSignStyle({ card: false, surface: "wood" }).surface).toBeNull();
+    expect(neonSignStyle({ font: "lobster", flicker: "broken", frame: true })).toMatchObject({ fontId: "lobster", flicker: "broken", frame: true });
   });
   it("hexToRgba", () => { expect(hexToRgba("#ffb347", 1)).toBe("rgba(255, 179, 71, 1)"); });
 });

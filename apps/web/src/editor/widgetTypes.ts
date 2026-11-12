@@ -37,6 +37,7 @@ export const WIDGET_KINDS: WidgetKind[] = [
   { t: "qr", label: "Wi-Fi для гостей", needsDevice: false, w: 14, h: 32, key: "wifi", props: { mode: "wifi", ssid: "", password: "", auth: "WPA", caption: "Wi-Fi для гостей", card: true, showPassword: true } },
   { t: "camera", label: "Камери", needsDevice: false, w: 44, h: 34, props: { cameras: [], rotateS: 20, fit: "cover", quality: "sub", card: true } },
   { t: "spectrum", label: "Візуалізація звуку", needsDevice: false, w: 34, h: 26, props: { mode: "bars", theme: "ember", sensitivity: 0.8, showName: true, card: true } },
+  { t: "neon_sign", label: "Неонова вивіска", needsDevice: false, w: 100, h: 100, props: { text: "Назва закладу", sub: "", font: "pacifico", color: "#ff4fc8", subColor: "#7df9ff", surface: "brick", flicker: "soft", frame: false, card: true } },
   { t: "clock", label: "Годинник", needsDevice: false, w: 22, h: 16 },
   { t: "menu", label: "Меню закладу (AI)", needsDevice: false, w: 46, h: 62, props: { menuId: "", title: "", font: "system", fontSize: MENU_FONT_SIZE.default, photos: true, columns: 0, sectionS: 15, outOfStock: "hide", card: true } },
   { t: "text", label: "Меню / текст", needsDevice: false, w: 28, h: 50, props: { title: "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95", font: "system", fontSize: MENU_FONT_SIZE.default, align: "left", card: true } },

@@ -32,7 +32,7 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   const up = () => setDrag(null);
 
   return <div ref={ref} className={`canvas theme-${theme}`} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerDown={() => onSelect(null)}>
-    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}` : ""}`}
+    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}${menuStyle(w.props ?? {}).frame !== "none" ? " cw-nfr" : ""}` : w.type === "neon_sign" ? " cw-look-neon cw-sign" : ""}`}
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
       <div className="cw-t">{labelOf(w.type)}</div>
@@ -50,6 +50,7 @@ const MOCK: Partial<Record<W["type"], (p: Record<string, unknown>) => [string, s
   chart: () => ["▁▂▃▅▇█▇▅▃▂▁", "потужність за добу"], weather: () => ["+21°", "сонячно · завтра 17 kWh"], alert: () => ["Тривоги немає", "область зі списку"], eco: () => ["−120 кг CO₂", "цього місяця"],
   outage: (p) => [p.hideWhenOk === false ? "Світло є" : "Банер при відключенні"], flow: (p) => [p.skin === "strip" ? "☀ → ⌂ → ▭" : p.skin === "gauge" ? "◯ 2.0 kW" : p.skin === "sankey" ? "☀ ≋ ⌂" : p.skin === "cards" ? "▭▭▭ ⚡ ▭▭▭" : "☀ ⌂ ▭ ⚡", `потік енергії · ${({ orbit: "схема", cards: "картки", gauge: "кільце", sankey: "потоки", strip: "рядок", bars: "смуги" } as Record<string, string>)[String(p.skin ?? "orbit")] ?? "схема"}`],
   mppt: () => ["▰▰▱ 4.2 kW", "по входах панелей (MPPT)"],
+  neon_sign: (p) => [String(p.text ?? "").split(/\r?\n/)[0] || "Назва закладу", String(p.sub ?? "") || "неонова вивіска"],
   outage_schedule: (p) => ["▬▬▬▭▭▬▬▬▭▬", `графік відключень · черга ${String(p.group ?? "1.1")}`],
   spectrum: (p) => { const m = String(p.mode ?? "bars"); return [m === "circle" ? "◎" : m === "orbit" ? "◍" : m === "mirror" ? "▚▞▚" : "▁▄█▆▂", `візуалізація звуку · ${({ bars: "стовпці", mirror: "дзеркало", circle: "коло", orbit: "орбіта" } as Record<string, string>)[m] ?? "стовпці"}`]; },
   camera: (p) => { const n = Array.isArray(p.cameras) ? p.cameras.length : 0; return ["▶ камера", n > 1 ? `${n} камери по черзі` : n === 1 ? String((p.cameras as string[])[0]) : "камери не вибрані"]; },

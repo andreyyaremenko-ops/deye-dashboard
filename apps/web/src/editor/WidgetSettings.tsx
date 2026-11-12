@@ -1,6 +1,6 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
-import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, menuStyle } from "@deye/shared/menu";
+import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, NEON_FRAMES, NEON_SIGN_FLICKER, NEON_SURFACES, menuStyle, neonSignStyle } from "@deye/shared/menu";
 import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
 import { OUTAGE_GROUPS, OUTAGE_REGIONS } from "@deye/shared/outages";
 import type { Device, MenuSummary, NvrCamera } from "../api.ts";
@@ -58,6 +58,18 @@ const Look = (ctx: Ctx) => <Field label="Оформлення">
     {MENU_LOOKS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
   </select>
 </Field>;
+/** Неонова рамка: лише в оформленні «неон». */
+const Frame = (ctx: Ctx) => menuStyle(ctx.p, ctx.theme).look !== "neon" ? null
+  : <Select ctx={ctx} k="frame" label="Неонова рамка" fallback="none" options={NEON_FRAMES.map((f) => [f.id, f.label])} />;
+/** Фон неону чи дошки; у звичайного оформлення поля немає. */
+const Surface = (ctx: Ctx) => {
+  const st = menuStyle(ctx.p, ctx.theme);
+  const list = MENU_LOOKS.find((l) => l.id === st.look)?.surfaces ?? [];
+  if (!list.length || ctx.p.card === false) return null;
+  return <Field label={st.look === "chalk" ? "Дошка" : "Стіна"}><select value={st.surface ?? ""} onChange={(e) => ctx.set({ surface: e.currentTarget.value })}>
+    {list.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+  </select></Field>;
+};
 const Hint = ({ children }: { children: ReactNode }) => <p className="muted small">{children}</p>;
 
 /** Вибір кольору з можливістю повернутись до кольору теми (null). */
@@ -184,7 +196,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
       {!ctx.menus.length && <Hint>Меню ще немає. Створіть його в розділі «Меню»: сфотографуйте паперове — позиції розпізнаються автоматично.</Hint>}
       <Text ctx={ctx} k="title" label="Заголовок" placeholder={chosen?.name ?? "Меню"} />
       {Look(ctx)}
-      {st.look !== "standard" && <Hint>{st.look === "neon" ? "Назви світяться «Кольором тексту», заголовок і ціни — другим кольором; рамки фото чергують блакитний, рожевий і жовтий." : "Текст зернистий, як крейда; фото — як приклеєні до дошки картки."}</Hint>}
+      {st.look !== "standard" && <Hint>{st.look === "neon" ? "Назви світяться «Кольором тексту», заголовок і ціни — другим кольором; рамки фото чергують блакитний, рожевий і жовтий. Неонова рамка бере ті самі два кольори." : "Текст зернистий, як крейда; фото — як приклеєні до дошки картки."}</Hint>}
       <div className="row small">
         <Toggle ctx={ctx} k="photos" label="Фото страв" on="показувати" off="лише текст" />
         <Select ctx={ctx} k="outOfStock" label="Коли позиція закінчилась" fallback="hide" options={[["hide", "ховати"], ["strike", "перекреслювати"]]} />
@@ -205,8 +217,36 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
         <ColorField label="Колір тексту" value={st.color} fallback={themeFg} onChange={(v) => ctx.set({ color: v ?? "" })} />
         <ColorField label="Заголовок і ціни" value={st.accent} fallback={st.color ?? themeFg} onChange={(v) => ctx.set({ accent: v ?? "" })} />
       </div>
-      <div className="row small">{Card(ctx)}</div>
+      <div className="row small">{Card(ctx)}{Surface(ctx)}</div>
+      {st.look === "neon" && <div className="row small">{Frame(ctx)}</div>}
       <Hint>Ціни й наявність беруться з розділу «Меню» і оновлюються на телевізорі одразу. Орієнтовний розмір 46×62 %.</Hint>
+    </>;
+  },
+  neon_sign: (ctx) => {
+    const st = neonSignStyle(ctx.p);
+    return <>
+      <Field label="Напис (до 4 рядків)">
+        <textarea rows={2} value={String(ctx.p.text ?? "")} onChange={(e) => ctx.set({ text: e.currentTarget.value })} placeholder="Назва закладу" style={{ fontFamily: st.fontFamily }} />
+      </Field>
+      <Text ctx={ctx} k="sub" label="Підпис дрібно" placeholder="кава · десерти · сніданки" />
+      <div className="row small">
+        <Field label="Шрифт"><select value={st.fontId} onChange={(e) => ctx.set({ font: e.currentTarget.value })} style={{ fontFamily: st.fontFamily }}>
+          {MENU_FONTS.map((f) => <option key={f.id} value={f.id} style={{ fontFamily: f.family }}>{f.label}</option>)}
+        </select></Field>
+        <Select ctx={ctx} k="flicker" label="Світло" fallback="soft" options={NEON_SIGN_FLICKER.map((f) => [f.id, f.label])} />
+      </div>
+      <div className="row small">
+        <ColorField label="Колір напису" value={st.color} fallback="#ff4fc8" onChange={(v) => ctx.set({ color: v ?? "" })} />
+        <ColorField label="Колір підпису" value={st.subColor} fallback="#7df9ff" onChange={(v) => ctx.set({ subColor: v ?? "" })} />
+      </div>
+      <div className="row small">
+        <Toggle ctx={ctx} k="frame" label="Рамка-трубка" on="є" off="немає" fallback={false} />
+        <Toggle ctx={ctx} k="card" label="Стіна" on="є" off="без стіни, поверх фону" />
+      </div>
+      {ctx.p.card !== false && <Field label="Стіна"><select value={st.surface ?? "brick"} onChange={(e) => ctx.set({ surface: e.currentTarget.value })}>
+        {NEON_SURFACES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+      </select></Field>}
+      <Hint>Напис сам підлаштовується під розмір віджета. Щоб показувати вивіску на весь екран, створіть для неї окрему сцену і розтягніть віджет на 100×100 %.</Hint>
     </>;
   },
   text: (ctx) => {
@@ -233,6 +273,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
         <Select ctx={ctx} k="align" label="Вирівнювання" fallback="left" options={[["left", "ліворуч"], ["center", "по центру"]]} />
         {Card(ctx)}
       </div>
+      {st.look !== "standard" && <div className="row small">{Surface(ctx)}{Frame(ctx)}</div>}
       {card && st.look === "standard" && <div className="row small">
         <ColorField label="Колір картки" value={typeof ctx.p.bg === "string" && HEX.test(ctx.p.bg) ? ctx.p.bg : null} fallback={ctx.theme === "light" ? "#ffffff" : "#0a101c"} onChange={(v) => ctx.set({ bg: v ?? "" })} />
         <Field label={`Прозорість картки ${Math.round(bgAlpha(ctx.p, ctx.theme))}%`}><input type="range" min={0} max={100} step={5} value={bgAlpha(ctx.p, ctx.theme)} onChange={(e) => ctx.set({ bgAlpha: +e.currentTarget.value })} /></Field>

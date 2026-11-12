@@ -4,7 +4,8 @@
  *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
  *   AI-меню: /preview/?type=menu&photos=0&cols=3&out=strike   (фото беруться з /media, тут їх нема — картки без фото)
- *   оформлення меню: &look=neon|chalk   (і для type=text, і для type=menu)
+ *   оформлення меню: &look=neon|chalk&surface=brick|concrete|wood|black|green|blackboard|slate&nfr=single|double   (type=text і type=menu)
+ *   неонова вивіска: /preview/?type=neon_sign&text=Кавʼярня&sub=кава%20·%20десерти&surface=wood&flicker=broken&frame=1
  *   графік відключень: /preview/?type=outage_schedule&group=3.2   (дані з /api/public/outages/kyiv-region)
  *   спектр: /preview/?type=spectrum&mode=bars|mirror|circle|orbit&theme=ember|tide|dusk|moss|ivory   (без радіо — синтетична хвиля)
  */
@@ -37,7 +38,7 @@ const state = { deviceId: "d", updatedAt: new Date().toISOString(), metrics: sce
 
 const theme = q.get("theme") ?? "dark";
 const menuProps = { title: q.get("title") ?? "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95\nТірамісу — 110", theme,
-  look: q.get("look") ?? "", font: q.get("font") ?? "", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
+  look: q.get("look") ?? "", surface: q.get("surface") ?? "", frame: q.get("nfr") ?? "", font: q.get("font") ?? "", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
   align: q.get("align") ?? "left", card: q.get("card") !== "0", size: q.get("size") ?? "" };
 // мок опублікованого меню: те саме, що віддає publicScreen()
 const mockMenu = {
@@ -69,6 +70,8 @@ render(<div class={`screen theme-${theme}`} style={{ background: "radial-gradien
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "34%", height: "26%" }}><Widget type="spectrum" state={undefined} props={{ mode: q.get("mode") ?? "bars", theme: q.get("theme") ?? "ember", sensitivity: Number(q.get("sens") ?? 1.2), card: q.get("card") !== "0", showName: q.get("name") !== "0" }} radioUrl="https://online.radiorelax.ua/RadioRelax" /></div>
     : q.get("type") === "outage_schedule"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "40%", height: "28%" }}><Widget type="outage_schedule" state={undefined} props={{ region: "kyiv-region", group: q.get("group") ?? "3.2", card: q.get("card") !== "0" }} /></div>
+    : q.get("type") === "neon_sign"
+    ? <div class="slot" style={{ left: "0", top: "0", width: "100%", height: "100%" }}><Widget type="neon_sign" state={undefined} props={{ text: (q.get("text") ?? "Назва закладу").replace(/\|/g, "\n"), sub: q.get("sub") ?? "", font: q.get("font") ?? "", color: q.get("color") ?? "", subColor: q.get("sc") ?? "", surface: q.get("surface") ?? "", flicker: q.get("flicker") ?? "", frame: q.get("frame") === "1", card: q.get("card") !== "0" }} /></div>
     : q.get("type") === "energy_today"
     ? <div class="slot" style={{ left: "3%", top: "5%", width: "20%", height: "26%" }}><Widget type="energy_today" state={state} props={{}} /></div>
     : <div class="slot" style={{ left: "3%", top: "5%", width: `${w}%`, height: `${h}%` }}><Widget type="flow" state={state} props={{ skin, card: q.get("card") !== "0", genLabel: q.get("gen") ?? "" }} device={{ batteryKwh: 15, minSoc: 20, pvKwp: 10 }} /></div>}

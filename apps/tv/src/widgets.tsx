@@ -27,6 +27,7 @@ import { ScheduleWidget } from "./schedule.tsx";
 import { VizWidget } from "./viz.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
+import { NeonSign } from "./neon.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
 import type { Feeds, PublicMenu } from "./types.ts";
 
@@ -36,7 +37,7 @@ interface Props { type: string; state: DeviceState | undefined; props: Record<st
   /** адреса станції, що грає на екрані — для підпису у віджеті спектра */
   radioUrl?: string | null }
 
-const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum", "outage_schedule"]);
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum", "outage_schedule", "neon_sign"]);
 export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus, radioUrl }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
@@ -128,6 +129,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       return <MpptWidget cls={cls} state={m} props={props} stale={stale} night={isNight(m)} />;
     case "outage_schedule":
       return <ScheduleWidget cls={cls} props={props} />;
+    case "neon_sign":
+      return <NeonSign cls={cls} props={props} />;
     case "camera":
       return <CameraWidget cls={cls} token={token ?? ""} props={props} />;
     case "spectrum":
@@ -173,8 +176,10 @@ function MenuText({ cls, props }: { cls: string; props: Record<string, unknown> 
   const root: Record<string, string> = { fontFamily: st.fontFamily, fontSize: `${st.cssSize}vw` };
   if (st.color) root.color = st.color;
   if (st.background && !plain) root.background = st.background;
+  if (st.accent) root["--na"] = st.accent;
+  if (st.color) root["--nb"] = st.color;
   const accent = st.accent ? { color: st.accent } : undefined;
-  return <div class={`${cls} menu menu-${align} look-${st.look} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
+  return <div class={`${cls} menu menu-${align} look-${st.look}${st.surface ? ` surf-${st.surface}` : ""}${st.frame !== "none" ? ` nfr-${st.frame}` : ""} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
     {title && <div class="menu-title" style={accent}>{title}</div>}
     {lines.map((raw, i) => {
       const line = raw.trim();
