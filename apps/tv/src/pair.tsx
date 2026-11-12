@@ -50,7 +50,7 @@ export function Pair() {
       <div class="pair-app-title">📺 Застосунок для Android TV і приставок</div>
       <div>Відеофон і радіо грають разом — у браузері багато телевізорів уміють лише щось одне.
         Екран сам вмикається разом із телевізором і не гасне.</div>
-      <div class="pair-app-link">Завантажити: <b>{location.host}/android</b></div>
+      <div class="pair-app-link">Завантажити: <a href="/android">{location.host}/android</a></div>
       <div class="pair-app-note">На приставці: застосунок Downloader → ця адреса → Встановити (дозвольте встановлення з невідомих джерел).</div>
     </div>}
   </div>;

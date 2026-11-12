@@ -21,7 +21,7 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
     <header className="land-top">
       <Link href={pathOf(lang)} className="brand"><Logo />{PRODUCT_NAME}</Link>
       <nav>
-        <a href="#signage">{t.nav.signage}</a><a href="#how">{t.nav.how}</a><a href="#features">{t.nav.features}</a><a href="#energy">{t.nav.energy}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a>
+        <a href="#signage">{t.nav.signage}</a><a href="#how">{t.nav.how}</a><a href="#features">{t.nav.features}</a><a href="#energy">{t.nav.energy}</a><a href="#tv-app">{t.nav.tvApp}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a>
         {/* повне перезавантаження: інша мова — окремий пререндерений документ зі своїм <head> */}
         <a href={pathOf(other)} hrefLang={other} className="lang-switch" onClick={cta(`lang_${other}`)}>{t.nav.otherLang}</a>
         {me ? <Link href="/app" className="btn btn-primary">{t.nav.cabinet}</Link> : <><Link href="/login" className="btn btn-ghost">{t.nav.login}</Link><Link href="/signup" className="btn btn-primary" onClick={cta("header")}>{t.nav.tryFree}</Link></>}
@@ -36,6 +36,8 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
         <div className="hero-cta">
           <Link href="/signup" className="btn btn-primary big" onClick={cta("hero")}>{t.hero.cta}</Link>
           <a href="#how" className="btn big">{t.hero.how}</a>
+          {/* на телевізорі набрати домен простіше, ніж /tv: звідси — одним натисканням пульта */}
+          <a href="/tv" className="btn big" onClick={cta("hero_open_tv")}>{t.hero.openTv}</a>
         </div>
         <p className="hero-notes">{t.hero.notes.map((n) => <span key={n}>{n}</span>)}</p>
       </div>
@@ -84,6 +86,20 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
         </div>
         {t.features.cards.map(([i, h, p]) => <div key={h} className={`feat${t.features.wide.includes(h) ? " feat-wide" : ""}`}><div className="ico">{i}</div><h3>{h}</h3><p>{p}</p></div>)}
       </div>
+    </section>
+
+    <section id="tv-app" className="land-sec">
+      <span className="kicker">{t.tvApp.kicker}</span>
+      <h2>{t.tvApp.title}</h2>
+      <p className="lead">{t.tvApp.lead}</p>
+      <div className="steps">
+        {t.tvApp.cards.map(([i, h, p], k) => <div key={h} className="step"><span className={`n ${ICON_TONE[k]}`}>{i}</span><h3>{h}</h3><p>{p}</p></div>)}
+      </div>
+      <div className="hero-cta tvapp-cta">
+        <a href="/android" className="btn btn-primary big" onClick={cta("tvapp_download")}>{t.tvApp.download}</a>
+        <a href="/tv" className="btn big" onClick={cta("tvapp_open_tv")}>{t.tvApp.openTv}</a>
+      </div>
+      <p className="muted small tvapp-note">{t.tvApp.downloadNote}<br />{t.tvApp.tvNote}</p>
     </section>
 
     <section id="energy" className="land-sec outage-sec">

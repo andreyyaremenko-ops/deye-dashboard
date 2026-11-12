@@ -206,7 +206,7 @@ body:has(> #root > .land) { background: var(--l-bg, #06080f); }
 .hero h1 { font-size: 3.2rem; line-height: 1.08; margin: 0 0 1.2rem; font-weight: 800; letter-spacing: -.02em; }
 .hero h1 em { font-style: normal; background: linear-gradient(90deg, #ffd166 0%, #f5b83d 35%, #9be9f5 70%, #22d3ee 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .hero p { font-size: 1.08rem; color: #b9c3d2; line-height: 1.6; }
-.hero-cta { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1.6rem 0 1rem; } .btn.big { padding: .95rem 1.6rem; font-size: 1.05rem; }
+.hero-cta { display: flex; gap: .8rem; flex-wrap: wrap; margin: 1.6rem 0 1rem; } .tvapp-cta { justify-content: center; margin-top: 2rem; } .tvapp-note { text-align: center; line-height: 1.7; } .btn.big { padding: .95rem 1.6rem; font-size: 1.05rem; }
 .hero-notes { display: flex; gap: 1.4rem; flex-wrap: wrap; color: var(--muted); font-size: .85rem; } .hero-notes span::before { content: "✓"; color: var(--l-cyan); margin-right: .4rem; }
 .hero-shot { position: relative; padding: 1.4rem 1rem 2.4rem; }
 .orbit { position: absolute; inset: -12% -18%; border-radius: 50%; border: 1px solid rgba(124,92,255,.22); background: radial-gradient(closest-side, rgba(124,92,255,.10), transparent 72%); pointer-events: none; }

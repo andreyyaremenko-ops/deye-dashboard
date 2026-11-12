@@ -13,12 +13,14 @@ type Card = [icon: string, title: string, text: string];
 export interface LandingContent {
   htmlLang: string; ogLocale: string;
   meta: { title: string; description: string; ogTitle: string; ogDescription: string; appDescription: string };
-  nav: { signage: string; how: string; features: string; energy: string; pricing: string; faq: string; login: string; cabinet: string; tryFree: string; otherLang: string };
-  hero: { eyebrow: string; h1a: string; h1em: string; lead: string; cta: string; how: string; notes: string[]; tvBar: string; live: string; chips: [string, string][]; watchLive: string; videoAlt: string; imgAlt: string };
+  nav: { signage: string; how: string; features: string; energy: string; pricing: string; faq: string; login: string; cabinet: string; tryFree: string; otherLang: string; tvApp: string };
+  hero: { eyebrow: string; h1a: string; h1em: string; lead: string; cta: string; how: string; openTv: string; notes: string[]; tvBar: string; live: string; chips: [string, string][]; watchLive: string; videoAlt: string; imgAlt: string };
   signage: { kicker: string; title: string; lead: string; cards: Card[] };
   how: { kicker: string; title: string; steps: [string, string][] };
   features: { kicker: string; title: string; bigTag: string; bigTitle: string; bigText: string; stats: [string, string][]; cards: Card[]; wide: string[] };
   energy: { kicker: string; title: string; lead: string; cards: Card[] };
+  /** застосунок для Android TV (apps/android) і вхід на екран з телевізора без набору адреси */
+  tvApp: { kicker: string; title: string; lead: string; cards: Card[]; download: string; downloadNote: string; openTv: string; tvNote: string };
   pricing: { kicker: string; title: string; lead: string; forever: string; perMonth: string; proNote: string; badge: string; onRequest: string;
     free: string[]; pro: string[]; max: string[]; start: string; goPro: string; discuss: string; payNote: string };
   faq: { kicker: string; title: string; items: [string, string][] };
@@ -35,12 +37,12 @@ const uk: LandingContent = {
     ogDescription: "Зберіть екран у редакторі, відкрийте посилання на телевізорі. Меню, сцени за розкладом, відеофони, QR, радіо, а для закладів на сонці — батарея і час автономії наживо.",
     appDescription: "Сервіс електронних меню та digital signage для кафе, магазинів і офісів на Smart TV: меню з цінами, сцени за розкладом, відеофони, QR-коди, онлайн-радіо, віджети сонячної станції Deye.",
   },
-  nav: { signage: "Меню-борд", how: "Як це працює", features: "Можливості", energy: "Сонячна станція", pricing: "Тарифи", faq: "Питання", login: "Увійти", cabinet: "Кабінет", tryFree: "Спробувати безкоштовно", otherLang: "EN" },
+  nav: { signage: "Меню-борд", how: "Як це працює", features: "Можливості", energy: "Сонячна станція", pricing: "Тарифи", faq: "Питання", login: "Увійти", cabinet: "Кабінет", tryFree: "Спробувати безкоштовно", otherLang: "EN", tvApp: "Android TV" },
   hero: {
     eyebrow: "Електронне меню · digital signage · будь-який Smart TV",
     h1a: "Електронне меню на", h1em: "телевізорі вашого закладу",
     lead: "Перетворіть телевізор у залі на меню-борд: меню з цінами, сцени за розкладом, відео на фоні, QR-коди, Wi-Fi для гостей і радіо. Збираєте екран у вебредакторі, телевізор відкриває одне посилання і далі оновлюється сам. А якщо заклад працює від інвертора Deye, на тому ж екрані буде сонячна станція наживо і час автономії під час відключень.",
-    cta: "Створити екран безкоштовно", how: "Як це працює",
+    cta: "Створити екран безкоштовно", how: "Як це працює", openTv: "📺 Відкрити екран на телевізорі",
     notes: ["Безкоштовний тариф назавжди", "Без додаткового обладнання", "Відкритий код"],
     tvBar: "SunHunter TV · Зал", live: "LIVE · оновлення 10 с",
     chips: [["🧾", "Меню оновлено щойно"], ["⏱", "Сніданки до 12:00"], ["🔋", "64 % · вистачить ≈ 6 год"]],
@@ -81,6 +83,18 @@ const uk: LandingContent = {
       ["📈", "Графіки й еко-статистика", "Крива генерації за добу на екрані, історія за рік у кабінеті, кВт·год від сонця і збережений CO₂ за місяць."],
     ],
     wide: ["Повітряна тривога", "Погода і сонце на завтра"],
+  },
+  tvApp: {
+    kicker: "Застосунок для Android TV", title: "Відео й радіо разом — на будь-якій приставці",
+    lead: "У браузері багатьох телевізорів відеофон і радіо не грають одночасно: щось одне ставиться на паузу. Застосунок SunHunter TV для Android TV і ТВ-приставок грає радіо окремо від сторінки, тож відеофон і музика працюють разом.",
+    cards: [
+      ["🎵", "Відеофон і радіо одночасно", "Радіо грає окремим плеєром і не забирає у відео декодер. Звук вмикається сам, без натискання кнопки пульта."],
+      ["⚡", "Вмикається разом із телевізором", "Після ввімкнення ТБ екран відкривається сам, не гасне й не засинає. Обірвався інтернет — сторінка перепідключиться сама."],
+      ["🔒", "Той самий екран, що в браузері", "Вводите шестизначний код один раз — далі застосунок памʼятає екран. Усі зміни з кабінету приходять так само миттєво."],
+    ],
+    download: "Завантажити застосунок", downloadNote: "APK для Android TV і приставок, 0.6 МБ · tv.sun-hunter.men/android",
+    openTv: "Відкрити екран у браузері ТБ",
+    tvNote: "На телевізорі не треба набирати довгу адресу: відкрийте tv.sun-hunter.men і натисніть «Відкрити екран на телевізорі».",
   },
   energy: {
     kicker: "Для закладів на сонці", title: "Коли вимкнули світло",
@@ -127,12 +141,12 @@ const en: LandingContent = {
     ogDescription: "Build a screen in the web editor, open one link on the TV. Menus, scheduled scenes, video backgrounds, QR codes, radio, and for solar-powered venues, live battery and blackout runtime.",
     appDescription: "Digital menu board and signage service for cafés, shops and offices on any Smart TV: menus with prices, scheduled scenes, video backgrounds, QR codes, online radio, and live Deye solar inverter widgets.",
   },
-  nav: { signage: "Menu board", how: "How it works", features: "Features", energy: "Solar", pricing: "Pricing", faq: "FAQ", login: "Log in", cabinet: "Dashboard", tryFree: "Try it free", otherLang: "UA" },
+  nav: { signage: "Menu board", how: "How it works", features: "Features", energy: "Solar", pricing: "Pricing", faq: "FAQ", login: "Log in", cabinet: "Dashboard", tryFree: "Try it free", otherLang: "UA", tvApp: "Android TV" },
   hero: {
     eyebrow: "Digital menu board · signage · any Smart TV",
     h1a: "A digital menu board on", h1em: "the TV you already have",
     lead: "Turn the TV on your wall into a menu board: a menu with prices, scenes on a schedule, video backgrounds, QR codes, guest Wi-Fi and radio. Build the screen in a web editor, open one link on the TV, and it stays in sync from then on. If your venue runs on a Deye inverter, the same screen also shows your solar station live and how long you can keep working through a blackout.",
-    cta: "Create a screen for free", how: "How it works",
+    cta: "Create a screen for free", how: "How it works", openTv: "📺 Open the screen on this TV",
     notes: ["Free plan forever", "No extra hardware", "Open source"],
     tvBar: "SunHunter TV · Main hall", live: "LIVE · updates every 10 s",
     chips: [["🧾", "Menu updated just now"], ["⏱", "Breakfast until 12:00"], ["🔋", "64 % · about 6 h left"]],
@@ -173,6 +187,18 @@ const en: LandingContent = {
       ["📈", "Charts and eco stats", "The day's generation curve on screen, a year of history in the dashboard, monthly solar kWh and CO₂ saved."],
     ],
     wide: ["Air-raid alerts", "Weather and tomorrow's sun"],
+  },
+  tvApp: {
+    kicker: "Android TV app", title: "Video and radio together, on any TV box",
+    lead: "Many TV browsers can't play a video background and radio at the same time: one of them gets paused. The SunHunter TV app for Android TV and TV boxes plays the radio outside the page, so the video background and the music run together.",
+    cards: [
+      ["🎵", "Video background and radio at once", "The radio runs in its own player and doesn't take the video decoder. Sound starts on its own, no remote button press needed."],
+      ["⚡", "Starts with the TV", "When the TV is switched on, the screen opens by itself and never dims or sleeps. If the internet drops, the page reconnects on its own."],
+      ["🔒", "The same screen as in the browser", "Enter the six-digit code once and the app remembers the screen. Changes from the dashboard arrive just as instantly."],
+    ],
+    download: "Download the app", downloadNote: "APK for Android TV and TV boxes, 0.6 MB · tv.sun-hunter.men/android",
+    openTv: "Open the screen in the TV browser",
+    tvNote: "No need to type a long address on the TV: open tv.sun-hunter.men and press “Open the screen on this TV”.",
   },
   energy: {
     kicker: "For solar-powered venues", title: "When the power goes out",
