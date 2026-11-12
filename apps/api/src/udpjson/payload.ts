@@ -11,7 +11,7 @@
  */
 import { z } from "zod";
 import type { Metrics } from "@deye/register-maps";
-import { sha256hex } from "../lib/crypto.ts";
+import { normalizeClaimCode, sha256hex } from "../lib/crypto.ts";
 
 /** Невідомі ключі не ламають розбір: прошивка може додати поле, і це не причина втрачати пакет. */
 export const udpPayloadSchema = z.object({
@@ -49,14 +49,29 @@ const round = (v: number) => Math.round(v * 1000) / 1000;
  */
 const COUNTER = /^(pv|load|grid_buy|grid_sell|gen|bat_charge|bat_discharge)_(day|total)_kwh$/;
 
-/** id пристрою: MAC уже у нашому форматі (12 hex), будь-яке інше імʼя — через хеш. */
+const isMac = (raw: string) => /^[0-9a-f]{12}$/i.test(raw);
+/** Серійник (Deye, будь-який інший) годиться в код привʼязки, якщо він не коротший за 8 знаків. */
+const isSerial = (raw: string) => !isMac(raw) && normalizeClaimCode(raw).length >= 8;
+
+/**
+ * id пристрою: MAC уже у нашому форматі (12 hex); цифровий серійник доповнюється нулями до 12,
+ * як у стіків Deye (`stickDeviceId`), тож це той самий id; будь-яке інше імʼя — через хеш.
+ */
 export function udpDeviceId(name: string): string {
-  const mac = name.trim().toLowerCase();
-  return /^[0-9a-f]{12}$/.test(mac) ? mac : sha256hex(`udp:${name.trim()}`).slice(0, 12);
+  const raw = name.trim();
+  if (isMac(raw)) return raw.toLowerCase();
+  if (/^\d{8,12}$/.test(raw)) return raw.padStart(12, "0");
+  return sha256hex(`udp:${raw}`).slice(0, 12);
 }
 
-/** Останні 8 символів id — код привʼязки в кабінеті (у MAC немає ні O, ні I). */
-export const udpClaimCode = (deviceId: string) => deviceId.slice(-8).toUpperCase();
+/**
+ * Код привʼязки в кабінеті. Серійник — він сам, як у Deye: власник читає його з наклейки.
+ * MAC і короткі імена — останні 8 символів id (у MAC немає ні O, ні I).
+ */
+export function udpClaimCode(name: string): string {
+  const raw = name.trim();
+  return isSerial(raw) ? normalizeClaimCode(raw) : udpDeviceId(raw).slice(-8).toUpperCase();
+}
 
 export function toMetrics(p: UdpPayload): Metrics {
   const m: Metrics = {};

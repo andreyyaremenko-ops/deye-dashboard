@@ -16,6 +16,7 @@ import { handleMetrics, type IngestDeps } from "../mqtt/ingest.ts";
 import { toMetrics, udpClaimCode, udpDeviceId, udpPayloadSchema } from "./payload.ts";
 
 const MAX_PACKET = 1024;
+const UDP_HW = "esp32-udp";
 /** Стільки пристроїв тримаємо в памʼяті; більше — явно не наш трафік. */
 const MAX_TRACKED = 200;
 /** Після такої тиші пристрій може прийти з іншої адреси (змінився домашній IP). */
@@ -62,7 +63,7 @@ export function startUdpJsonServer(deps: UdpJsonDeps, port: number, host = "0.0.
       if (seen.size >= MAX_TRACKED) return;
       t = { deviceId, name: p.device, ip, packets: 0, rejected: 0, lastAt: 0, lastError: null };
       seen.set(deviceId, t);
-      deps.log.info({ ip, deviceId, name: p.device, claimCode: udpClaimCode(deviceId) }, "udp json: новий пристрій");
+      deps.log.info({ ip, deviceId, name: p.device, claimCode: udpClaimCode(p.device) }, "udp json: новий пристрій");
     }
     // привʼязка до адреси: чужий IP не може підсунути метрики за живий пристрій
     if (t.ip !== ip) {
@@ -76,7 +77,10 @@ export function startUdpJsonServer(deps: UdpJsonDeps, port: number, host = "0.0.
     }
     t.name = p.device;
     try {
-      await ensureDevice(deviceId, p.device);
+      if (!(await ensureDevice(deviceId, p.device))) {
+        t.rejected++; t.lastError = "id зайнятий пристроєм іншого типу";
+        return;
+      }
       const r = await handleMetrics(deps.ingest, deviceId, toMetrics(p));
       if (r.ok) { t.packets++; t.lastAt = now; t.lastError = null; }
       else if (r.reason !== "rate_limited") t.lastError = r.reason;
@@ -86,15 +90,24 @@ export function startUdpJsonServer(deps: UdpJsonDeps, port: number, host = "0.0.
     }
   }
 
-  async function ensureDevice(deviceId: string, name: string) {
-    const [d] = await deps.db.select({ id: devices.id }).from(devices).where(eq(devices.id, deviceId));
-    if (d) return;
+  /**
+   * false — id уже належить стіку чи платі (той самий серійник Deye): UDP туди не пишемо,
+   * інакше будь-хто, хто знає серійник, підсовував би метрики в чужий привʼязаний інвертор.
+   */
+  async function ensureDevice(deviceId: string, name: string): Promise<boolean> {
+    const [d] = await deps.db.select({ id: devices.id, hw: devices.hw }).from(devices).where(eq(devices.id, deviceId));
+    if (d) {
+      if (d.hw === UDP_HW) return true;
+      deps.log.warn({ deviceId, hw: d.hw }, "udp json: id належить пристрою іншого типу, пакет відкинуто");
+      return false;
+    }
     await deps.db.insert(devices).values({
-      id: deviceId, hw: "esp32-udp", fw: "json",
-      secretHash: "none", claimCodeHash: sha256(udpClaimCode(deviceId)),
+      id: deviceId, hw: UDP_HW, fw: "json",
+      secretHash: "none", claimCodeHash: sha256(udpClaimCode(name)),
       name: `Інвертор ${name}`.slice(0, 100),
     }).onConflictDoNothing();
-    deps.log.info({ deviceId, claimCode: udpClaimCode(deviceId) }, "udp json: пристрій зареєстровано");
+    deps.log.info({ deviceId, claimCode: udpClaimCode(name) }, "udp json: пристрій зареєстровано");
+    return true;
   }
 
   return {

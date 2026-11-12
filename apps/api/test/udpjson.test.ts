@@ -11,6 +11,8 @@ import { startUdpJsonServer } from "../src/udpjson/server.ts";
 import { toMetrics, udpClaimCode, udpDeviceId, udpPayloadSchema } from "../src/udpjson/payload.ts";
 import { clearModelCache } from "../src/mqtt/ingest.ts";
 import { deviceState, devices, telemetry } from "../src/db/schema.ts";
+import { sha256 } from "../src/lib/crypto.ts";
+import { stickDeviceId } from "../src/solarman/session.ts";
 
 /** Реальний пакет із прода (ніч: мережі немає, живе батарея). */
 const NIGHT = {
@@ -71,6 +73,15 @@ describe("розбір JSON з ESP32", () => {
     expect(udpDeviceId("Solar-Inverter-02")).toMatch(/^[0-9a-f]{12}$/);
     expect(udpDeviceId("Solar-Inverter-02")).not.toBe(udpDeviceId("Solar-Inverter-03"));
     expect(udpClaimCode(DEVICE_ID)).toBe("D8C7E750");
+  });
+
+  it("серійник Deye: id як у стіка, код привʼязки — сам серійник", () => {
+    expect(udpDeviceId("2931839646")).toBe(stickDeviceId(2931839646));
+    expect(udpDeviceId(" 2931839646 ")).toBe("002931839646");
+    expect(udpClaimCode("2931839646")).toBe("2931839646");
+    expect(udpClaimCode("ab-1234-5678")).toBe("AB12345678");    // літерний серійник: без дефісів, великими
+    expect(udpDeviceId("ab-1234-5678")).toMatch(/^[0-9a-f]{12}$/);
+    expect(udpClaimCode("inv1")).toBe(udpDeviceId("inv1").slice(-8).toUpperCase());  // закоротке для коду
   });
 });
 
@@ -138,5 +149,22 @@ describe("приймач UDP", () => {
       expect(s?.rejected).toBe(1);
       expect(s?.lastError).toContain("127.0.0.2");
     } finally { other.close(); }
+  });
+
+  it("пристрій із серійником Deye привʼязується за серійником", async () => {
+    await send({ device: "2306178425", load_w: 410, bc: 77 });
+    await settle();
+    const [d] = await t.db.select().from(devices).where(eq(devices.id, "002306178425"));
+    expect(d?.hw).toBe("esp32-udp");
+    expect(d?.claimCodeHash).toBe(sha256("2306178425"));
+  });
+
+  it("серійник, який уже належить стіку, по UDP не приймається", async () => {
+    await t.db.insert(devices).values({ id: "002931839646", hw: "stick", fw: "tcp-client", secretHash: "none", claimCodeHash: sha256("2931839646") });
+    await send({ device: "2931839646", load_w: 7777 });
+    await settle();
+    const rows = await t.db.select().from(telemetry).where(eq(telemetry.deviceId, "002931839646"));
+    expect(rows.length).toBe(0);
+    expect(srv.list().find((x) => x.deviceId === "002931839646")?.lastError).toContain("іншого типу");
   });
 });
