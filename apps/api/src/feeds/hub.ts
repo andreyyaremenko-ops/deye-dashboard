@@ -16,6 +16,8 @@ import { createHash } from "node:crypto";
 export function webhookSecret(apiKey: string): string { return createHash("sha256").update("ukrainealarm-webhook:" + apiKey).digest("hex").slice(0, 32); }
 export function webhookUrlFor(publicUrl: string, apiKey: string): string { return `${publicUrl.replace(/\/$/, "")}/api/webhooks/ukrainealarm/${webhookSecret(apiKey)}`; }
 import { WEATHER_REFRESH_MS, WEATHER_TTL_S, parseWeather, weatherKey, weatherUrl } from "./weather.ts";
+import { OUTAGES_REFRESH_MS, OUTAGES_TTL_S, outagesUrl, parseOutages } from "./outages.ts";
+import type { OutageFeed, OutageRegion } from "@deye/shared/outages";
 
 type Db = PgDatabase<any, any, any>;
 interface Log { info: (o: unknown, m?: string) => void; warn: (o: unknown, m?: string) => void }
@@ -30,6 +32,8 @@ export interface FeedHubOpts {
   /** публічна адреса вебхука для ukrainealarm (без неї — опитування статусу) */
   webhookUrl?: string | null;
   weatherBase?: string;
+  /** база outage-data-ua (тести підставляють свою) */
+  outagesBase?: string;
 }
 
 export interface ScreenFeeds { weather: WeatherFeed | null; alert: AlertFeed | null }
@@ -37,6 +41,7 @@ export interface ScreenFeeds { weather: WeatherFeed | null; alert: AlertFeed | n
 export class FeedHub {
   private timers: ReturnType<typeof setInterval>[] = [];
   private inflight = new Map<string, Promise<WeatherFeed | null>>();
+  private outagesInflight = new Map<OutageRegion, Promise<OutageFeed | null>>();
   private lastAlerts: AlertsSnapshot | null = null;
   private lastActionIndex: unknown = null;
   /** regionId -> області; стартово вбудований дамп дерева, свіжа мапа з /regions (кеш у Redis на 7 днів) */
@@ -197,6 +202,30 @@ export class FeedHub {
     const json = await this.getJson(`${base}/api/v3/alerts`, h);
     learnRegions(json, this.index, OBLASTS);   // райони, вкладені в область, запам'ятовуємо для подій вебхука
     return parseUkrainealarm(json, OBLASTS, new Date(), this.index);
+  }
+
+  /**
+   * Графік відключень регіону. Опитування на вимогу: екрани питають раз на 5 хв, а до джерела ходимо
+   * не частіше, ніж раз на 5 хв на регіон, хоч скільки екранів. Джерело недоступне — віддаємо останній кеш.
+   */
+  async getOutages(region: OutageRegion): Promise<OutageFeed | null> {
+    const cached = await this.o.store.getFeed<OutageFeed>(`outages:${region}`);
+    if (cached && Date.now() - Date.parse(cached.fetchedAt) < OUTAGES_REFRESH_MS) return cached;
+    let p = this.outagesInflight.get(region);
+    if (!p) {
+      p = (async () => {
+        try {
+          const feed = parseOutages(await this.getJson(outagesUrl(region, this.o.outagesBase)), region);
+          await this.o.store.setFeed(`outages:${region}`, feed, OUTAGES_TTL_S);
+          return feed;
+        } catch (e) {
+          this.o.log.warn({ err: String(e), region }, "outages fetch failed");
+          return null;
+        } finally { this.outagesInflight.delete(region); }
+      })();
+      this.outagesInflight.set(region, p);
+    }
+    return (await p) ?? cached;
   }
 
   /** Погода для точки: з кешу або одразу з джерела (одна паралельна спроба на точку). */

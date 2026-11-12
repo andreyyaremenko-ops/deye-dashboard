@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
 import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
+import { OUTAGE_GROUPS, OUTAGE_REGIONS } from "@deye/shared/outages";
 import type { Device, MenuSummary, NvrCamera } from "../api.ts";
 import { Field } from "../components/ui.tsx";
 import { kindOf, type Widget } from "./widgetTypes.ts";
@@ -82,6 +83,14 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     {Card(ctx)}
   </>,
   alert: (ctx) => <Toggle ctx={ctx} k="overlay" label="Під час тривоги" on="банер на весь екран" off="лише картка" />,
+  outage_schedule: (ctx) => <>
+    <div className="row small">
+      <Select ctx={ctx} k="region" label="Регіон" fallback="kyiv-region" options={OUTAGE_REGIONS.map((r) => [r.id, r.label] as [string, string])} />
+      <Select ctx={ctx} k="group" label="Черга" fallback="1.1" options={OUTAGE_GROUPS.map((g) => [g, `черга ${g}`] as [string, string])} />
+    </div>
+    <div className="row small"><Text ctx={ctx} k="title" label="Заголовок" placeholder="Графік відключень" />{Card(ctx)}</div>
+    <Hint>Графіки погодинних відключень ДТЕК: що зараз, коли наступне відключення чи увімкнення, смуги на сьогодні й завтра. Свою чергу можна знайти за адресою на сайті ДТЕК свого регіону. Джерело — відкрите дзеркало сайтів ДТЕК (outage-data-ua), оновлюється кожні 5 хвилин. Інші області додамо згодом.</Hint>
+  </>,
   outage: (ctx) => <>
     <Toggle ctx={ctx} k="hideWhenOk" label="Коли світло є" on="ховати банер" off="показувати «Світло є»" />
     <Text ctx={ctx} k="note" label="Примітка під час відключення (необовʼязково)" placeholder="Кава і Wi-Fi працюють як зазвичай" />

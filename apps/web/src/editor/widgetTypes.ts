@@ -29,6 +29,7 @@ export const WIDGET_KINDS: WidgetKind[] = [
   { t: "runtime", label: "Автономія", needsDevice: true, w: 22, h: 18 },
   { t: "chart", label: "Графік доби", needsDevice: true, w: 44, h: 30 },
   { t: "outage", label: "Банер відключення", needsDevice: true, w: 44, h: 14, props: { hideWhenOk: true, note: "" } },
+  { t: "outage_schedule", label: "Графік відключень", needsDevice: false, w: 40, h: 28, props: { region: "kyiv-region", group: "1.1", card: true } },
   { t: "eco", label: "Еко-статистика", needsDevice: true, w: 22, h: 26 },
   { t: "weather", label: "Погода", needsDevice: false, optionalDevice: true, w: 24, h: 26, needsLocation: true },
   { t: "alert", label: "Тривога", needsDevice: false, w: 22, h: 16, needsLocation: true, props: { overlay: true } },

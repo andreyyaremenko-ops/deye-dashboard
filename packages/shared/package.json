@@ -16,6 +16,7 @@
     "./menu": "./src/menu.ts",
     "./menu-ai": "./src/menu-ai.ts",
     "./menu-data": "./src/menu-data.ts",
+    "./outages": "./src/outages.ts",
     "./radio": "./src/radio.ts",
     "./scenes": "./src/scenes.ts",
     "./spectrum": "./src/spectrum.ts",

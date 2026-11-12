@@ -23,6 +23,7 @@ import { ChartWidget } from "./chart.tsx";
 import { FlowWidget, GEN_LABEL } from "./flow.tsx";
 import { MpptWidget } from "./mppt.tsx";
 import { CameraWidget } from "./camera.tsx";
+import { ScheduleWidget } from "./schedule.tsx";
 import { VizWidget } from "./viz.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
@@ -35,7 +36,7 @@ interface Props { type: string; state: DeviceState | undefined; props: Record<st
   /** адреса станції, що грає на екрані — для підпису у віджеті спектра */
   radioUrl?: string | null }
 
-const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum"]);
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum", "outage_schedule"]);
 export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus, radioUrl }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
@@ -125,6 +126,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
     }
     case "mppt":
       return <MpptWidget cls={cls} state={m} props={props} stale={stale} night={isNight(m)} />;
+    case "outage_schedule":
+      return <ScheduleWidget cls={cls} props={props} />;
     case "camera":
       return <CameraWidget cls={cls} token={token ?? ""} props={props} />;
     case "spectrum":

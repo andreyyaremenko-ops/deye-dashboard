@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { OBLASTS, RADIO_STATIONS, guessOblast } from "@deye/shared";
+import { isOutageRegion } from "@deye/shared/outages";
 import { requireUser } from "../auth/plugin.ts";
 import * as scr from "../screens/service.ts";
 import { deviceStats } from "../stats/counters.ts";
@@ -24,6 +25,15 @@ export async function publicRoutes(app: FastifyInstance, deps: Deps) {
     const states = await store.getMany(s.deviceIds);
     const feeds = deps.feeds ? await deps.feeds.forScreen(s.location) : { weather: null, alert: null };
     return { ...s, states: states.map((x) => ({ ...x, stale: isStale(x) })), feeds };
+  });
+  // графік відключень регіону для віджета outage_schedule: однаковий для всіх екранів, тож без токена
+  app.get("/api/public/outages/:region", async (req, reply) => {
+    const { region } = z.object({ region: z.string() }).parse(req.params);
+    if (!isOutageRegion(region)) throw badRequest("unknown region");
+    const feed = deps.feeds ? await deps.feeds.getOutages(region) : null;
+    if (!feed) return reply.code(503).send({ error: "outages unavailable" });
+    reply.header("cache-control", "public, max-age=60");
+    return feed;
   });
   // місячна статистика для еко-віджета (лічильники "всього", працює і на free)
   app.get("/api/public/screens/:token/stats", async (req) => {
