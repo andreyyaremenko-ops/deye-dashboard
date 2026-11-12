@@ -54,7 +54,7 @@ const uk: LandingContent = {
     kicker: "Меню-борд і реклама", title: "Меню, яке оновлюється за хвилину",
     lead: "Змінили ціну чи додали страву в кабінеті — за секунду це вже на телевізорі. Без флешок, дизайнера і друку.",
     cards: [
-      ["🧾", "Меню з цінами", "Розділи, позиції й ціни зі звичайного тексту. Девʼять шрифтів з кирилицею, розмір і кольори під стиль закладу."],
+      ["🧾", "Меню з цінами", "Розділи, позиції й ціни зі звичайного тексту. Оформлення неоновою вивіскою чи крейдою на дошці, 11 шрифтів з кирилицею, розмір і кольори під стиль закладу."],
       ["⏱", "Сцени за розкладом", "До десяти виглядів на один телевізор: сніданки до полудня, бізнес-ланч, вечірнє меню. Змінюються за таймером або за годинами."],
       ["🎞", "Фони, QR і радіо", "Понад 30 відеофонів або власні відео й фото. QR на Instagram чи гостьовий Wi-Fi, 14 радіостанцій одним кліком."],
     ],
@@ -158,7 +158,7 @@ const en: LandingContent = {
     kicker: "Menu board and signage", title: "A menu you can update in a minute",
     lead: "Change a price or add a dish in the dashboard and it is on the TV a second later. No USB sticks, no designer, no printing.",
     cards: [
-      ["🧾", "Menu with prices", "Sections, items and prices from plain text. Nine fonts, adjustable size and colours to match your venue."],
+      ["🧾", "Menu with prices", "Sections, items and prices from plain text. Neon-sign or chalkboard looks, 11 fonts, adjustable size and colours to match your venue."],
       ["⏱", "Scenes on a schedule", "Up to ten layouts per TV: breakfast until noon, lunch deals, an evening menu. They rotate by timer or by time of day."],
       ["🎞", "Backgrounds, QR and radio", "30+ looping video backgrounds or your own videos and photos. QR codes for Instagram or guest Wi-Fi, online radio in one click."],
     ],

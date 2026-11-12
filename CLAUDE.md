@@ -98,6 +98,10 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   адаптери (див. hukpo/ua-outages). Сервер нормалізує в 48 півгодин на чергу (`feeds/outages.ts`, `FeedHub.getOutages`,
   кеш Redis `feed:outages:<region>`, до джерела не частіше 5 хв, при збої — останній кеш), віддає `/api/public/outages/<region>`;
   стан і «наступна зміна» рахує ТБ (`shared/outages.ts`, `apps/tv/src/schedule.tsx`), час — за Києвом.
+- Оформлення меню (2026-11-12): `props.look` у віджетів `menu` і `text` — `standard`, `neon` (світні трубки на цеглі,
+  заголовок Pacifico з мерехтінням) або `chalk` (дошка в рамці, крейда Amatic SC, фото як приклеєні картки). Каталог і
+  шрифт/кольори за замовчуванням — `MENU_LOOKS` у `shared/menu.ts`; фон, сяйво (text-shadow від currentColor) і зернистість
+  (маска з SVG-шуму) — класи `look-*` у `apps/tv/src/style.css`. Фон картки (`bg`/`bgAlpha`) діє лише для `standard`.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
   розкладом за годинами і пріоритетом при відключенні; схема й нормалізація в
   `packages/shared/src/index.ts`, вибір сцени в `shared/scenes.ts`, ротація на ТБ у

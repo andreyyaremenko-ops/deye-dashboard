@@ -24,5 +24,13 @@ describe("menuStyle", () => {
     expect(menuStyle({ bgAlpha: 85 }, "light").background).toBe("rgba(255, 255, 255, 0.85)");
     expect(menuStyle({ bgAlpha: "" }).background).toBeNull();
   });
+  it("неон і дошка: свій шрифт і кольори за замовчуванням, власні мають пріоритет, фон картки не діє", () => {
+    const n = menuStyle({ look: "neon", bg: "#301010", bgAlpha: 65 });
+    expect(n.look).toBe("neon"); expect(n.fontId).toBe("comfortaa");
+    expect(n.color).toBe("#7df9ff"); expect(n.accent).toBe("#ff4fc8"); expect(n.background).toBeNull();
+    const c = menuStyle({ look: "chalk", font: "caveat", accent: "#a0e0ff" });
+    expect(c.fontId).toBe("caveat"); expect(c.color).toBe("#f2efe6"); expect(c.accent).toBe("#a0e0ff");
+    expect(menuStyle({ look: "disco" }).look).toBe("standard");
+  });
   it("hexToRgba", () => { expect(hexToRgba("#ffb347", 1)).toBe("rgba(255, 179, 71, 1)"); });
 });

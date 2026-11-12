@@ -63,7 +63,7 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .menu-title { font-size: 1.3em; font-weight: 700; letter-spacing: .04em; margin-bottom: .35em; }
 .menu-font-system .menu-title, .menu-font-oswald .menu-title, .menu-font-montserrat .menu-title { text-transform: uppercase; }
 .menu-sub { font-size: .88em; opacity: .75; margin: .5em 0 .2em; text-transform: uppercase; letter-spacing: .06em; }
-.menu-font-lobster .menu-sub, .menu-font-caveat .menu-sub, .menu-font-marck .menu-sub { text-transform: none; letter-spacing: 0; }
+.menu-font-lobster .menu-sub, .menu-font-caveat .menu-sub, .menu-font-marck .menu-sub, .menu-font-pacifico .menu-sub, .menu-font-amatic .menu-sub { text-transform: none; letter-spacing: 0; }
 .menu-line, .menu-row { font-size: 1em; line-height: 1.5; }
 .menu-row { display: flex; align-items: baseline; gap: .35em; }
 .menu-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -317,7 +317,7 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .dm-head { display: flex; align-items: baseline; gap: .6em; flex: 0 0 auto; }
 .dm-head .menu-title { margin: 0; }
 .dm-sec { font-size: .95em; opacity: .8; letter-spacing: .06em; text-transform: uppercase; }
-.menu-font-lobster .dm-sec, .menu-font-caveat .dm-sec, .menu-font-marck .dm-sec { text-transform: none; letter-spacing: 0; }
+.menu-font-lobster .dm-sec, .menu-font-caveat .dm-sec, .menu-font-marck .dm-sec, .menu-font-pacifico .dm-sec, .menu-font-amatic .dm-sec { text-transform: none; letter-spacing: 0; }
 .dm-grid { flex: 1 1 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9em), 1fr)); gap: .5em .7em;
   align-content: start; overflow: hidden; animation: dm-in .7s ease both; }
 @keyframes dm-in { from { opacity: 0; transform: translateY(.4em); } to { opacity: 1; transform: none; } }
@@ -350,6 +350,67 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
   .dm-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5em), 1fr)); }
   .dm-list .dm-grid { grid-template-columns: 1fr; }
 }
+
+/* --- Меню: оформлення «неонова вивіска» і «крейдою на дошці» (props.look; шрифт і кольори — menuStyle) ---
+   Сяйво — text-shadow від currentColor, тому колір трубок задають ті самі «Колір тексту» і «Заголовок і ціни».
+   Анімація лише на заголовку (opacity), решта статична: на слабких ТБ (.lite) мерехтіння вимикається. */
+.w.look-neon { background-color: #100b10; border: .12em solid #2a1a24; color: #7df9ff;
+  background-image:
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(255,80,200,.07), transparent 70%),
+    radial-gradient(ellipse 120% 100% at 50% 50%, transparent 55%, rgba(0,0,0,.65)),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='48'%3E%3Crect width='96' height='48' fill='%23221419'/%3E%3Crect x='50' y='2' width='44' height='20' fill='%23281820'/%3E%3Crect x='2' y='26' width='20' height='20' fill='%231e1116'/%3E%3Cpath d='M0 1H96M0 25H96M1 0V24M49 0V24M25 24V48M73 24V48' stroke='%230b0609' stroke-width='3'/%3E%3C/svg%3E");
+  background-size: auto, auto, 5em 2.5em;
+  box-shadow: 0 .6vw 2vw rgba(0,0,0,.6), inset 0 0 3em rgba(0,0,0,.7); }
+.w.look-neon.menu-plain { background: transparent; border: 0; box-shadow: none; }
+.look-neon .menu-title, .look-neon .dm-sec, .look-neon .menu-sub { font-family: "Pacifico", "Lobster", cursive; text-transform: none; letter-spacing: .02em; font-weight: 400; }
+.look-neon .menu-title { font-size: 1.6em; line-height: 1.25;
+  text-shadow: 0 0 .04em #fff, 0 0 .12em currentColor, 0 0 .3em currentColor, 0 0 .7em currentColor, 0 0 1.2em currentColor;
+  animation: neon-flicker 11s linear infinite; }
+.look-neon .dm-sec, .look-neon .menu-sub { opacity: 1; text-shadow: 0 0 .05em #fff, 0 0 .2em currentColor, 0 0 .5em currentColor; }
+.look-neon .dm-n, .look-neon .menu-name, .look-neon .menu-line, .look-neon .menu-price {
+  text-shadow: 0 0 .03em #fff, 0 0 .14em currentColor, 0 0 .4em currentColor; }
+.look-neon .dm-d, .look-neon .dm-v { opacity: .75; text-shadow: 0 0 .25em currentColor; }
+.look-neon .menu-dots { border-bottom: .08em dotted currentColor; opacity: .45; }
+.look-neon .dm-ph { background: rgba(0,0,0,.4); border: .1em solid currentColor; border-radius: .7em;
+  box-shadow: 0 0 .25em currentColor, 0 0 .7em currentColor, inset 0 0 .4em currentColor; }
+.look-neon .dm-i:nth-child(2n) .dm-ph { color: #ff4fc8; } .look-neon .dm-i:nth-child(3n) .dm-ph { color: #ffd84f; }
+.look-neon .dm-grid { animation: neon-on .9s steps(1, end) both; }
+.look-neon .dm-dots i { box-shadow: 0 0 .3em currentColor; }
+.look-neon .dm-i.gone { opacity: .3; } .look-neon .dm-i.gone .dm-n, .look-neon .dm-i.gone .menu-price { text-shadow: none; }
+@keyframes neon-flicker { 0%, 61%, 63.5%, 66%, 100% { opacity: 1; } 62%, 65% { opacity: .35; } 64% { opacity: .8; } }
+@keyframes neon-on { 0% { opacity: 0; } 20% { opacity: .7; } 30% { opacity: .1; } 45% { opacity: 1; } 55% { opacity: .4; } 65% { opacity: 1; } }
+.lite .look-neon .menu-title, .lite .look-neon .dm-grid { animation: none; }
+
+/* дошка: сланець із крейдяним пилом і деревʼяна рамка; зернистість тексту — маска з шуму */
+.w.look-chalk { color: #f2efe6; border: .45em solid #7a5230; border-radius: .35em;
+  background-color: #263530;
+  background-image:
+    radial-gradient(ellipse 45% 30% at 22% 18%, rgba(255,255,255,.09), transparent 70%),
+    radial-gradient(ellipse 40% 25% at 78% 70%, rgba(255,255,255,.06), transparent 70%),
+    radial-gradient(ellipse 30% 15% at 60% 30%, rgba(255,255,255,.04), transparent 70%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, #2c3c36, #1f2c27);
+  box-shadow: inset 0 0 0 .08em #4a2f19, inset 0 0 2.5em rgba(0,0,0,.55), 0 0 0 .07em #3b2412, 0 .5vw 1.6vw rgba(0,0,0,.55); }
+.theme-light .w.look-chalk { color: #f2efe6; }
+.w.look-chalk.menu-plain { background: transparent; border: 0; box-shadow: none; }
+.look-chalk > .menu-title, .look-chalk .dm-head, .look-chalk .dm-t, .look-chalk .dm-p, .look-chalk .menu-row, .look-chalk .menu-line, .look-chalk .menu-sub {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.3' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2.6 0 0 0 -.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.look-chalk { text-shadow: 0 0 .06em rgba(255,255,255,.35); }
+.look-chalk .menu-title { font-size: 1.5em; font-weight: 700; letter-spacing: .03em; text-transform: none; position: relative; padding-bottom: .12em; transform: rotate(-1.2deg); }
+.look-chalk .menu-title::after { content: ""; position: absolute; left: 0; right: 15%; bottom: 0; height: .1em; border-radius: 50%; background: currentColor; opacity: .75; transform: rotate(.8deg); }
+.look-chalk .dm-sec, .look-chalk .menu-sub { text-transform: none; letter-spacing: .02em; font-weight: 700; opacity: .9; }
+.look-chalk .dm-n { font-weight: 700; }
+.look-chalk .menu-dots { border-bottom: .08em dashed currentColor; opacity: .4; }
+.look-chalk .dm-i { position: relative; }
+.look-chalk:not(.dm-list) .dm-i:nth-child(odd) { transform: rotate(-.8deg); } .look-chalk:not(.dm-list) .dm-i:nth-child(even) { transform: rotate(.9deg); }
+.look-chalk .dm-ph { background: #f4efe4; border: .22em solid #f4efe4; border-bottom-width: .5em; border-radius: .12em; box-shadow: 0 .15em .4em rgba(0,0,0,.45); }
+.look-chalk .dm-ph img { border-radius: 0; }
+.look-chalk .dm-ph-none { position: absolute; inset: 0; background: #2a3a34; }
+.look-chalk:not(.dm-list) .dm-i::before { content: ""; position: absolute; z-index: 1; top: -.2em; left: 50%; width: 2.2em; height: .55em; margin-left: -1.1em;
+  background: rgba(240,230,200,.55); transform: rotate(-3deg); box-shadow: 0 .03em .1em rgba(0,0,0,.25); }
+.look-chalk .dm-i.gone .dm-n, .look-chalk .dm-i.gone .menu-price { text-decoration-thickness: .08em; }
+.look-chalk .dm-note { opacity: .6; }
 
 /* сповіщення про подію (зникла/відновилась мережа, критичний заряд, генерація): поверх сцени, 20 с */
 .event-toast { position: absolute; left: 50%; top: 2vw; transform: translateX(-50%); z-index: 12; max-width: 80vw;

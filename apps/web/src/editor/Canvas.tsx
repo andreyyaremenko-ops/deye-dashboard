@@ -32,7 +32,7 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   const up = () => setDrag(null);
 
   return <div ref={ref} className={`canvas theme-${theme}`} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerDown={() => onSelect(null)}>
-    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}`}
+    {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}` : ""}`}
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
       <div className="cw-t">{labelOf(w.type)}</div>
@@ -65,7 +65,7 @@ function Mock({ w }: { w: W }) {
 function MenuPreview({ props, theme }: { props: Record<string, unknown>; theme: "dark" | "light" }) {
   const st = menuStyle(props, theme);
   const lines = String(props.text ?? "").split(/\r?\n/).filter((l) => l.trim()).slice(0, 4);
-  return <div className="cw-b cw-menu" style={{ fontFamily: st.fontFamily, color: st.color ?? undefined, fontSize: `${st.fontSize * 0.45}rem` }}>
+  return <div className="cw-b cw-menu" style={{ fontFamily: st.fontFamily, color: st.color ?? undefined, fontSize: `${st.cssSize * 0.45}rem` }}>
     {props.title ? <b style={{ color: st.accent ?? undefined }}>{String(props.title)}</b> : null}
     {lines.map((l, i) => <div key={i}>{l.replace(/^#\s*/, "")}</div>)}
   </div>;

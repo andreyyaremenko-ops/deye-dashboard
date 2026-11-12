@@ -4,6 +4,7 @@
  *   стрінги: /preview/?type=mppt&scene=day|hv&names=Дах%20південь,Дах%20захід   (hv — 30 kW HV з трьома MPPT)
  *   меню:   /preview/?type=text&font=playfair&fs=2&color=%23ffe8c2&accent=%23ffb347&bg=%23301010&alpha=60&card=1
  *   AI-меню: /preview/?type=menu&photos=0&cols=3&out=strike   (фото беруться з /media, тут їх нема — картки без фото)
+ *   оформлення меню: &look=neon|chalk   (і для type=text, і для type=menu)
  *   графік відключень: /preview/?type=outage_schedule&group=3.2   (дані з /api/public/outages/kyiv-region)
  *   спектр: /preview/?type=spectrum&mode=bars|mirror|circle|orbit&theme=ember|tide|dusk|moss|ivory   (без радіо — синтетична хвиля)
  */
@@ -36,7 +37,7 @@ const state = { deviceId: "d", updatedAt: new Date().toISOString(), metrics: sce
 
 const theme = q.get("theme") ?? "dark";
 const menuProps = { title: q.get("title") ?? "Меню", text: "Еспресо — 45\nКапучино — 65\nЛате — 70\n# Десерти\nЧізкейк — 95\nТірамісу — 110", theme,
-  font: q.get("font") ?? "system", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
+  look: q.get("look") ?? "", font: q.get("font") ?? "", fontSize: q.get("fs") ?? "", color: q.get("color") ?? "", accent: q.get("accent") ?? "", bg: q.get("bg") ?? "", bgAlpha: q.get("alpha") ?? "",
   align: q.get("align") ?? "left", card: q.get("card") !== "0", size: q.get("size") ?? "" };
 // мок опублікованого меню: те саме, що віддає publicScreen()
 const mockMenu = {

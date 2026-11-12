@@ -170,11 +170,11 @@ function MenuText({ cls, props }: { cls: string; props: Record<string, unknown> 
   const plain = props.card === false;
   const st = menuStyle(props, props.theme === "light" ? "light" : "dark");
   const lines = String(props.text ?? "").split(/\r?\n/);
-  const root: Record<string, string> = { fontFamily: st.fontFamily, fontSize: `${st.fontSize}vw` };
+  const root: Record<string, string> = { fontFamily: st.fontFamily, fontSize: `${st.cssSize}vw` };
   if (st.color) root.color = st.color;
   if (st.background && !plain) root.background = st.background;
   const accent = st.accent ? { color: st.accent } : undefined;
-  return <div class={`${cls} menu menu-${align} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
+  return <div class={`${cls} menu menu-${align} look-${st.look} menu-font-${st.fontId}${plain ? " menu-plain" : ""}`} style={root}>
     {title && <div class="menu-title" style={accent}>{title}</div>}
     {lines.map((raw, i) => {
       const line = raw.trim();

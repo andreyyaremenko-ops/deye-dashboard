@@ -1,6 +1,6 @@
 /** Панель властивостей вибраного віджета: спільні поля (пристрій, позиція) + специфічні для типу. */
 import type { ReactNode } from "react";
-import { MENU_FONTS, MENU_FONT_SIZE, menuStyle } from "@deye/shared/menu";
+import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, menuStyle } from "@deye/shared/menu";
 import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
 import { OUTAGE_GROUPS, OUTAGE_REGIONS } from "@deye/shared/outages";
 import type { Device, MenuSummary, NvrCamera } from "../api.ts";
@@ -49,6 +49,15 @@ function Text({ ctx, k, label, placeholder }: { ctx: Ctx; k: string; label: stri
   return <Field label={label}><input value={String(ctx.p[k] ?? "")} onChange={(e) => ctx.set({ [k]: e.currentTarget.value })} placeholder={placeholder} /></Field>;
 }
 const Card = (ctx: Ctx) => <Toggle ctx={ctx} k="card" label="Картка" on="з фоном" off="без фону" />;
+/** Оформлення меню: зміна підставляє шрифт оформлення і скидає власні кольори — далі їх можна міняти як завжди. */
+const Look = (ctx: Ctx) => <Field label="Оформлення">
+  <select value={menuStyle(ctx.p, ctx.theme).look} onChange={(e) => {
+    const l = MENU_LOOKS.find((x) => x.id === e.currentTarget.value) ?? MENU_LOOKS[0];
+    ctx.set({ look: l.id, font: l.font, color: "", accent: "" });
+  }}>
+    {MENU_LOOKS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+  </select>
+</Field>;
 const Hint = ({ children }: { children: ReactNode }) => <p className="muted small">{children}</p>;
 
 /** Вибір кольору з можливістю повернутись до кольору теми (null). */
@@ -174,6 +183,8 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
       {chosen && chosen.status !== "published" && <Hint>Це меню ще не підтверджене — на телевізорі воно зʼявиться після публікації в розділі «Меню».</Hint>}
       {!ctx.menus.length && <Hint>Меню ще немає. Створіть його в розділі «Меню»: сфотографуйте паперове — позиції розпізнаються автоматично.</Hint>}
       <Text ctx={ctx} k="title" label="Заголовок" placeholder={chosen?.name ?? "Меню"} />
+      {Look(ctx)}
+      {st.look !== "standard" && <Hint>{st.look === "neon" ? "Назви світяться «Кольором тексту», заголовок і ціни — другим кольором; рамки фото чергують блакитний, рожевий і жовтий." : "Текст зернистий, як крейда; фото — як приклеєні до дошки картки."}</Hint>}
       <div className="row small">
         <Toggle ctx={ctx} k="photos" label="Фото страв" on="показувати" off="лише текст" />
         <Select ctx={ctx} k="outOfStock" label="Коли позиція закінчилась" fallback="hide" options={[["hide", "ховати"], ["strike", "перекреслювати"]]} />
@@ -204,6 +215,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     const card = ctx.p.card !== false;
     return <>
       <Text ctx={ctx} k="title" label="Заголовок" placeholder="Меню" />
+      {Look(ctx)}
       <Field label="Рядки (назва — ціна; рядок з # це підзаголовок)">
         <textarea rows={10} value={String(ctx.p.text ?? "")} onChange={(e) => ctx.set({ text: e.currentTarget.value })} style={{ fontFamily: st.fontFamily }} />
       </Field>
@@ -221,7 +233,7 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
         <Select ctx={ctx} k="align" label="Вирівнювання" fallback="left" options={[["left", "ліворуч"], ["center", "по центру"]]} />
         {Card(ctx)}
       </div>
-      {card && <div className="row small">
+      {card && st.look === "standard" && <div className="row small">
         <ColorField label="Колір картки" value={typeof ctx.p.bg === "string" && HEX.test(ctx.p.bg) ? ctx.p.bg : null} fallback={ctx.theme === "light" ? "#ffffff" : "#0a101c"} onChange={(v) => ctx.set({ bg: v ?? "" })} />
         <Field label={`Прозорість картки ${Math.round(bgAlpha(ctx.p, ctx.theme))}%`}><input type="range" min={0} max={100} step={5} value={bgAlpha(ctx.p, ctx.theme)} onChange={(e) => ctx.set({ bgAlpha: +e.currentTarget.value })} /></Field>
       </div>}
