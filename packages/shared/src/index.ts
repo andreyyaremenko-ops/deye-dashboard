@@ -83,7 +83,7 @@ const screenConfigBase = z.object({
   radioVolume: z.number().min(0).max(1).default(0.6),
   /** Samsung Tizen грає лише один медіаелемент: auto — визначати, poster — кадр замість відео при радіо, always — завжди відео */
   tvVideo: z.enum(["auto", "always", "poster"]).default("auto"),
-  /** звукові сповіщення про мережу, заряд і генерацію (shared/alerts.ts); пороги — у налаштуваннях пристрою */
+  /** звукові (голосові) сповіщення: мережа, заряд, генерація, повітряна тривога (shared/alerts.ts); пороги — у налаштуваннях пристрою */
   alertSounds: z.boolean().default(false),
   alertVolume: z.number().min(0).max(1).default(0.8),
   theme: z.enum(["dark", "light"]).default("dark"),

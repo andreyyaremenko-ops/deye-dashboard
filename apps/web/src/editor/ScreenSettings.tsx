@@ -46,9 +46,9 @@ export function ScreenSettings({ org, cfg, radio, reloadRadio, canEdit, update }
     <Field label="Звукові сповіщення">
       <select value={cfg.alertSounds ? "on" : "off"} disabled={!canEdit} onChange={(e) => update({ alertSounds: e.currentTarget.value === "on" })}>
         <option value="off">вимкнено</option>
-        <option value="on">сигнал і напис на екрані</option>
+        <option value="on">голос і напис на екрані</option>
       </select>
-      <span className="muted small">Зникла й відновилась мережа; критичний заряд і потужна генерація — за порогами в налаштуваннях пристрою. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунку для Android TV — одразу.</span>
+      <span className="muted small">Голосом: повітряна тривога в області екрана (з рівнем — ракетна небезпека чи дронова загроза) і відбій, зникло й зʼявилось світло, потужна генерація — за порогом у налаштуваннях пристрою (% від номіналу панелей); критичний заряд — сигналом. Тривоги потребують локації екрана. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунку для Android TV — одразу.</span>
     </Field>
     {cfg.alertSounds && <Field label={`Гучність сповіщень ${Math.round((cfg.alertVolume ?? 0.8) * 100)}%`}><input type="range" min={0.1} max={1} step={0.05} value={cfg.alertVolume ?? 0.8} onChange={(e) => update({ alertVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
   </>;

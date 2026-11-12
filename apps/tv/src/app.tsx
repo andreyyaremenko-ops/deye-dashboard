@@ -9,11 +9,12 @@ import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
 import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 import { nativeTv } from "./native.ts";
-import { detectAlerts, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
+import { detectAirAlert, detectAlerts, newAirMemory, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
 import { chimesReady, playChime, unlockChimes } from "./chime.ts";
+import { playVoice, preloadVoices, voiceClips } from "./voice.ts";
 
 /** Кілька подій за один замір (напр. мережа зникла на двох інверторах) — звучить найважливіша. */
-const ALERT_PRIORITY: AlertKind[] = ["grid_down", "soc_low", "grid_up", "pv_high"];
+const ALERT_PRIORITY: AlertKind[] = ["air_alert", "air_clear", "grid_down", "soc_low", "grid_up", "pv_high"];
 const TOAST_MS = 20_000;
 import { VIDEO_CONFLICT } from "./camera.tsx";
 
@@ -128,8 +129,24 @@ export function App() {
   const alertSounds = !!live?.screen?.config.alertSounds;
   const alertVolume = live?.screen?.config.alertVolume ?? 0.8;
   const alertMem = useRef(new Map<string, { mem: AlertMemory; at: string }>());
+  const airMem = useRef(newAirMemory());
   const [toast, setToast] = useState<{ kind: AlertKind; text: string } | null>(null);
   const [soundLocked, setSoundLocked] = useState(false);
+  // Найважливіша подія: напис і голос (Kateryna); якщо голос не завантажився — синтезований сигнал
+  const announce = (events: AlertEvent[]) => {
+    if (!events.length || !alertSounds) return;
+    const top = ALERT_PRIORITY.find((k) => events.some((e) => e.kind === k))!;
+    const same = events.filter((e) => e.kind === top);
+    setToast({ kind: top, text: [...new Set(same.map((e) => e.text))].join(" · ") });
+    void playVoice(voiceClips(same[0]!), alertVolume).then((ms) => {
+      ms = ms || playChime(top, alertVolume);
+      // на час сповіщення радіо притишується, щоб його було чути
+      if (!ms || !srcUrl) return;
+      const duck = radioVolume * 0.25;
+      if (native) native.radioVolume(duck); else if (audio.current) audio.current.volume = duck;
+      window.setTimeout(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, ms);
+    });
+  };
   useEffect(() => {
     if (!live?.screen) return;
     const devs = new Map((live.screen.devices ?? []).map((d) => [d.id, d]));
@@ -144,18 +161,10 @@ export function App() {
       const d = devs.get(id);
       events.push(...detectAlerts(rec.mem, st.metrics, { alertSoc: d?.alertSoc ?? null, alertPvPct: d?.alertPvPct ?? null, pvKwp: d?.pvKwp ?? null }, Date.now()));
     }
-    if (!events.length || !alertSounds) return;
-    const top = ALERT_PRIORITY.find((k) => events.some((e) => e.kind === k))!;
-    const texts = [...new Set(events.filter((e) => e.kind === top).map((e) => e.text))];
-    setToast({ kind: top, text: texts.join(" · ") });
-    const ms = playChime(top, alertVolume);
-    // на час сигналу радіо притишується, щоб його було чути
-    if (ms && srcUrl) {
-      const duck = radioVolume * 0.25;
-      if (native) native.radioVolume(duck); else if (audio.current) audio.current.volume = duck;
-      window.setTimeout(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, ms);
-    }
+    announce(events);
   }, [live]);
+  // повітряна тривога в області екрана (стрічка є, коли в екрана задано локацію)
+  useEffect(() => { announce(detectAirAlert(airMem.current, live?.feeds.alert ?? null)); }, [live?.feeds.alert]);
   useEffect(() => {
     if (!toast) return;
     const t = window.setTimeout(() => setToast(null), TOAST_MS);
@@ -165,6 +174,7 @@ export function App() {
   useEffect(() => {
     if (!alertSounds) { setSoundLocked(false); return; }
     unlockChimes();
+    preloadVoices();
     const check = () => setSoundLocked(!chimesReady());
     const t = window.setTimeout(check, 1000);
     const kick = () => { unlockChimes(); window.setTimeout(check, 300); };

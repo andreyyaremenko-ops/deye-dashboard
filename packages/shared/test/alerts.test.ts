@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { detectAlerts, newAlertMemory, PV_REPEAT_MS, type AlertThresholds } from "../src/alerts.ts";
+import { detectAirAlert, detectAlerts, newAirMemory, newAlertMemory, PV_REPEAT_MS, type AlertThresholds } from "../src/alerts.ts";
+import type { AlertFeed } from "../src/feeds.ts";
 
 const OFF: AlertThresholds = { alertSoc: null, alertPvPct: null, pvKwp: null };
 const kinds = (ev: { kind: string }[]) => ev.map((e) => e.kind);
@@ -60,5 +61,46 @@ describe("звукові сповіщення", () => {
     const t = { ...OFF, alertPvPct: 50, pvKwp: null };
     expect(detectAlerts(mem, { pv_w: 1000 }, t, 0)).toEqual([]);
     expect(detectAlerts(mem, { pv_w: 99999 }, t, 1)).toEqual([]);
+  });
+});
+
+describe("повітряна тривога", () => {
+  const feed = (active: boolean, level: AlertFeed["level"] = null): AlertFeed =>
+    ({ updatedAt: "2026-11-13T10:00:00Z", oblast: "Київська область", active, since: null, level });
+
+  it("перший стан лише запамʼятовується: екран, відкритий посеред тривоги, не оголошує її", () => {
+    const mem = newAirMemory();
+    expect(detectAirAlert(mem, feed(true, "red"))).toEqual([]);
+    expect(detectAirAlert(mem, feed(true, "red"))).toEqual([]);
+    expect(kinds(detectAirAlert(mem, feed(false)))).toEqual(["air_clear"]);
+  });
+
+  it("оголошення з рівнем, відбій, без повторів", () => {
+    const mem = newAirMemory();
+    detectAirAlert(mem, feed(false));
+    const ev = detectAirAlert(mem, feed(true, "yellow"));
+    expect(ev).toEqual([{ kind: "air_alert", level: "yellow", text: "Повітряна тривога · Київська область · дронова загроза" }]);
+    expect(detectAirAlert(mem, feed(true, "yellow"))).toEqual([]);
+    const off = detectAirAlert(mem, feed(false));
+    expect(off).toEqual([{ kind: "air_clear", text: "Відбій тривоги · Київська область" }]);
+    expect(detectAirAlert(mem, feed(false))).toEqual([]);
+  });
+
+  it("дрони -> ракети посеред тривоги оголошується, зниження рівня — ні", () => {
+    const mem = newAirMemory();
+    detectAirAlert(mem, feed(false));
+    detectAirAlert(mem, feed(true, "yellow"));
+    const up = detectAirAlert(mem, feed(true, "red"));
+    expect(up.map((e) => [e.kind, e.level])).toEqual([["air_alert", "red"]]);
+    expect(detectAirAlert(mem, feed(true, "yellow"))).toEqual([]);
+    expect(detectAirAlert(mem, feed(true, null))).toEqual([]);   // рівень зник з джерела — не нова загроза
+  });
+
+  it("тривога без рівня (дзеркало) і зникнення стрічки — не відбій", () => {
+    const mem = newAirMemory();
+    detectAirAlert(mem, feed(false));
+    expect(detectAirAlert(mem, feed(true)).map((e) => [e.kind, e.level])).toEqual([["air_alert", null]]);
+    expect(detectAirAlert(mem, null)).toEqual([]);
+    expect(detectAirAlert(mem, feed(true))).toEqual([]);
   });
 });

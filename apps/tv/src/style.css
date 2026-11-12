@@ -474,6 +474,8 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 .event-toast.ev-grid_up { background: #2e7d32; }
 .event-toast.ev-soc_low { background: #e65100; }
 .event-toast.ev-pv_high { background: #f9a825; color: #1b1b1b; }
+.event-toast.ev-air_alert { background: #b71c1c; }
+.event-toast.ev-air_clear { background: #2e7d32; }
 @keyframes event-in { from { opacity: 0; transform: translate(-50%, -1vw); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* /tv: підказка про застосунок для Android TV під формою коду */
