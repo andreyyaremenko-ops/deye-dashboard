@@ -16,6 +16,7 @@ import { normalizeClaimCode, sha256hex } from "../lib/crypto.ts";
 /** Невідомі ключі не ламають розбір: прошивка може додати поле, і це не причина втрачати пакет. */
 export const udpPayloadSchema = z.object({
   device: z.string().min(4).max(64),
+  token: z.string().max(200).optional(),    // токен партнера: знімає привʼязку до IP (server.ts)
   ac_pow: z.number().finite().optional(),   // ВА на виході інвертора
   load_w: z.number().finite().optional(),   // фактичне споживання, Вт
   grid_w: z.number().finite().optional(),

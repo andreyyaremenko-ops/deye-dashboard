@@ -7,7 +7,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import dgram from "node:dgram";
 import { eq } from "drizzle-orm";
 import { makeTestApp, type TestApp } from "./helpers.ts";
-import { startUdpJsonServer } from "../src/udpjson/server.ts";
+import { parseUdpTokens, startUdpJsonServer } from "../src/udpjson/server.ts";
 import { toMetrics, udpClaimCode, udpDeviceId, udpPayloadSchema } from "../src/udpjson/payload.ts";
 import { clearModelCache } from "../src/mqtt/ingest.ts";
 import { deviceState, devices, telemetry } from "../src/db/schema.ts";
@@ -166,5 +166,69 @@ describe("приймач UDP", () => {
     const rows = await t.db.select().from(telemetry).where(eq(telemetry.deviceId, "002931839646"));
     expect(rows.length).toBe(0);
     expect(srv.list().find((x) => x.deviceId === "002931839646")?.lastError).toContain("іншого типу");
+  });
+});
+
+describe("токен партнера", () => {
+  const TOKEN = "partner-token-0123456789abcdef";
+  const DEV = "02aabbccdd01";          // так шле solar.cordteh.com: 12 hex, «локально призначена адреса»
+  let t: TestApp; let srv: ReturnType<typeof startUdpJsonServer>; let port: number;
+  const socks: dgram.Socket[] = [];
+  const from = async (addr: string) => {
+    const s = dgram.createSocket("udp4"); socks.push(s);
+    await new Promise<void>((r) => s.bind(0, addr, () => r()));
+    return (obj: unknown) => new Promise<void>((r, j) => s.send(Buffer.from(JSON.stringify(obj)), port, "127.0.0.1", (e) => (e ? j(e) : r())));
+  };
+  const settle = () => new Promise((r) => setTimeout(r, 250));
+  const values = async (metric: string) =>
+    (await t.db.select().from(telemetry).where(eq(telemetry.deviceId, DEV))).filter((r) => r.metric === metric).map((r) => r.value);
+
+  beforeAll(async () => {
+    t = await makeTestApp(); clearModelCache();
+    const ingest = { db: t.db, store: t.store, publish: async () => {}, log: { info() {}, warn() {} }, minIntervalMs: 0 };
+    srv = startUdpJsonServer({ db: t.db, ingest, log: ingest.log, tokens: parseUdpTokens(` solar=${TOKEN} ,short=abc,=nameless`) }, 0, "127.0.0.1");
+    await new Promise<void>((r) => srv.sock.once("listening", () => r()));
+    port = srv.sock.address().port;
+  });
+  afterAll(async () => { for (const s of socks) s.close(); await srv.close(); await t.close(); });
+
+  it("розбір UDPJSON_TOKENS: короткі й безіменні токени ігноруються", () => {
+    const m = parseUdpTokens(`solar=${TOKEN},short=abc,=nameless,broken`);
+    expect([...m.values()]).toEqual(["solar"]);
+  });
+
+  it("з токеном пристрій позначається як партнерський і не привʼязаний до IP", async () => {
+    const a = await from("127.0.0.1"), b = await from("127.0.0.2");
+    await a({ device: DEV, token: TOKEN, load_w: 100 });
+    await settle();
+    await b({ device: DEV, token: TOKEN, load_w: 200 });   // партнер змінив IP — приймаємо одразу
+    await settle();
+    expect(await values("load_w")).toEqual(expect.arrayContaining([100, 200]));
+    const [d] = await t.db.select().from(devices).where(eq(devices.id, DEV));
+    expect(d?.fw).toBe("json+token");
+    const s = srv.list().find((x) => x.deviceId === DEV);
+    expect(s?.via).toBe("solar");
+    expect(s?.ip).toBe("127.0.0.2");
+  });
+
+  it("хибний токен — пакет відкинуто цілком, пристрій не створюється", async () => {
+    const a = await from("127.0.0.1");
+    await a({ device: "02aabbccdd99", token: "wrong-token-0123456789", load_w: 5 });
+    await settle();
+    const [d] = await t.db.select().from(devices).where(eq(devices.id, "02aabbccdd99"));
+    expect(d).toBeUndefined();
+  });
+
+  it("пристрій партнера без токена не приймає навіть з тієї самої адреси", async () => {
+    const b = await from("127.0.0.2");
+    await b({ device: DEV, load_w: 9999 });
+    await settle();
+    expect(await values("load_w")).not.toContain(9999);
+    expect(srv.list().find((x) => x.deviceId === DEV)?.lastError).toContain("токен");
+  });
+
+  it("токен не потрапляє в метрики", async () => {
+    const [st] = await t.db.select().from(deviceState).where(eq(deviceState.deviceId, DEV));
+    expect(JSON.stringify(st?.state)).not.toContain(TOKEN);
   });
 });

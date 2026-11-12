@@ -7,7 +7,7 @@ import { dispatch, type IngestDeps } from "./mqtt/ingest.ts";
 import { RedisStateStore } from "./state/store.ts";
 import { startLoggerServer } from "./solarman/server.ts";
 import { startAnenjiServer } from "./anenji/server.ts";
-import { startUdpJsonServer } from "./udpjson/server.ts";
+import { parseUdpTokens, startUdpJsonServer } from "./udpjson/server.ts";
 import { createMonoClient } from "./billing/mono.ts";
 import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
@@ -72,7 +72,7 @@ const stickServer = startLoggerServer({ db, ingest, log: app.log }, config.LOGGE
 anenji = startAnenjiServer({ db, ingest, log: app.log }, config.ANENJI_PORT);
 
 // ESP32 біля інвертора, що сам рахує метрики і шле їх у JSON: той самий номер порту, але UDP
-udpJson = startUdpJsonServer({ db, ingest, log: app.log }, config.UDPJSON_PORT);
+udpJson = startUdpJsonServer({ db, ingest, log: app.log, tokens: parseUdpTokens(config.UDPJSON_TOKENS) }, config.UDPJSON_PORT);
 
 app.addHook("onClose", async () => {
   feeds.stop(); stickServer.server.close(); anenji?.server.close(); client.end(true);

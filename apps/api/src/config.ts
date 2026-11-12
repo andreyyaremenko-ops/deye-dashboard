@@ -11,6 +11,7 @@ const schema = z.object({
   LOGGER_PORT: z.coerce.number().default(10000),
   ANENJI_PORT: z.coerce.number().default(8899),   // логери Anenji/SRNE: прозорий Modbus RTU (TCP)
   UDPJSON_PORT: z.coerce.number().default(8899),  // ESP32 з готовими метриками в JSON (UDP)
+  UDPJSON_TOKENS: z.string().default(""),          // партнери, що ретранслюють метрики по UDP: "імʼя=токен,імʼя2=токен2"
   MONO_TOKEN: z.string().optional(),                       // токен monobank acquiring (тестовий з api.monobank.ua або бойовий)
   MONO_API: z.string().default("https://api.monobank.ua"),
   ALERTS_API_KEY: z.string().optional(),                   // api.ukrainealarm.com: офіційне джерело тривог
