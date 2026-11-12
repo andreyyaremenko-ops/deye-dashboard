@@ -40,10 +40,18 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
   }, [org.id, deviceId, period, allowed]);
 
   const [kwh, setKwh] = useState(""); const [minSoc, setMinSoc] = useState("20"); const [kwp, setKwp] = useState("");
-  useEffect(() => { if (device) { setKwh(device.batteryKwh?.toString() ?? ""); setMinSoc(String(device.minSoc ?? 20)); setKwp(device.pvKwp?.toString() ?? ""); } }, [device?.id, device?.batteryKwh, device?.minSoc, device?.pvKwp]);
+  const [alertSoc, setAlertSoc] = useState(""); const [alertPv, setAlertPv] = useState("");
+  useEffect(() => {
+    if (!device) return;
+    setKwh(device.batteryKwh?.toString() ?? ""); setMinSoc(String(device.minSoc ?? 20)); setKwp(device.pvKwp?.toString() ?? "");
+    setAlertSoc(device.alertSoc?.toString() ?? ""); setAlertPv(device.alertPvPct?.toString() ?? "");
+  }, [device?.id, device?.batteryKwh, device?.minSoc, device?.pvKwp, device?.alertSoc, device?.alertPvPct]);
   const saveBat = useAction(async () => {
-    const d = await api.patch<Device>(`/api/orgs/${org.id}/devices/${deviceId}`, { batteryKwh: kwh ? Number(kwh) : null, minSoc: Number(minSoc), pvKwp: kwp ? Number(kwp) : null });
-    setDevice((prev) => (prev ? { ...prev, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp } : prev));
+    const d = await api.patch<Device>(`/api/orgs/${org.id}/devices/${deviceId}`, {
+      batteryKwh: kwh ? Number(kwh) : null, minSoc: Number(minSoc), pvKwp: kwp ? Number(kwp) : null,
+      alertSoc: alertSoc ? Number(alertSoc) : null, alertPvPct: alertPv ? Number(alertPv) : null,
+    });
+    setDevice((prev) => (prev ? { ...prev, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp, alertSoc: d.alertSoc, alertPvPct: d.alertPvPct } : prev));
   });
   const m = device?.state ?? {};
   const num = (k: string) => (typeof m[k] === "number" ? (m[k] as number) : null);
@@ -66,6 +74,11 @@ export function DeviceDetail({ org, deviceId }: { org: Org; deviceId: string }) 
         <Field label="Потужність панелей, kWp"><input type="number" step="0.1" min="0.1" value={kwp} onChange={(e) => setKwp(e.currentTarget.value)} placeholder="напр. 15" disabled={org.role === "staff"} /></Field>
         <Field label="Ємність батареї, kWh"><input type="number" step="0.1" min="0.1" value={kwh} onChange={(e) => setKwh(e.currentTarget.value)} placeholder="напр. 10" disabled={org.role === "staff"} /></Field>
         <Field label="Мінімальний заряд, % (уставка інвертора)"><input type="number" min="0" max="90" value={minSoc} onChange={(e) => setMinSoc(e.currentTarget.value)} disabled={org.role === "staff"} /></Field>
+      </div>
+      <p className="muted small">Звукові сповіщення на екрані (вмикаються в налаштуваннях екрана): про зникнення й повернення мережі — завжди, а ці два — коли заповнені. Порожнє поле вимикає сповіщення.</p>
+      <div className="row">
+        <Field label="Критичний заряд, %"><input type="number" min="1" max="95" value={alertSoc} onChange={(e) => setAlertSoc(e.currentTarget.value)} placeholder="напр. 25" disabled={org.role === "staff"} /></Field>
+        <Field label="Потужна генерація, % від номіналу панелей"><input type="number" min="10" max="150" value={alertPv} onChange={(e) => setAlertPv(e.currentTarget.value)} placeholder={kwp ? "напр. 90" : "спершу вкажіть kWp"} disabled={org.role === "staff" || !kwp} /></Field>
         {org.role !== "staff" && <Btn kind="primary" onClick={() => saveBat.run(undefined)} disabled={saveBat.busy}>Зберегти</Btn>}
       </div>
       <ErrorBox err={saveBat.err} />

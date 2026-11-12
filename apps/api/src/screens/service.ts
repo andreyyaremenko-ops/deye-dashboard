@@ -116,7 +116,7 @@ export async function publicScreen(db: Db, token: string) {
   const referenced = deviceIdsOf(cfg);
   // лише пристрої, що досі належать цій організації
   const own = referenced.length
-    ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc, pvKwp: devices.pvKwp }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
+    ? await db.select({ id: devices.id, batteryKwh: devices.batteryKwh, minSoc: devices.minSoc, pvKwp: devices.pvKwp, alertSoc: devices.alertSoc, alertPvPct: devices.alertPvPct }).from(devices).where(and(eq(devices.orgId, row.screen.orgId), inArray(devices.id, referenced)))
     : [];
   // фони всіх сцен: стандартні або власні цієї організації, лише готові
   type Bg = { kind: "video" | "image"; files: Record<string, string> | null; preview: string | null; attribution: string | null };
@@ -138,7 +138,7 @@ export async function publicScreen(db: Db, token: string) {
     backgrounds: bgMap,
     menus: menuMap,
     deviceIds: own.map((d) => d.id),
-    devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp })),
+    devices: own.map((d) => ({ id: d.id, batteryKwh: d.batteryKwh, minSoc: d.minSoc, pvKwp: d.pvKwp, alertSoc: d.alertSoc, alertPvPct: d.alertPvPct })),
     location: cfg.location ?? null,
     branding: row.planLimits.branding,
   };

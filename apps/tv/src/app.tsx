@@ -9,6 +9,12 @@ import { gridDown } from "@deye/shared/energy";
 import { scenesOf, useActiveScene } from "./scenes.ts";
 import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 import { nativeTv } from "./native.ts";
+import { detectAlerts, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
+import { chimesReady, playChime, unlockChimes } from "./chime.ts";
+
+/** Кілька подій за один замір (напр. мережа зникла на двох інверторах) — звучить найважливіша. */
+const ALERT_PRIORITY: AlertKind[] = ["grid_down", "soc_low", "grid_up", "pv_high"];
+const TOAST_MS = 20_000;
 import { VIDEO_CONFLICT } from "./camera.tsx";
 
 function tokenFromUrl(): string | null {
@@ -117,6 +123,55 @@ export function App() {
   }, [srcUrl, wantCors]);
   useEffect(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, [radioVolume]);
 
+  // Звукові сповіщення. Памʼять подій ведеться завжди, навіть з вимкненим звуком: інакше після
+  // ввімкнення в кабінеті екран одразу «згадав» би давно минулу подію.
+  const alertSounds = !!live?.screen?.config.alertSounds;
+  const alertVolume = live?.screen?.config.alertVolume ?? 0.8;
+  const alertMem = useRef(new Map<string, { mem: AlertMemory; at: string }>());
+  const [toast, setToast] = useState<{ kind: AlertKind; text: string } | null>(null);
+  const [soundLocked, setSoundLocked] = useState(false);
+  useEffect(() => {
+    if (!live?.screen) return;
+    const devs = new Map((live.screen.devices ?? []).map((d) => [d.id, d]));
+    const events: AlertEvent[] = [];
+    for (const id of live.screen.deviceIds) {
+      const st = live.states.get(id);
+      if (!st || st.stale) continue;
+      let rec = alertMem.current.get(id);
+      if (!rec) { rec = { mem: newAlertMemory(), at: "" }; alertMem.current.set(id, rec); }
+      if (rec.at === st.updatedAt) continue;          // hello і новий конфіг повторюють той самий замір
+      rec.at = st.updatedAt;
+      const d = devs.get(id);
+      events.push(...detectAlerts(rec.mem, st.metrics, { alertSoc: d?.alertSoc ?? null, alertPvPct: d?.alertPvPct ?? null, pvKwp: d?.pvKwp ?? null }, Date.now()));
+    }
+    if (!events.length || !alertSounds) return;
+    const top = ALERT_PRIORITY.find((k) => events.some((e) => e.kind === k))!;
+    const texts = [...new Set(events.filter((e) => e.kind === top).map((e) => e.text))];
+    setToast({ kind: top, text: texts.join(" · ") });
+    const ms = playChime(top, alertVolume);
+    // на час сигналу радіо притишується, щоб його було чути
+    if (ms && srcUrl) {
+      const duck = radioVolume * 0.25;
+      if (native) native.radioVolume(duck); else if (audio.current) audio.current.volume = duck;
+      window.setTimeout(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, ms);
+    }
+  }, [live]);
+  useEffect(() => {
+    if (!toast) return;
+    const t = window.setTimeout(() => setToast(null), TOAST_MS);
+    return () => clearTimeout(t);
+  }, [toast]);
+  // звук сповіщень дозволений лише після кнопки пульта (у застосунку Android — одразу)
+  useEffect(() => {
+    if (!alertSounds) { setSoundLocked(false); return; }
+    unlockChimes();
+    const check = () => setSoundLocked(!chimesReady());
+    const t = window.setTimeout(check, 1000);
+    const kick = () => { unlockChimes(); window.setTimeout(check, 300); };
+    for (const ev of ["pointerdown", "touchstart", "keydown"]) addEventListener(ev, kick, true);
+    return () => { clearTimeout(t); for (const ev of ["pointerdown", "touchstart", "keydown"]) removeEventListener(ev, kick, true); };
+  }, [alertSounds]);
+
   if (isPairPage || !token) return <Pair />;
   if (live?.error && /не знайдено|перевипущене/.test(live.error)) { clearToken(); }
   if (!live?.screen) return <Msg>{live?.error ?? "Завантаження…"}</Msg>;
@@ -154,7 +209,9 @@ export function App() {
       ))}
     </div>
     {overlay && <AlertOverlay feed={live.feeds.alert} />}
+    {toast && <div class={`event-toast ev-${toast.kind}`}>{toast.text}</div>}
     {srcUrl && !native && <audio ref={audio} preload="none" />}
+    {soundLocked && !needTap && <div class="unmute" onClick={() => { unlockChimes(); setSoundLocked(!chimesReady()); }}>🔔 Натисніть будь-яку кнопку, щоб увімкнути звукові сповіщення</div>}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}
     {screen.branding && <div class="brand">SunHunter TV · tv.sun-hunter.men</div>}
     {screen.branding && <Plaque />}

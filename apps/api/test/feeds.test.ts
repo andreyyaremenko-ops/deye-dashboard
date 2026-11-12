@@ -335,4 +335,15 @@ describe("FeedHub, публічний екран і статистика", () =>
     expect(r.devices[0].pvKwp).toBe(12.5);
     expect((await t.app.inject({ method: "GET", url: "/api/oblasts" })).json()).toContain("м. Київ");
   });
+
+  it("пороги звукових сповіщень зберігаються, віддаються екрану і скидаються в null", async () => {
+    const d = (await owner.patch(`/api/orgs/${orgId}/devices/${D}`, { alertSoc: 25, alertPvPct: 90 })).json();
+    expect([d.alertSoc, d.alertPvPct]).toEqual([25, 90]);
+    expect((await owner.patch(`/api/orgs/${orgId}/devices/${D}`, { alertSoc: 0 })).statusCode).toBe(400);
+    const r = (await t.app.inject({ method: "GET", url: `/api/public/screens/${token}` })).json();
+    expect([r.devices[0].alertSoc, r.devices[0].alertPvPct]).toEqual([25, 90]);
+    expect(r.config.alertSounds).toBe(false);                // за замовчуванням екран мовчить
+    const off = (await owner.patch(`/api/orgs/${orgId}/devices/${D}`, { alertSoc: null, alertPvPct: null })).json();
+    expect([off.alertSoc, off.alertPvPct]).toEqual([null, null]);
+  });
 });

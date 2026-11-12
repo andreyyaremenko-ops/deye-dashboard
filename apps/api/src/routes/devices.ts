@@ -23,7 +23,7 @@ export async function deviceRoutes(app: FastifyInstance, deps: Deps) {
   });
   app.patch("/api/orgs/:orgId/devices/:deviceId", async (req) => {
     const u = requireUser(req); const { orgId, deviceId } = orgDeviceParams.parse(req.params);
-    const patch = z.object({ name: z.string().min(1).max(100).optional(), batteryKwh: z.number().min(0.1).max(1000).nullable().optional(), minSoc: z.number().int().min(0).max(90).optional(), pvKwp: z.number().min(0.1).max(10000).nullable().optional() }).parse(req.body);
+    const patch = z.object({ name: z.string().min(1).max(100).optional(), batteryKwh: z.number().min(0.1).max(1000).nullable().optional(), minSoc: z.number().int().min(0).max(90).optional(), pvKwp: z.number().min(0.1).max(10000).nullable().optional(), alertSoc: z.number().int().min(1).max(95).nullable().optional(), alertPvPct: z.number().int().min(10).max(150).nullable().optional() }).parse(req.body);
     return dev.updateDevice(db, orgId, u.id, deviceId, patch);
   });
   app.post("/api/orgs/:orgId/devices/:deviceId/unclaim", async (req, reply) => {

@@ -103,6 +103,8 @@ export const devices = pgTable("devices", {
   batteryKwh: doublePrecision("battery_kwh"),                  // ємність батареї для прогнозу часу роботи
   minSoc: integer("min_soc").notNull().default(20),            // нижче не розряджаємо (налаштування інвертора)
   pvKwp: doublePrecision("pv_kwp"),                            // потужність сонячної станції для прогнозу за погодою
+  alertSoc: integer("alert_soc"),                              // звукове сповіщення: критичний заряд, %; null — вимкнено
+  alertPvPct: integer("alert_pv_pct"),                         // звукове сповіщення: генерація, % від pvKwp; null — вимкнено
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("devices_org_idx").on(t.orgId)]);
 

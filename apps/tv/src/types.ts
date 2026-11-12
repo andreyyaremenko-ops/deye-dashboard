@@ -21,7 +21,7 @@ export interface PublicScreen {
   /** опубліковані меню віджетів за id (старі відповіді API їх не мають) */
   menus?: Record<string, PublicMenu>;
   deviceIds: string[];
-  devices?: { id: string; batteryKwh: number | null; minSoc: number; pvKwp?: number | null }[];
+  devices?: { id: string; batteryKwh: number | null; minSoc: number; pvKwp?: number | null; alertSoc?: number | null; alertPvPct?: number | null }[];
   location?: ScreenLocation | null;
   branding: boolean;
   states: DeviceState[];

@@ -43,6 +43,14 @@ export function ScreenSettings({ org, cfg, radio, reloadRadio, canEdit, update }
       <span className="muted small">Деякі ТБ (Samsung Tizen) не грають відео і радіо одночасно. В авто-режимі екран сам переходить на нерухомий кадр із повільним наїздом.</span>
     </Field>}
     {cfg.radioUrl && <Field label={`Гучність ${Math.round(cfg.radioVolume * 100)}%`}><input type="range" min={0} max={1} step={0.05} value={cfg.radioVolume} onChange={(e) => update({ radioVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
+    <Field label="Звукові сповіщення">
+      <select value={cfg.alertSounds ? "on" : "off"} disabled={!canEdit} onChange={(e) => update({ alertSounds: e.currentTarget.value === "on" })}>
+        <option value="off">вимкнено</option>
+        <option value="on">сигнал і напис на екрані</option>
+      </select>
+      <span className="muted small">Зникла й відновилась мережа; критичний заряд і потужна генерація — за порогами в налаштуваннях пристрою. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунку для Android TV — одразу.</span>
+    </Field>
+    {cfg.alertSounds && <Field label={`Гучність сповіщень ${Math.round((cfg.alertVolume ?? 0.8) * 100)}%`}><input type="range" min={0.1} max={1} step={0.05} value={cfg.alertVolume ?? 0.8} onChange={(e) => update({ alertVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
   </>;
 }
 

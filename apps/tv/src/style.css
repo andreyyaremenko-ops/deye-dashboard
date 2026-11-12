@@ -350,3 +350,13 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
   .dm-grid { grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5em), 1fr)); }
   .dm-list .dm-grid { grid-template-columns: 1fr; }
 }
+
+/* сповіщення про подію (зникла/відновилась мережа, критичний заряд, генерація): поверх сцени, 20 с */
+.event-toast { position: absolute; left: 50%; top: 2vw; transform: translateX(-50%); z-index: 12; max-width: 80vw;
+  padding: 1vw 2.2vw; border-radius: 1.2vw; font-size: 2.2vw; font-weight: 700; color: #fff; text-align: center;
+  box-shadow: 0 .6vw 2.4vw rgba(0,0,0,.45); animation: event-in .4s ease-out; }
+.event-toast.ev-grid_down { background: #c62828; }
+.event-toast.ev-grid_up { background: #2e7d32; }
+.event-toast.ev-soc_low { background: #e65100; }
+.event-toast.ev-pv_high { background: #f9a825; color: #1b1b1b; }
+@keyframes event-in { from { opacity: 0; transform: translate(-50%, -1vw); } to { opacity: 1; transform: translate(-50%, 0); } }
