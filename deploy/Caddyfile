@@ -1,7 +1,17 @@
 # Старі ТБ без кореневого сертифіката Let's Encrypt: сторінка екрана доступна і по HTTP.
 http://{$DOMAIN} {
-    @tv path /s/* /tv /api/public/* /ws /media/*
+    @tv path /s/* /tv /api/public/* /ws /media/* /android
     handle @tv {
+        # застосунок для Android TV (apps/android): файл лежить у томі media, адреса стала — без кешу,
+        # щоб нова версія діставалась тим самим посиланням (Downloader на приставці)
+        handle /android {
+            root * /media/app
+            rewrite * /sunhunter-tv.apk
+            header Content-Type application/vnd.android.package-archive
+            header Content-Disposition "attachment; filename=sunhunter-tv.apk"
+            header Cache-Control "no-cache"
+            file_server
+        }
         handle /api/public/* {
             reverse_proxy api:3000
         }
@@ -40,6 +50,16 @@ https://{$DOMAIN} {
     }
     handle /ws* {
         reverse_proxy api:3000
+    }
+    # застосунок для Android TV (apps/android): файл лежить у томі media, адреса стала — без кешу,
+    # щоб нова версія діставалась тим самим посиланням (Downloader на приставці)
+    handle /android {
+        root * /media/app
+        rewrite * /sunhunter-tv.apk
+        header Content-Type application/vnd.android.package-archive
+        header Content-Disposition "attachment; filename=sunhunter-tv.apk"
+        header Cache-Control "no-cache"
+        file_server
     }
     # відео фонів: range-запити і кеш з коробки
     handle_path /media/* {

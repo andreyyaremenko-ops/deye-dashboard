@@ -3,6 +3,7 @@
  * Після успіху токен зберігається в localStorage: наступного разу /tv одразу відкриє екран.
  */
 import { useEffect, useRef, useState } from "preact/hooks";
+import { nativeTv } from "./native.ts";
 
 export const TOKEN_KEY = "deye.tv.token";
 export function savedToken(): string | null { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } }
@@ -44,5 +45,13 @@ export function Pair() {
       {err && <div class="pair-err">{err}</div>}
       <div class="pair-foot">{location.host}/tv</div>
     </div>
+    {/* у самому застосунку реклама застосунку зайва */}
+    {!nativeTv() && <div class="pair-app">
+      <div class="pair-app-title">📺 Застосунок для Android TV і приставок</div>
+      <div>Відеофон і радіо грають разом — у браузері багато телевізорів уміють лише щось одне.
+        Екран сам вмикається разом із телевізором і не гасне.</div>
+      <div class="pair-app-link">Завантажити: <b>{location.host}/android</b></div>
+      <div class="pair-app-note">На приставці: застосунок Downloader → ця адреса → Встановити (дозвольте встановлення з невідомих джерел).</div>
+    </div>}
   </div>;
 }

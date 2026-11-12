@@ -26,6 +26,23 @@ export JAVA_HOME=$(mise where java@temurin-21) ANDROID_HOME=~/Android/Sdk
 ./gradlew assembleDebug -PtvUrl=https://інший-домен/tv
 ```
 
+## Публікація
+
+Готовий APK лежить на проді в томі media: `/media/app/sunhunter-tv.apk`. Caddy віддає його за сталою
+адресою `tv.sun-hunter.men/android` (і по HTTP, і по HTTPS, без кешу), на неї ж посилається сторінка `/tv`.
+Нова версія: підняти `versionCode` / `versionName` в `app/build.gradle.kts`, зібрати `assembleRelease` з ключем і
+покласти файл на те саме місце:
+
+```
+set -a; . ~/.config/sunhunter/android-signing.env; set +a
+./gradlew assembleRelease
+docker compose cp app/build/outputs/apk/release/app-release.apk api:/media/app/sunhunter-tv.apk   # з deploy/ на сервері
+```
+
+**Ключ підпису не втрачати.** Без того самого ключа нова версія не встановиться поверх старої: клієнтам доведеться
+видаляти застосунок і знову вводити код екрана. Ключ і паролі — поза репозиторієм (`~/.config/sunhunter/`), бекап
+— у власника.
+
 ## Встановлення на ТБ
 
 1. На ТБ: Налаштування → Про пристрій → 7 разів «Збірка» → Для розробників → Налагодження по мережі.
