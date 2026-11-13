@@ -129,6 +129,9 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   ES2015, тому `es5LegacyChunks` у `apps/tv/vite.config.ts` доганяє legacy-чанки Babel до ES5 (без typeof-symbol — ламає
   поліфіл Symbol). Заглушки в `apps/tv/index.html` (лише nomodule): BigInt і defineProperty(fn,"name") — обидва з zod при
   завантаженні. Застосунок для Samsung — `apps/tizen` (`.wgt`, фрейм з `/tv`), збирання/режим розробника — його README.
+  Радіо в ньому грає AVPlay (на Tizen 2.4 `<video>`+AVPlay разом можна, `<video>`+`<audio>` — ні): фрейм зветься
+  `sunhunter-tizen`, за цим `native.ts` дає той самий міст, що й Android, команди — postMessage у батьківське вікно.
+  Гучності в AVPlay немає: притишення на час сповіщення = пауза радіо.
   Діагностика старого ТБ без консолі: сторінка шле `new Image().src = "http://<домен>/api/public/diag-…?m=…"`, читати в
   `docker compose logs caddy api`.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
