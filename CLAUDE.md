@@ -124,6 +124,13 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   close одразу, до першого await, і прибирає підписки/глядача після кожного await; `last_viewed_at` — не частіше
   раз на 5 хв на екран і без очікування (інакше на повільному диску перепідключення стоять у черзі на рядок screens і
   забивають пул БД — кабінет висне).
+- Старі ТБ і Tizen (2026-11-13): бандл ТБ збирається вдвічі — модульний для сучасних і `nomodule` ES5 для старих
+  (`@vitejs/plugin-legacy`; Tizen 2.4 2016 — WebKit 538, без модулів/Promise/fetch/Map). Плагін вважає нижньою межею
+  ES2015, тому `es5LegacyChunks` у `apps/tv/vite.config.ts` доганяє legacy-чанки Babel до ES5 (без typeof-symbol — ламає
+  поліфіл Symbol). Заглушки в `apps/tv/index.html` (лише nomodule): BigInt і defineProperty(fn,"name") — обидва з zod при
+  завантаженні. Застосунок для Samsung — `apps/tizen` (`.wgt`, фрейм з `/tv`), збирання/режим розробника — його README.
+  Діагностика старого ТБ без консолі: сторінка шле `new Image().src = "http://<домен>/api/public/diag-…?m=…"`, читати в
+  `docker compose logs caddy api`.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
   розкладом за годинами і пріоритетом при відключенні; схема й нормалізація в
   `packages/shared/src/index.ts`, вибір сцени в `shared/scenes.ts`, ротація на ТБ у

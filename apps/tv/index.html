@@ -6,6 +6,16 @@
   <meta http-equiv="Cache-Control" content="no-store">
   <title>SunHunter TV</title>
   <link rel="icon" href="data:,">
+  <!-- Старі ТБ (Tizen 2.4, WebKit 538), лише для legacy-збірки. Обидва місця — zod під час завантаження:
+       межі int64 через BigInt(...) (ТБ їх не використовує) і defineProperty(клас, "name"), а тут name функції лише для читання. -->
+  <script nomodule>
+    window.BigInt || (window.BigInt = Number);
+    (function (def) {
+      Object.defineProperty = function (o, p, d) {
+        try { return def(o, p, d); } catch (e) { if (p === "name" && typeof o === "function") return o; throw e; }
+      };
+    })(Object.defineProperty);
+  </script>
 </head>
 <body>
   <div id="app"></div>
