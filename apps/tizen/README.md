@@ -35,5 +35,32 @@ Smart Hub → Apps, на пульті `12345` (на пульті без цифр
 адреса ПК, з якого ставите, потім перезавантаження з затиснутою кнопкою живлення. Перевірка: `curl http://<ip-тб>:8001/api/v2/`
 → `developerMode: "1"`, відкритий порт 26101.
 
-Новіші моделі (2018+) можуть вимагати сертифікат Samsung, прив'язаний до DUID телевізора (Certificate Manager з
-обліковим записом Samsung); UE40K5500 прийняв звичайний сертифікат Tizen.
+## Сертифікат Samsung (ТБ 2018+)
+
+UE40K5500 (Tizen 2.4) приймає звичайний сертифікат Tizen. QE65QN80F (2025, Tizen 10) відкидає його
+(`Check certificate error: Invalid certificate chain`) — потрібен сертифікат Samsung: автор + дистриб'ютор з переліком
+DUID телевізорів (за форумами Samsung — до 50 на сертифікат). Новий ТБ = новий сертифікат з усіма DUID і перепідпис.
+
+DUID: `~/tizen-studio/tools/sdb -s <ip-тб>:26101 shell 0 getduid`.
+
+Certificate Manager з Tizen Studio на Arch не ставиться (менеджер пакетів вимагає ubuntu-залежності libkf5*), тому —
+[tizencertificates](https://github.com/sreyemnayr/tizencertificates): бере адреси й CA з офіційного Samsung Certificate
+Extension, вхід — у браузері на сторінці Samsung, ключі генерує локально openssl, на `dev.tizen.samsung.com` іде лише CSR.
+Запускати вручну (сторонній код), звантаження розширення ~44 МБ з повільного download.tizen.org — кілька хвилин:
+
+```
+W=~/.config/sunhunter/tizen-samsung; mkdir -p $W && chmod 700 $W && cd $W
+set -a; . ~/.config/sunhunter/tizen-signing.env; set +a
+uv run --project <клон tizencertificates> tv --device-id "DUID1,DUID2" --email <пошта Samsung> --cert-password "$TIZEN_CERT_PASSWORD"
+# браузер -> вхід Samsung (саме у вкладці, яку відкрила утиліта) -> certificates/author.p12, distributor.p12
+C=$W/certificates
+$T/tizen security-profiles add -n SunHunterSamsung -a $C/author.p12 -p "$TIZEN_CERT_PASSWORD" -d $C/distributor.p12 -dp "$TIZEN_CERT_PASSWORD"
+$T/tizen package -t wgt -s SunHunterSamsung -- /tmp/tizen-build      # далі install/run як вище
+```
+
+Поточний сертифікат (2026-11-13): автор andriy@netlife.com.ua, DUID `ZPCGVGAGO6YHG` (QE65QN80F, 192.168.0.200),
+дійсний до 2027-11-13. Застосунок, підписаний іншим автором, ставиться лише після видалення старого.
+
+На QN80F: режим розробника з'явився лише через Apps → шестерня (керування застосунками) → `12345`, а `sdb` відкрився
+тільки після вимкнення з розетки. Масово клієнтам — лише через Samsung Apps TV (TV Seller Office; для hosted web app,
+за відповіддю на форумі Samsung, потрібне партнерство, перевірка від ~4 тижнів).
