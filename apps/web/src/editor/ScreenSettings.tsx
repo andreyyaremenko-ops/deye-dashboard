@@ -1,4 +1,4 @@
-/** Картка «Екран»: спільне для всіх сцен — порядок ротації, локація, радіо і режим відео при радіо. */
+/** Вкладка «Екран»: спільне для всіх сцен — порядок ротації, локація, власні станції, відео при радіо, сповіщення. */
 import { useEffect, useRef, useState } from "react";
 import type { ScreenConfig } from "@deye/shared";
 import { ALERT_TESTS } from "@deye/shared/alerts";
@@ -11,46 +11,29 @@ export function ScreenSettings({ org, screenId, cfg, radio, reloadRadio, canEdit
 }) {
   const radioAllowed = org.plan.limits.radio;
   const [manage, setManage] = useState(false);
-  // радіо з адресою, якої вже немає ні в каталозі, ні серед своїх (станцію видалили) — показуємо як є, щоб select не брехав
-  const known = radio.catalog.some((r) => r.url === cfg.radioUrl) || radio.own.some((r) => r.url === cfg.radioUrl);
   return <>
     {cfg.scenes.length > 1 && <Field label="Порядок сцен">
       <select value={cfg.rotation} disabled={!canEdit} onChange={(e) => update({ rotation: e.currentTarget.value as "sequence" | "random" })}>
         <option value="sequence">по колу, кожна свій час</option><option value="random">випадково</option>
       </select></Field>}
     <div className="field"><span>Локація (погода, тривоги)</span><LocationPicker value={cfg.location ?? null} onChange={(loc) => update({ location: loc })} canEdit={canEdit} /></div>
-    <Field label={`Радіо${radioAllowed ? "" : " (недоступно в тарифі)"}`}>
-      <select value={cfg.radioUrl ?? ""} disabled={!canEdit || !radioAllowed} onChange={(e) => update({ radioUrl: e.currentTarget.value || null })}>
-        <option value="">Вимкнено</option>
-        {!!radio.own.length && <optgroup label="Ваші станції">
-          {radio.own.map((r) => <option key={r.id} value={r.url}>{r.title}</option>)}
-        </optgroup>}
-        <optgroup label="Каталог">
-          {radio.catalog.map((r) => <option key={r.id} value={r.url}>{r.title}</option>)}
-        </optgroup>
-        {cfg.radioUrl && !known && <option value={cfg.radioUrl}>{cfg.radioUrl}</option>}
-      </select>
-      {radioAllowed && org.role !== "staff" && <button type="button" className="linklike small" onClick={() => setManage((v) => !v)}>
-        {manage ? "Сховати мої станції" : "+ Своя станція…"}
-      </button>}
-    </Field>
+    <h3 className="side-h">Радіо</h3>
+    {!radioAllowed && <p className="muted small">Радіо недоступне в тарифі.</p>}
+    {radioAllowed && <p className="muted small">Увімкнути, вибрати станцію й гучність — на пульті над полотном.</p>}
+    {radioAllowed && org.role !== "staff" && <button type="button" className="linklike small" onClick={() => setManage((v) => !v)}>
+      {manage ? "Сховати мої станції" : `Мої станції (${radio.own.length}) · додати свою…`}
+    </button>}
     {manage && <OwnStations org={org} own={radio.own} reload={reloadRadio} onAdded={(s) => update({ radioUrl: s.url })} />}
-    {cfg.radioUrl && <Field label="Відео разом з радіо">
+    {radioAllowed && <Field label="Відео разом з радіо">
       <select value={cfg.tvVideo ?? "auto"} disabled={!canEdit} onChange={(e) => update({ tvVideo: e.currentTarget.value as "auto" | "always" | "poster" })}>
-        <option value="auto">авто (Samsung: кадр замість відео)</option>
+        <option value="auto">авто (старі Samsung у браузері: кадр замість відео)</option>
         <option value="poster">завжди кадр замість відео</option>
         <option value="always">завжди відео</option>
       </select>
-      <span className="muted small">Деякі ТБ (Samsung Tizen) не грають відео і радіо одночасно. В авто-режимі екран сам переходить на нерухомий кадр із повільним наїздом.</span>
+      <span className="muted small">Браузер Samsung Tizen не грає відео і радіо одночасно — в авто-режимі там нерухомий кадр із повільним наїздом. У застосунках SunHunter для Samsung і Android TV грає і те, і те.</span>
     </Field>}
-    {cfg.radioUrl && <Field label={`Гучність ${Math.round(cfg.radioVolume * 100)}%`}><input type="range" min={0} max={1} step={0.05} value={cfg.radioVolume} onChange={(e) => update({ radioVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
-    <Field label="Звукові сповіщення">
-      <select value={cfg.alertSounds ? "on" : "off"} disabled={!canEdit} onChange={(e) => update({ alertSounds: e.currentTarget.value === "on" })}>
-        <option value="off">вимкнено</option>
-        <option value="on">голос і напис на екрані</option>
-      </select>
-      <span className="muted small">Голосом: повітряна тривога в області екрана (з рівнем — ракетна небезпека чи дронова загроза) і відбій, зникло й зʼявилось світло, потужна генерація — за порогом у налаштуваннях пристрою (% від номіналу панелей); критичний заряд — сигналом. Тривоги потребують локації екрана. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунку для Android TV — одразу.</span>
-    </Field>
+    <h3 className="side-h">Звукові сповіщення</h3>
+    <p className="muted small">{cfg.alertSounds ? "Увімкнено" : "Вимкнено"} (перемикач — на пульті). Голосом: повітряна тривога в області екрана (з рівнем — ракетна небезпека чи дронова загроза) і відбій, зникло й зʼявилось світло, потужна генерація — за порогом у налаштуваннях пристрою (% від номіналу панелей); критичний заряд — сигналом. Тривоги потребують локації екрана. У браузері ТБ звук вмикається першою кнопкою пульта, у застосунках — одразу.</p>
     {cfg.alertSounds && <Field label={`Гучність сповіщень ${Math.round((cfg.alertVolume ?? 0.8) * 100)}%`}><input type="range" min={0.1} max={1} step={0.05} value={cfg.alertVolume ?? 0.8} onChange={(e) => update({ alertVolume: +e.currentTarget.value })} disabled={!canEdit} /></Field>}
     {cfg.alertSounds && <TestAlert org={org} screenId={screenId} />}
   </>;

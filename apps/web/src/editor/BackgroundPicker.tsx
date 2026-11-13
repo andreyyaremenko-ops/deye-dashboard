@@ -1,18 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { api, uploadBackground, type Background, type Org } from "../api.ts";
 import { Btn, ErrorBox, useAction } from "../components/ui.tsx";
+import type { Backgrounds } from "./useBackgrounds.ts";
 
 const STATUS: Record<Background["status"], string> = { uploaded: "у черзі", processing: "обробка…", ready: "", failed: "помилка" };
 
-export function BackgroundPicker({ org, value, onChange, canEdit }: { org: Org; value: string | null; onChange: (id: string | null) => void; canEdit: boolean }) {
-  const [list, setList] = useState<Background[]>([]);
+export function BackgroundPicker({ org, bgs, value, onChange, canEdit }: { org: Org; bgs: Backgrounds; value: string | null; onChange: (id: string | null) => void; canEdit: boolean }) {
+  const { list, reload: load } = bgs;
   const [progress, setProgress] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const load = async () => setList(await api.get<Background[]>(`/api/orgs/${org.id}/backgrounds`));
-  useEffect(() => { void load(); }, [org.id]);
-  // поки щось обробляється — опитуємо
-  const pending = list.some((b) => b.status === "uploaded" || b.status === "processing");
-  useEffect(() => { if (!pending) return; const t = setInterval(load, 5000); return () => clearInterval(t); }, [pending]);
 
   const upload = useAction(async (file: File) => {
     setProgress(0);

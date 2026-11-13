@@ -1,10 +1,13 @@
-/** Картка «Сцена»: назва, тривалість показу, розклад за годинами, пріоритет при відключенні, тема і фон. */
+/** Вкладка «Сцена»: назва, тривалість показу, розклад за годинами, пріоритет при відключенні, тема і фон. */
 import type { Scene } from "@deye/shared";
-import type { Org } from "../api.ts";
 import { Field } from "../components/ui.tsx";
-import { BackgroundPicker } from "./BackgroundPicker.tsx";
+import { bgPreview, type Backgrounds } from "./useBackgrounds.ts";
 
-export function SceneSettings({ org, scene, index, many, canEdit, update }: { org: Org; scene: Scene; index: number; many: boolean; canEdit: boolean; update: (patch: Partial<Scene>) => void }) {
+export function SceneSettings({ scene, index, many, canEdit, bgs, update, openBackgrounds }: {
+  scene: Scene; index: number; many: boolean; canEdit: boolean; bgs: Backgrounds; update: (patch: Partial<Scene>) => void; openBackgrounds: () => void;
+}) {
+  const bg = bgs.list.find((b) => b.id === scene.backgroundId);
+  const thumb = bgPreview(bg);
   const sch = scene.schedule;
   return <>
     <div className="row small">
@@ -26,6 +29,12 @@ export function SceneSettings({ org, scene, index, many, canEdit, update }: { or
       </select></Field>
     {many && <p className="muted small">Години — за годинником телевізора. Інтервал може переходити через північ. Якщо жодна сцена не підходить за часом, показується перша.</p>}
     <Field label="Тема"><select value={scene.theme} onChange={(e) => update({ theme: e.currentTarget.value as "dark" | "light" })} disabled={!canEdit}><option value="dark">Темна</option><option value="light">Світла</option></select></Field>
-    <div className="field"><span>Фон</span><BackgroundPicker org={org} value={scene.backgroundId} onChange={(id) => update({ backgroundId: id })} canEdit={canEdit} /></div>
+    <div className="field"><span>Фон</span>
+      <button type="button" className="bg-row" onClick={openBackgrounds} disabled={!canEdit}>
+        <span className="ctl-thumb" style={thumb ? { backgroundImage: `url(${thumb})` } : undefined} />
+        <span className="grow">{bg ? bg.name : "без фону"}{bg?.kind === "image" ? " · фото" : bg?.durationS ? ` · відео ${bg.durationS} с` : ""}</span>
+        <span className="ctl-act">Змінити</span>
+      </button>
+    </div>
   </>;
 }

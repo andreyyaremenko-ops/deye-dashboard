@@ -6,8 +6,8 @@ import { useRef, useState, type PointerEvent } from "react";
 import { menuStyle } from "@deye/shared/menu";
 import { labelOf, type Widget as W } from "./widgetTypes.ts";
 
-export function Canvas({ widgets, selected, onSelect, onChange, theme }:
-  { widgets: W[]; selected: string | null; onSelect: (id: string | null) => void; onChange: (w: W) => void; theme: "dark" | "light" }) {
+export function Canvas({ widgets, selected, onSelect, onChange, theme, bgUrl }:
+  { widgets: W[]; selected: string | null; onSelect: (id: string | null) => void; onChange: (w: W) => void; theme: "dark" | "light"; bgUrl?: string | null }) {
   const ref = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; sx: number; sy: number; start: W } | null>(null);
 
@@ -31,7 +31,8 @@ export function Canvas({ widgets, selected, onSelect, onChange, theme }:
   };
   const up = () => setDrag(null);
 
-  return <div ref={ref} className={`canvas theme-${theme}`} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerDown={() => onSelect(null)}>
+  // кадр фону сцени (превʼю відео чи саме фото), щоб розкладку було видно на справжньому тлі
+  return <div ref={ref} className={`canvas theme-${theme}${bgUrl ? " has-bg" : ""}`} style={bgUrl ? { backgroundImage: `url(${bgUrl})` } : undefined} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerDown={() => onSelect(null)}>
     {widgets.map((w) => <div key={w.id} className={`cw${selected === w.id ? " sel" : ""}${w.type === "text" || w.type === "menu" ? ` cw-look-${menuStyle(w.props ?? {}).look}${menuStyle(w.props ?? {}).frame !== "none" ? ` cw-fr-${menuStyle(w.props ?? {}).look}` : ""}` : w.type === "neon_sign" ? " cw-look-neon cw-sign" : ""}`}
       style={{ left: `${w.x}%`, top: `${w.y}%`, width: `${w.w}%`, height: `${w.h}%` }}
       onPointerDown={(e) => down(e, w, "move")}>
