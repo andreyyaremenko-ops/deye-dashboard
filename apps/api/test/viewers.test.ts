@@ -36,6 +36,26 @@ describe("облік підключених телевізорів", () => {
     await closed(ws2); await tick();
     expect((await api(t.app, a.cookie).get("/api/admin/screens")).json()[0].viewers).toBe(0);
   });
+  it("сокет, закритий одразу після відкриття, не лишає глядача, підписок і таймерів", async () => {
+    const o = await signUp(t.app, "fast@example.com"); const owner = api(t.app, o.cookie);
+    const orgId = (await owner.post("/api/orgs", { name: "F" })).json().id;
+    const s = (await owner.post(`/api/orgs/${orgId}/screens`, { name: "Зал" })).json();
+    const ee = (t.store as unknown as { ee: import("node:events").EventEmitter }).ee;
+    const base0 = ["state", "screen", "screenmsg", "feed"].map((e) => ee.listenerCount(e));
+    // повільний диск: запис глядача триває, а ТБ тим часом уже закрив сокет
+    const orig = t.store.touchViewer.bind(t.store);
+    t.store.touchViewer = async (...a) => { await new Promise((r) => setTimeout(r, 100)); return orig(...a); };
+    try {
+      for (let i = 0; i < 15; i++) {
+        const ws = await open(`ws://${base}/ws?token=${s.viewToken}`);
+        await new Promise<void>((r) => { ws.onmessage = () => r(); });   // hello отримано, далі сервер пише глядача
+        ws.close();
+      }
+      await tick(); await tick();
+    } finally { t.store.touchViewer = orig; }
+    expect((await owner.get(`/api/orgs/${orgId}/screens`)).json()[0].viewers).toBe(0);
+    expect(["state", "screen", "screenmsg", "feed"].map((e) => ee.listenerCount(e))).toEqual(base0);
+  });
   it("describeUa", () => {
     expect(describeUa("Mozilla/5.0 (SMART-TV; LINUX; Tizen 6.0) AppleWebKit/537.36")).toBe("Samsung (Tizen)");
     expect(describeUa("Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36")).toBe("LG (webOS)");

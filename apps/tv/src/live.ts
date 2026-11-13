@@ -43,6 +43,7 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
     store.socHistory.set(st.deviceId, h);
   };
   let ws: WebSocket | null = null;
+  let reconnectTimer: number | undefined;
   let lastMsg = Date.now();
   let backoff = 1000;
   let stopped = false;
@@ -66,15 +67,21 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
 
   function connect() {
     if (stopped) return;
-    try { ws?.close(); } catch { /* ignore */ }
+    // Старий сокет відʼєднуємо до закриття: його onclose інакше запланує ще одне перепідключення, яке закриє
+    // щойно відкритий сокет, — і так по колу кожні 2 с (сотні підключень на годину, база стоїть у черзі).
+    const old = ws;
+    if (old) { old.onopen = old.onmessage = old.onclose = old.onerror = null; try { old.close(); } catch { /* ignore */ } }
+    clearTimeout(reconnectTimer);
     const proto = location.protocol === "https:" ? "wss" : "ws";
-    ws = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}`);
-    ws.onopen = () => { lastMsg = Date.now(); backoff = 1000; store.status = "live"; emit(); };
-    ws.onmessage = (ev) => {
+    const sock = new WebSocket(`${proto}://${location.host}/ws?token=${encodeURIComponent(token)}`);
+    ws = sock;
+    sock.onopen = () => { lastMsg = Date.now(); store.status = "live"; emit(); };
+    sock.onmessage = (ev) => {
       lastMsg = Date.now();
       let msg: any;
       try { msg = JSON.parse(ev.data); } catch { return; }
       if (msg.type === "hello") {
+        backoff = 1000;   // скидаємо паузу лише коли сервер справді відповів, а не на голому open
         for (const st of msg.states as DeviceState[]) store.states.set(st.deviceId, st);
         if (msg.feeds) store.feeds = msg.feeds as Feeds;
       } else if (msg.type === "config") {
@@ -96,11 +103,10 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
       store.status = "live";
       emit();
     };
-    ws.onclose = () => { if (stopped) return; store.status = "reconnecting"; emit(); scheduleReconnect(); };
-    ws.onerror = () => { try { ws?.close(); } catch { /* ignore */ } };
+    sock.onclose = () => { if (stopped || ws !== sock) return; store.status = "reconnecting"; emit(); scheduleReconnect(); };
+    sock.onerror = () => { try { sock.close(); } catch { /* ignore */ } };
   }
 
-  let reconnectTimer: number | undefined;
   function scheduleReconnect() {
     clearTimeout(reconnectTimer);
     reconnectTimer = window.setTimeout(async () => {
