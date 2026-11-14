@@ -281,7 +281,7 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 
 /* Камери: відео на всю картку, підпис і крапки ротації поверх нього */
 .w-camera { padding: 0; overflow: hidden; }
-.w-web { padding: 0; overflow: hidden; background: #000; }
+.w-web { height: 100%; padding: 0; overflow: hidden; background: #000; }   /* min-height від .w не дає фрейму висоти у відсотках */
 .w-web iframe { display: block; width: 100%; height: 100%; border: 0; }
 .w-web .text { padding: 1vw; }
 .w-camera .title { padding: .6vw .8vw .3vw; margin: 0; display: flex; justify-content: space-between; gap: .6vw; }
