@@ -33,7 +33,9 @@ export function unlockChimes(): void {
 export const chimesReady = (): boolean => context()?.state === "running";
 
 /** [частота Гц, початок с, тривалість с] — кожна подія впізнавана на слух без погляду на екран. */
-const PATTERNS: Record<AlertKind, { wave: OscillatorType; notes: [number, number, number][] }> = {
+const PATTERNS: Record<AlertKind | "message", { wave: OscillatorType; notes: [number, number, number][] }> = {
+  // повідомлення з телеграм-бота: м'який «дін-дон» перед голосом
+  message: { wave: "sine", notes: [[784, 0, 0.35], [587, 0.32, 0.6]] },
   // спадна тріада двічі: «щось вимкнулось»
   grid_down: { wave: "triangle", notes: [[880, 0, 0.28], [698, 0.3, 0.28], [523, 0.6, 0.5], [880, 1.3, 0.28], [698, 1.6, 0.28], [523, 1.9, 0.6]] },
   // висхідна: «повернулось»
@@ -49,7 +51,7 @@ const PATTERNS: Record<AlertKind, { wave: OscillatorType; notes: [number, number
 };
 
 /** Програти сигнал події. Повертає тривалість у мс (щоб на цей час притишити радіо) або 0, якщо звуку не буде. */
-export function playChime(kind: AlertKind, volume: number): number {
+export function playChime(kind: AlertKind | "message", volume: number): number {
   const c = context();
   if (!c || c.state !== "running" || volume <= 0) return 0;
   const { wave, notes } = PATTERNS[kind];

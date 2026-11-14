@@ -24,15 +24,22 @@ export function voiceClips(ev: AlertEvent): string[] {
 const buffers = new Map<string, Promise<AudioBuffer | null>>();
 
 function load(c: AudioContext, name: string): Promise<AudioBuffer | null> {
-  let p = buffers.get(name);
+  return loadUrl(c, `${BASE}${name}.mp3`, true);
+}
+
+function loadUrl(c: AudioContext, url: string, cache: boolean): Promise<AudioBuffer | null> {
+  const name = url;
+  let p = cache ? buffers.get(name) : undefined;
   if (!p) {
-    p = fetch(`${BASE}${name}.mp3`)
+    p = fetch(url)
       .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status}`))))
       // форма з колбеками: проміс decodeAudioData є лише з Chromium 49, а ТБ бувають старші
       .then((data) => new Promise<AudioBuffer | null>((ok) => c.decodeAudioData(data, ok, () => ok(null))))
       .catch(() => null);
-    buffers.set(name, p);
-    void p.then((b) => { if (!b) buffers.delete(name); });   // невдачу спробуємо ще раз наступного разу
+    if (cache) {
+      buffers.set(name, p);
+      void p.then((b) => { if (!b) buffers.delete(name); });   // невдачу спробуємо ще раз наступного разу
+    }
   }
   return p;
 }
@@ -68,4 +75,23 @@ export async function playVoice(names: string[], volume: number): Promise<number
     at += b.duration + PAUSE;
   }
   return Math.round((at - c.currentTime) * 1000);
+}
+
+/**
+ * Голосове з телеграм-бота (/media/voice/*.mp3): той самий Web Audio, тож на Tizen не зупиняє фон і радіо.
+ * delayMs — після сигналу. Повертає тривалість у мс (від зараз) або 0, якщо звуку не буде.
+ */
+export async function playUrl(url: string, volume: number, delayMs = 0): Promise<number> {
+  const c = context();
+  if (!c || c.state !== "running" || volume <= 0) return 0;
+  const b = await loadUrl(c, url, false);
+  if (!b) return 0;
+  const gain = c.createGain();
+  gain.gain.value = Math.min(1, volume);
+  gain.connect(c.destination);
+  const src = c.createBufferSource();
+  src.buffer = b;
+  src.connect(gain);
+  src.start(c.currentTime + 0.05 + delayMs / 1000);
+  return Math.round(delayMs + 50 + b.duration * 1000);
 }

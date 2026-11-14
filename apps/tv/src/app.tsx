@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { startLive, TEST_ALERT_EVENT, type LiveStore } from "./live.ts";
+import { startLive, TEST_ALERT_EVENT, TG_MESSAGE_EVENT, type LiveStore } from "./live.ts";
 import { Widget } from "./widgets.tsx";
 import { Background, GradientBackground, isSingleMediaTv, rememberSingleMedia } from "./background.tsx";
 import { Plaque } from "./plaque.tsx";
@@ -11,13 +11,13 @@ import { attachSpectrum, resumeSpectrum } from "./audio.ts";
 import { nativeTv } from "./native.ts";
 import { ALERT_TESTS, detectAirAlert, detectAlerts, newAirMemory, newAlertMemory, type AlertEvent, type AlertKind, type AlertMemory } from "@deye/shared/alerts";
 import { chimesReady, playChime, unlockChimes } from "./chime.ts";
-import { playVoice, preloadVoices, voiceClips } from "./voice.ts";
+import { playUrl, playVoice, preloadVoices, voiceClips } from "./voice.ts";
 
 /** Кілька подій за один замір (напр. мережа зникла на двох інверторах) — звучить найважливіша. */
 const ALERT_PRIORITY: AlertKind[] = ["air_alert", "air_clear", "grid_down", "soc_low", "grid_up", "pv_high"];
 const TOAST_MS = 20_000;
 import { VIDEO_CONFLICT } from "./camera.tsx";
-import { LIVE_AUDIO } from "./live.tsx";
+import { LIVE_AUDIO, LIVE_DUCK } from "./live.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -140,7 +140,8 @@ export function App() {
   const alertVolume = live?.screen?.config.alertVolume ?? 0.8;
   const alertMem = useRef(new Map<string, { mem: AlertMemory; at: string }>());
   const airMem = useRef(newAirMemory());
-  const [toast, setToast] = useState<{ kind: AlertKind; text: string } | null>(null);
+  // ms — скільки тримати (голосове з бота — поки звучить), інакше TOAST_MS
+  const [toast, setToast] = useState<{ kind: AlertKind | "tg"; text: string; ms?: number } | null>(null);
   const [soundLocked, setSoundLocked] = useState(false);
   // Найважливіша подія: напис і голос (Kateryna); якщо голос не завантажився — синтезований сигнал
   const announce = (events: AlertEvent[]) => {
@@ -148,15 +149,47 @@ export function App() {
     const top = ALERT_PRIORITY.find((k) => events.some((e) => e.kind === k))!;
     const same = events.filter((e) => e.kind === top);
     setToast({ kind: top, text: [...new Set(same.map((e) => e.text))].join(" · ") });
-    void playVoice(voiceClips(same[0]!), alertVolume).then((ms) => {
-      ms = ms || playChime(top, alertVolume);
-      // на час сповіщення радіо притишується, щоб його було чути
-      if (!ms || !srcUrl) return;
-      const duck = radioVolume * 0.25;
-      if (native) native.radioVolume(duck); else if (audio.current) audio.current.volume = duck;
-      window.setTimeout(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, ms);
-    });
+    void playVoice(voiceClips(same[0]!), alertVolume).then((ms) => { duckFor(ms || playChime(top, alertVolume)); });
   };
+  /** На ms притишити радіо й пряму трансляцію, щоб сповіщення чи голосове було чути. */
+  const duckFor = (ms: number) => {
+    if (!ms) return;
+    dispatchEvent(new CustomEvent(LIVE_DUCK, { detail: ms }));
+    if (!srcUrl) return;
+    const duck = radioVolume * 0.25;
+    if (native) native.radioVolume(duck); else if (audio.current) audio.current.volume = duck;
+    window.setTimeout(() => { if (native) native.radioVolume(radioVolume); else if (audio.current) audio.current.volume = radioVolume; }, ms);
+  };
+  // Голосові з телеграм-бота закладу: по черзі, сигнал + голос + банер, поки звучить. Звук — як у сповіщень
+  // (гучність alertVolume), але незалежно від перемикача «Сповіщення»: це навмисне повідомлення людини.
+  const latest = useRef({ alertVolume, duckFor });
+  latest.current = { alertVolume, duckFor };
+  const tgQueue = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    const on = (e: Event) => {
+      const m = (e as CustomEvent<{ kind?: string; url?: string; from?: string }>).detail;
+      if (m?.kind !== "voice" || !m.url) return;
+      const url = m.url, from = m.from || "Telegram";
+      tgQueue.current = tgQueue.current.then(async () => {
+        const { alertVolume: vol, duckFor: duck } = latest.current;
+        if (!chimesReady()) { setToast({ kind: "tg", text: `🎙 Голосове від ${from} — натисніть будь-яку кнопку пульта, щоб телевізор міг грати звук`, ms: 15_000 }); return; }
+        const chime = playChime("message", vol);
+        const ms = await playUrl(url, vol, chime);
+        if (!ms) { setToast({ kind: "tg", text: `🎙 ${from}: голосове не вдалося програти`, ms: 8000 }); return; }
+        setToast({ kind: "tg", text: `🎙 ${from}`, ms: ms + 1500 });
+        duck(ms);
+        await new Promise((ok) => window.setTimeout(ok, ms + 600));
+      }).catch(() => {});
+    };
+    addEventListener(TG_MESSAGE_EVENT, on);
+    return () => removeEventListener(TG_MESSAGE_EVENT, on);
+  }, []);
+  // звук (Web Audio) дозволяється першою кнопкою пульта — завжди, не лише з увімкненими сповіщеннями: голосові з бота
+  useEffect(() => {
+    const kick = () => unlockChimes();
+    for (const ev of ["pointerdown", "touchstart", "keydown"]) addEventListener(ev, kick, true);
+    return () => { for (const ev of ["pointerdown", "touchstart", "keydown"]) removeEventListener(ev, kick, true); };
+  }, []);
   useEffect(() => {
     if (!live?.screen) return;
     const devs = new Map((live.screen.devices ?? []).map((d) => [d.id, d]));
@@ -189,7 +222,7 @@ export function App() {
   useEffect(() => { announce(detectAirAlert(airMem.current, live?.feeds.alert ?? null)); }, [live?.feeds.alert]);
   useEffect(() => {
     if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), TOAST_MS);
+    const t = window.setTimeout(() => setToast(null), toast.ms ?? TOAST_MS);
     return () => clearTimeout(t);
   }, [toast]);
   // звук сповіщень дозволений лише після кнопки пульта (у застосунку Android — одразу)

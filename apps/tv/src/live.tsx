@@ -12,6 +12,8 @@ import { Player, autoplay } from "./camera.tsx";
 
 /** Подія для app.tsx: detail = true — у сцені грає трансляція зі звуком (радіо на паузу), false — більше ні. */
 export const LIVE_AUDIO = "sh:live-audio";
+/** Подія від app.tsx: detail = мс — на цей час притишити звук трансляції (сповіщення чи голосове з бота). */
+export const LIVE_DUCK = "sh:live-duck";
 
 const POLL_MS = 5000;
 /** Стільки відповідей «не в ефірі» поспіль, перш ніж прибрати програвач: короткий обрив ведучого не гасить екран. */
@@ -34,6 +36,21 @@ export function LiveWidget({ cls, props }: { cls: string; props: Record<string, 
   // rtc — пробуємо WebRTC; hls — WebRTC тут не вийшов, до перезавантаження сторінки граємо HLS
   const [mode, setMode] = useState<"rtc" | "hls">(rtcCapable() ? "rtc" : "hls");
   const [attempt, setAttempt] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
+
+  // поверх трансляції звучить сповіщення чи голосове з бота — притишуємо її на цей час
+  useEffect(() => {
+    let timer: number | undefined;
+    const on = (e: Event) => {
+      const ms = Number((e as CustomEvent<number>).detail) || 0;
+      const vids = () => Array.from(box.current?.querySelectorAll("video") ?? []);
+      vids().forEach((v) => { v.volume = 0.2; });
+      clearTimeout(timer);
+      timer = window.setTimeout(() => vids().forEach((v) => { v.volume = 1; }), ms);
+    };
+    addEventListener(LIVE_DUCK, on);
+    return () => { clearTimeout(timer); removeEventListener(LIVE_DUCK, on); };
+  }, []);
 
   useEffect(() => {
     if (!pathId) return;
@@ -66,7 +83,7 @@ export function LiveWidget({ cls, props }: { cls: string; props: Record<string, 
           // кадр так і не прийшов — цей ТБ WebRTC не тягне; обрив після показу — ведучий перепідключився, пробуємо знову
           onEnd={(played) => { if (played) window.setTimeout(() => setAttempt((n) => n + 1), RTC_RETRY_MS); else setMode("hls"); }} />
       : <Player key={pathId} src={`/live/hls/${pathId}/tv/index.m3u8`} fit={fit} sound={sound} />;
-  return <div class={`${cls} w-camera w-live${plain ? " camera-plain" : ""}`}>
+  return <div ref={box} class={`${cls} w-camera w-live${plain ? " camera-plain" : ""}`}>
     {!plain && <div class="title"><span>{name || "Пряма трансляція"}</span>{online && <span class="live-on">● наживо</span>}</div>}
     <div class="cam-box">
       {!pathId ? <div class="cam-msg">трансляцію не вибрано</div>

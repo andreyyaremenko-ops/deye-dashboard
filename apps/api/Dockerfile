@@ -1,4 +1,6 @@
 FROM node:24-alpine AS base
+# ffmpeg: голосові з Telegram (OGG/Opus) -> MP3 для телевізорів (src/telegram/audio.ts)
+RUN apk add --no-cache ffmpeg
 RUN corepack enable && corepack prepare pnpm@12.4.1 --activate
 WORKDIR /repo
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml tsconfig.base.json ./

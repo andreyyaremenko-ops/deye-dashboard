@@ -10,6 +10,8 @@ import { gridDown } from "@deye/shared/energy";
 
 /** Подія вікна з видом сповіщення (AlertKind), яке кабінет попросив перевірити. */
 export const TEST_ALERT_EVENT = "sh:test-alert";
+/** Повідомлення з телеграм-бота закладу (голосове): detail — тіло WS-повідомлення tg_message. */
+export const TG_MESSAGE_EVENT = "sh:tg-message";
 
 const STALE_MS = 60_000;
 const WATCHDOG_MS = 90_000;
@@ -92,6 +94,9 @@ export function startLive(token: string, onChange: (s: LiveStore) => void) {
       } else if (msg.type === "state") {
         const st = { deviceId: msg.deviceId, updatedAt: msg.updatedAt, metrics: msg.metrics, stale: false };
         store.states.set(msg.deviceId, st); trackSoc(st); trackOutage(st);
+      } else if (msg.type === "tg_message") {
+        window.dispatchEvent(new CustomEvent(TG_MESSAGE_EVENT, { detail: msg }));
+        return;
       } else if (msg.type === "test_alert") {
         // перевірка сповіщень з кабінету: стану не змінює, лише подія для app.tsx
         window.dispatchEvent(new CustomEvent(TEST_ALERT_EVENT, { detail: msg.kind }));

@@ -25,6 +25,8 @@ export interface AppDeps {
   liveOnline?: import("./live/status.ts").LiveOnline;
   /** телеграм-бот закладів (TELEGRAM_BOT_TOKEN); без нього вебхук відповідає 401, кабінет пише «не налаштовано» */
   telegram?: import("./telegram/client.ts").TelegramBot | null;
+  /** перекодування голосових Telegram у MP3 (типово ffmpeg; тести підміняють) */
+  telegramConvert?: import("./telegram/audio.ts").AudioConverter;
   mediaRoot: string;
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */
