@@ -8,7 +8,7 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
 
 ## Прийняті рішення по стеку (2026-09-12)
 
-Сервер 2 vCPU / 2 GB RAM, тому:
+Сервер 2 vCPU / 2 GB RAM, тому (так планувалось; зараз прод — 12 ядер / 8 GB, 2026-11-14, але рішення лишаються в силі):
 - Auth: **Better Auth** у процесі API (не Keycloak).
 - MQTT: **Mosquitto + mosquitto-go-auth** (HTTP auth/ACL до API); EMQX пізніше.
 - Кабінет: **Vite + React SPA**; екран ТБ: **Vite + Preact**, окремий бандл.
@@ -168,6 +168,10 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
   `apps/tv/src/scenes.ts`. Верхній рівень конфігу дзеркалить першу сцену (старі бандли ТБ).
   `scene.enabled = false` (2026-11-15) — сцена лишається в конфігу, але ротація її пропускає (і при відключенні теж);
   якщо вимкнені всі — показується перша, екран не порожній.
+- Каталог віджетів редактора (`apps/web/src/editor/widgetTypes.ts`): кожен `WidgetKind` має `group` з `WIDGET_GROUPS`
+  (energy · info · venue · media) — «Додати віджет» показує їх групами (2026-11-15). Новий тип віджета: `type` у
+  `widgetSchema` (shared), рендер у `apps/tv/src/widgets.tsx` (+ `NO_DEVICE`, якщо без інвертора), запис у каталозі
+  з групою, `MOCK` у `Canvas.tsx`, налаштування в `SETTINGS` (`WidgetSettings.tsx`).
 
 ## Структура
 
