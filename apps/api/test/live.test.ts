@@ -50,10 +50,12 @@ describe("прямі трансляції", () => {
     expect(await auth({ ...pub, path: "aaaaaaaaaaaaaaaa", token: stream.publishKey })).toBe(401);
   });
 
-  it("екран читає лише версію для ТБ і лише по HLS", async () => {
+  it("екран читає оригінал по WebRTC (WHEP) або версію для ТБ по HLS", async () => {
     expect(await auth({ action: "read", path: `${stream.pathId}/tv`, protocol: "hls" })).toBe(200);
+    expect(await auth({ action: "read", path: stream.pathId, protocol: "webrtc" })).toBe(200);
     expect(await auth({ action: "read", path: stream.pathId, protocol: "hls" })).toBe(401);
     expect(await auth({ action: "read", path: `${stream.pathId}/tv`, protocol: "webrtc" })).toBe(401);
+    expect(await auth({ action: "read", path: stream.pathId, protocol: "rtsp" })).toBe(401);
     expect(await auth({ action: "api", path: "", protocol: "" })).toBe(401);
   });
 

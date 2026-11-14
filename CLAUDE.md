@@ -147,16 +147,21 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
 - Прямі трансляції (2026-11-14): камера телефона/ноутбука на ТБ. Ведучий — «Трансляції» в кабінеті
   (`apps/web/src/pages/Live.tsx`, WHIP-клієнт `live/whip.ts`: без trickle, лише H.264, ~2.5 Мбіт/с, перепідключення,
   replaceTrack для зміни камери). Сервер — MediaMTX 1.21 (`deploy/mediamtx/`, образ `-ffmpeg`): WebRTC на ICE-порт
-  8189 UDP/TCP (публічний IP — `LIVE_PUBLIC_IP`), `runOnOnline` ffmpeg (`tv.sh`) перепаковує звук Opus -> AAC у
-  `<pathId>/tv` (Opus ТБ не грають), HLS mpegts для старих Tizen. Caddy: `/live/whip/*`, `/live/hls/*` (дописує
+  8189 UDP/TCP (публічний IP — `LIVE_PUBLIC_IP`). Глядачі: де є WebRTC — WHEP оригіналу `<pathId>` (< 1 с, без
+  перекодування); інакше HLS mpegts `<pathId>/tv` (~4 с): `runOnOnline` ffmpeg (`tv.sh`) перекодовує відео з ключовим
+  кадром щосекунди (браузер ведучого шле раз на ~2 с, а сегмент HLS не коротший за GOP; ~пів ядра на ефір 720p) і
+  звук Opus -> AAC (Opus ТБ не грають). Caddy: `/live/whip/*`, `/live/hls/*` (дописує
   префікс до `Location`: і cookieCheck HLS, і сесія WHIP). Права — хук API `/internal/mediamtx/auth`
-  (`live/service.ts`): публікація лише WebRTC з ключем трансляції, читання лише HLS `<id>/tv`, ffmpeg —
+  (`live/service.ts`): публікація лише WebRTC з ключем трансляції, читання — WebRTC оригіналу або HLS `<id>/tv`, ffmpeg —
   localhost + `LIVE_INTERNAL_PASS`, API MediaMTX — той самий пароль. Статус ефіру API бере з API MediaMTX
   (`live/status.ts`, кеш 3 с) — `/api/public/live/<pathId>`; ТБ опитує його раз на 5 с, а не плейлист (кожен
   запит плейлиста — нова HLS-сесія і виклик хука). Віджет `live` (`apps/tv/src/live.tsx`, props `pathId`, `name`,
-  `sound`, `fit`, `whenOff`) грає через Player камер; без ефіру — заглушка або нічого; ефір зі звуком глушить радіо
+  `sound`, `fit`, `whenOff`): спершу WHEP (`RtcPlayer`; Chromium 56 без addTransceiver — offerToReceive*), без кадру
+  за 10 с або без RTCPeerConnection — HLS через Player камер до перезавантаження (`?live=hls` — примусово); обрив
+  після показу — нова спроба WHEP. Без ефіру — заглушка або нічого; ефір зі звуком глушить радіо
   (подія `LIVE_AUDIO` -> `srcUrl` у app.tsx = null), на ТБ з одним медіа фон стає кадром, як із камерою.
-  Перевірено локально наскрізь (headless Chromium із тестовою камерою); на справжніх ТБ і телефоні — ще ні.
+  Заміряно локально (ведучий і ТБ в одному Chromium): WebRTC < 0.1 с, HLS 4.1 с. Хто з наших ТБ має WebRTC — ще не
+  перевірено (QN80F/Android — очікувано так, Tizen 2.4/4.0 — очікувано HLS).
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
   розкладом за годинами і пріоритетом при відключенні; схема й нормалізація в
   `packages/shared/src/index.ts`, вибір сцени в `shared/scenes.ts`, ротація на ТБ у

@@ -61,7 +61,8 @@ const isLocal = (ip = "") => ip === "127.0.0.1" || ip === "::1";
  * Рішення для MediaMTX:
  *  - ffmpeg усередині контейнера (localhost + внутрішній пароль) — читати оригінал і публікувати <id>/tv;
  *  - браузер — публікувати <id> лише по WebRTC і лише з ключем трансляції (Authorization: Bearer);
- *  - екран — читати <id>/tv лише по HLS: знати pathId достатньо, як і з посиланням на екран;
+ *  - екран — читати оригінал <id> по WebRTC (WHEP, затримка < 1 с) або <id>/tv по HLS (ТБ без WebRTC):
+ *    знати pathId достатньо, як і з посиланням на екран;
  *  - наш API — API MediaMTX (чи йде трансляція) з внутрішнім паролем.
  * Усе інше (метрики, читання оригіналу ззовні, RTSP/RTMP/SRT) заборонено.
  */
@@ -79,5 +80,6 @@ export async function mediamtxAuth(db: Db, internalPass: string, r: MtxAuthReque
     const key = r.token || r.password || "";
     return !m[2] && r.protocol === "webrtc" && !!key && same(key, row.publishKey);
   }
-  return r.action === "read" && !!m[2] && r.protocol === "hls";
+  if (r.action !== "read") return false;
+  return m[2] ? r.protocol === "hls" : r.protocol === "webrtc";
 }

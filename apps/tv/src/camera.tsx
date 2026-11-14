@@ -78,6 +78,24 @@ export const VIDEO_CONFLICT = "sh:video-conflict";
 
 const android = /Android/i.test(navigator.userAgent);
 const GESTURES = ["pointerdown", "touchstart", "keydown"];
+
+/**
+ * Запустити відео; зі звуком (пряма трансляція) — а якщо браузер не дозволяє автозапуск зі звуком,
+ * грати беззвучно до першої кнопки пульта чи дотику (як радіо). Повертає відписку від кнопок.
+ */
+export function autoplay(v: HTMLVideoElement, sound: boolean): () => void {
+  let off = () => {};
+  v.muted = !sound;
+  v.play().catch((e: unknown) => {
+    if (!sound || (e as { name?: string })?.name !== "NotAllowedError") return;
+    v.muted = true;
+    v.play().catch(() => {});
+    const unmute = () => { v.muted = false; off(); };
+    for (const ev of GESTURES) addEventListener(ev, unmute, true);
+    off = () => { for (const ev of GESTURES) removeEventListener(ev, unmute, true); };
+  });
+  return () => off();
+}
 const mse = (codecs: string) => { try { return window.MediaSource?.isTypeSupported(`video/mp4; codecs="${codecs}"`) ?? false; } catch { return false; } };
 
 /**
@@ -101,17 +119,7 @@ export function Player({ src, fit, sound = false }: { src: string; fit: string; 
     let native = false, nativeFailed = false;
     let recovers = 0;
     let unmuteOff: (() => void) | undefined;
-    const play = () => {
-      v.muted = !sound;
-      v.play().catch((e: unknown) => {
-        if (!sound || (e as { name?: string })?.name !== "NotAllowedError") return;
-        v.muted = true;
-        v.play().catch(() => {});
-        const unmute = () => { v.muted = false; for (const ev of GESTURES) removeEventListener(ev, unmute, true); };
-        for (const ev of GESTURES) addEventListener(ev, unmute, true);
-        unmuteOff = () => { for (const ev of GESTURES) removeEventListener(ev, unmute, true); };
-      });
-    };
+    const play = () => { unmuteOff?.(); unmuteOff = autoplay(v, sound); };
     const onPlaying = () => { recovers = 0; };
     const again = () => {
       if (!alive || resetting) return;
