@@ -12,7 +12,7 @@ import { seed } from "../src/db/seed.ts";
 import { MemoryStateStore } from "../src/state/store.ts";
 import type { Mail } from "../src/mail/index.ts";
 
-export const INTERNAL = { user: "api", pass: "internal-test-pass" };
+export const INTERNAL = { user: "api", pass: "internal-test-pass", livePass: "live-internal-test" };
 
 export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts").MonoClient | null; feeds?: (store: MemoryStateStore, db: ReturnType<typeof drizzle>) => import("../src/feeds/hub.ts").FeedHub; alertsWebhookSecret?: string; radioProbe?: import("../src/app.ts").AppDeps["radioProbe"]; imageProviders?: string[];
   nvr?: import("../src/nvr/client.ts").NvrClient; nvrFetch?: typeof fetch; radioFetch?: typeof fetch } = {}) {
@@ -31,7 +31,7 @@ export async function makeTestApp(opts: { mono?: import("../src/billing/mono.ts"
   const mediaRoot = mkdtempSync(join(tmpdir(), "deye-media-"));
   const app = await buildApp({
     db, auth, store, publicUrl: "http://localhost:5173",
-    mqttInternalUser: INTERNAL.user, mqttInternalPass: INTERNAL.pass,
+    mqttInternalUser: INTERNAL.user, mqttInternalPass: INTERNAL.pass, liveInternalPass: INTERNAL.livePass,
     mediaRoot,
     mono: opts.mono ?? null,
     feeds: opts.feeds ? opts.feeds(store, db) : null,

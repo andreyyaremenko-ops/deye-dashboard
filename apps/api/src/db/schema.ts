@@ -224,6 +224,20 @@ export const nvrServers = pgTable("nvr_servers", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Пряма трансляція з камери телефона/ноутбука: браузер шле WebRTC (WHIP) у MediaMTX, екрани грають HLS.
+ * pathId — імʼя потоку в MediaMTX (16 символів [a-z0-9]), його знає кожен екран із віджетом, тому читання
+ * відкрите за ним; публікувати можна лише з publishKey (Bearer у WHIP), який бачить кабінет організації.
+ */
+export const liveStreams = pgTable("live_streams", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  pathId: text("path_id").notNull().unique(),
+  publishKey: text("publish_key").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [index("live_streams_org_idx").on(t.orgId)]);
+
 // --- AI-меню: розпізнане з фото меню закладу + згенеровані фото страв ---
 
 export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
@@ -335,6 +349,6 @@ export const aiUsage = pgTable("ai_usage", {
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
-  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations, nvrServers,
+  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations, nvrServers, liveStreams,
 };
 export { sql };

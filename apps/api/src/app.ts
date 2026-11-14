@@ -19,6 +19,8 @@ export interface AppDeps {
   publicUrl: string;
   mqttInternalUser: string;
   mqttInternalPass: string;
+  /** пароль ffmpeg усередині MediaMTX (прямі трансляції); порожньо — лише браузер і екрани */
+  liveInternalPass?: string;
   mediaRoot: string;
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */

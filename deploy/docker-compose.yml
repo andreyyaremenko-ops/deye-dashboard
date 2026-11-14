@@ -86,6 +86,22 @@ services:
     deploy: { resources: { limits: { memory: 256M } } }
     networks: [app]
 
+  # прямі трансляції (apps/api/src/live): WebRTC від браузера -> HLS для екранів. Назовні лише ICE-порт;
+  # WHIP і HLS — через Caddy. Хто що може, вирішує API (authHTTPAddress у mediamtx.yml).
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.3-ffmpeg
+    restart: unless-stopped
+    ports: ["8189:8189/udp", "8189:8189/tcp"]
+    environment:
+      MTX_WEBRTCADDITIONALHOSTS: ${LIVE_PUBLIC_IP:?LIVE_PUBLIC_IP — публічний IP сервера для WebRTC}
+      LIVE_INTERNAL_PASS: ${LIVE_INTERNAL_PASS:?}
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - ./mediamtx/tv.sh:/mtx/tv.sh:ro
+    depends_on: [api]
+    deploy: { resources: { limits: { memory: 512M } } }
+    networks: [app]
+
   # статика: docker compose run --rm static
   static:
     build:

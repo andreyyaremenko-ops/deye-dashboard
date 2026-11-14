@@ -2,11 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { mqttAclCheck, mqttAuth, mqttSuperuser } from "../mqtt/acl.ts";
 import { forbidden } from "../lib/errors.ts";
+import { mediamtxAuth } from "../live/service.ts";
 import type { Deps } from "./common.ts";
 
 const isPrivate = (ip: string) => /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|::1$|::ffff:(127\.|10\.|192\.168\.|172\.))/.test(ip);
 
-/** mosquitto-go-auth: auth/superuser/acl брокера. Лише з docker-мережі. */
+/** mosquitto-go-auth: auth/superuser/acl брокера; MediaMTX: хто може публікувати й дивитись трансляції. Лише з docker-мережі. */
 export async function internalRoutes(app: FastifyInstance, deps: Deps) {
   const mqttDeps = { db: deps.db, internalUser: deps.mqttInternalUser, internalPass: deps.mqttInternalPass };
   app.addHook("onRequest", async (req) => { if (!isPrivate(req.ip)) throw forbidden(); });
@@ -23,5 +24,12 @@ export async function internalRoutes(app: FastifyInstance, deps: Deps) {
     const { username, topic, acc } = z.object({ username: z.string(), topic: z.string(), acc: z.coerce.number() }).parse(req.body);
     if (mqttSuperuser(mqttDeps, username)) return reply.code(200).send();
     return reply.code(mqttAclCheck(username, topic, acc) ? 200 : 403).send();
+  });
+
+  // authHTTPAddress MediaMTX: 2xx — дозволено, інше — ні
+  app.post("/internal/mediamtx/auth", async (req, reply) => {
+    const body = z.object({ user: z.string().optional(), password: z.string().optional(), token: z.string().optional(), ip: z.string().optional(),
+      action: z.string(), path: z.string().optional(), protocol: z.string().optional() }).parse(req.body);
+    return reply.code((await mediamtxAuth(deps.db, deps.liveInternalPass ?? "", body)) ? 200 : 401).send();
   });
 }

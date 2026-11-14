@@ -43,6 +43,14 @@ docker compose logs -f caddy api
 
 Сертифікати Caddy копіюються в volume `certs` контейнером `certsync` для Mosquitto (8883).
 
+## Прямі трансляції (MediaMTX)
+
+Сервіс `mediamtx`: браузер у кабінеті шле камеру по WebRTC (WHIP через Caddy `/live/whip/*`), екрани грають HLS
+(`/live/hls/*`). У `deploy/.env` потрібні `LIVE_PUBLIC_IP` (публічний IP сервера для ICE) і `LIVE_INTERNAL_PASS`
+(ffmpeg усередині контейнера, той самий бачить API). Назовні відкритий порт **8189 UDP і TCP** — у фаєрволі
+хостингу теж. Конфіг — `deploy/mediamtx/mediamtx.yml`, перепаковка звуку для ТБ — `deploy/mediamtx/tv.sh`;
+обидва змонтовані файлами, після зміни — `docker compose up -d --force-recreate mediamtx`.
+
 ## Caddyfile після `git pull`
 
 `Caddyfile` примонтований як окремий файл, тому після зміни в git контейнер

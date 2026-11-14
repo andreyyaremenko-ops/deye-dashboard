@@ -1,0 +1,48 @@
+# MediaMTX для прямих трансляцій (apps/api/src/live): браузер публікує WebRTC (WHIP), екрани читають HLS.
+# Звідси назовні відкритий лише ICE-порт 8189 (UDP і TCP); WHIP і HLS ідуть через Caddy (/live/whip/*, /live/hls/*).
+# Публічний IP для ICE — MTX_WEBRTCADDITIONALHOSTS у docker-compose (LIVE_PUBLIC_IP з .env).
+logLevel: info
+
+# Кожне підключення вирішує API (mediamtxAuth): ключ трансляції для публікації, HLS <id>/tv для екранів,
+# внутрішній пароль для ffmpeg нижче.
+authMethod: http
+authHTTPAddress: http://api:3000/internal/mediamtx/auth
+
+api: false
+metrics: false
+pprof: false
+playback: false
+rtmp: false
+srt: false
+moq: false
+
+# RTSP лише всередині контейнера: ним ffmpeg читає оригінал і віддає версію для ТБ
+rtsp: true
+rtspTransports: [tcp]
+rtspAddress: 127.0.0.1:8554
+
+# mpegts: старі Tizen грають HLS нативно лише з TS-сегментами
+hls: true
+hlsAddress: :8888
+hlsVariant: mpegts
+hlsSegmentDuration: 1s
+hlsSegmentCount: 5
+hlsAlwaysRemux: true
+hlsTrustedProxies: [172.16.0.0/12]
+
+webrtc: true
+webrtcAddress: :8889
+webrtcTrustedProxies: [172.16.0.0/12]
+webrtcLocalUDPAddress: :8189
+# запасний шлях для мереж, де UDP закрито
+webrtcLocalTCPAddress: :8189
+# адреси docker-мережі клієнтам ні до чого — лише публічний IP
+webrtcIPsFromInterfaces: false
+# webrtcAdditionalHosts — з оточення (MTX_WEBRTCADDITIONALHOSTS), без нього MediaMTX не стартує
+
+paths:
+  # оригінал із браузера (H.264 + Opus): поки він онлайн, ffmpeg публікує <id>/tv зі звуком AAC
+  "~^[a-z0-9]{16}$":
+    runOnOnline: /mtx/tv.sh
+    runOnOnlineRestart: true
+  "~^[a-z0-9]{16}/tv$": {}

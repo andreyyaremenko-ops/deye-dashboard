@@ -29,6 +29,7 @@ const app = await buildApp({
   publicUrl: config.PUBLIC_URL,
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
+  liveInternalPass: config.LIVE_INTERNAL_PASS,
   mediaRoot: config.MEDIA_ROOT,
   mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
   imageProviders: [config.XAI_API_KEY && "xai", config.OPENAI_API_KEY && "openai"].filter((x): x is string => !!x),
