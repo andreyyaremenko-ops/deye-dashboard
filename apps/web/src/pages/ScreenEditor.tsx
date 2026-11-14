@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { Link } from "wouter";
 import { screenConfigSchema, type Scene, type ScreenConfig } from "@deye/shared";
-import { api, screenUrl, type Device, type MenuSummary, type NvrCamera, type Org, type OrgRadio, type Screen } from "../api.ts";
+import { api, screenUrl, type Device, type LiveStream, type MenuSummary, type NvrCamera, type Org, type OrgRadio, type Screen } from "../api.ts";
 import { Btn, Card, ErrorBox, useAction } from "../components/ui.tsx";
 import { Canvas } from "../editor/Canvas.tsx";
 import { WidgetSettings } from "../editor/WidgetSettings.tsx";
@@ -27,6 +27,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
   const [devices, setDevices] = useState<Device[]>([]);
   const [menus, setMenus] = useState<MenuSummary[]>([]);
   const [cameras, setCameras] = useState<NvrCamera[]>([]);
+  const [streams, setStreams] = useState<LiveStream[]>([]);
   const [radio, setRadio] = useState<OrgRadio>({ catalog: [], own: [] });
   const reloadRadio = async () => setRadio(await api.get<OrgRadio>(`/api/orgs/${org.id}/radio`));
   const bgs = useBackgrounds(org.id);
@@ -39,11 +40,12 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
 
   useEffect(() => {
     void (async () => {
-      const [list, devs, st, mns, cams] = await Promise.all([api.get<Screen[]>(`/api/orgs/${org.id}/screens`), api.get<Device[]>(`/api/orgs/${org.id}/devices`), api.get<OrgRadio>(`/api/orgs/${org.id}/radio`), api.get<MenuSummary[]>(`/api/orgs/${org.id}/menus`).catch(() => []),
-        api.get<{ cameras: NvrCamera[] }>(`/api/orgs/${org.id}/nvr/cameras`).then((r) => r.cameras).catch(() => [])]);
+      const [list, devs, st, mns, cams, lives] = await Promise.all([api.get<Screen[]>(`/api/orgs/${org.id}/screens`), api.get<Device[]>(`/api/orgs/${org.id}/devices`), api.get<OrgRadio>(`/api/orgs/${org.id}/radio`), api.get<MenuSummary[]>(`/api/orgs/${org.id}/menus`).catch(() => []),
+        api.get<{ cameras: NvrCamera[] }>(`/api/orgs/${org.id}/nvr/cameras`).then((r) => r.cameras).catch(() => []),
+        api.get<LiveStream[]>(`/api/orgs/${org.id}/live`).catch(() => [])]);
       const s = list.find((x) => x.id === screenId) ?? null;
       const c = s ? screenConfigSchema.parse(s.config) : null;
-      setScreen(s); setCfg(c); setName(s?.name ?? ""); setSaved(s && c ? { name: s.name, cfg: c } : null); setDevices(devs); setRadio(st); setMenus(mns); setCameras(cams);
+      setScreen(s); setCfg(c); setName(s?.name ?? ""); setSaved(s && c ? { name: s.name, cfg: c } : null); setDevices(devs); setRadio(st); setMenus(mns); setCameras(cams); setStreams(lives);
     })();
   }, [org.id, screenId]);
 
@@ -117,7 +119,7 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
             {devices.length === 0 && <p className="muted small">Спершу привʼяжіть пристрій.</p>}
           </Card>
           {selected ? <Card title={`Віджет: ${labelOf(selected.type)}`} actions={canEdit && <Btn kind="danger" onClick={() => removeWidget(selected.id)}>Видалити</Btn>}>
-            <WidgetSettings widget={selected} devices={devices} menus={menus} cameras={cameras} theme={scene.theme} onChange={updateWidget} />
+            <WidgetSettings widget={selected} devices={devices} menus={menus} cameras={cameras} streams={streams} theme={scene.theme} onChange={updateWidget} />
           </Card> : <p className="muted small side-hint">Клацніть віджет на полотні, щоб змінити його налаштування. Перетягуйте, щоб пересунути; куточок справа внизу — розмір.</p>}
         </>}
         {tab === "scene" && <Card title={`Сцена: ${sceneTitle(scene, idx)}`}>

@@ -3,14 +3,16 @@
  * пристрій із живою телеметрією та екран. Для розробки кабінету/ТБ і скриншотів.
  *   pnpm --filter @deye/api dev:mock      # http://localhost:3000, логін demo@example.com / correct horse battery staple
  *   pnpm --filter @deye/web dev           # vite проксує /api на 3000
+ *   LIVE_MTX_API=http://127.0.0.1:9997 …  # статус трансляцій із локального MediaMTX (пароль ffmpeg — INTERNAL.livePass)
  */
 import { eq } from "drizzle-orm";
-import { makeTestApp, signUp } from "../test/helpers.ts";
+import { INTERNAL, makeTestApp, signUp } from "../test/helpers.ts";
+import { mediamtxStatus } from "../src/live/status.ts";
 import { deviceState, devices, organizations } from "../src/db/schema.ts";
 import { registerDevice } from "../src/devices/service.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
-const t = await makeTestApp();
+const t = await makeTestApp({ liveOnline: process.env.LIVE_MTX_API ? mediamtxStatus(process.env.LIVE_MTX_API, INTERNAL.livePass) : undefined });
 const email = "demo@example.com";
 const { cookie, userId } = await signUp(t.app, email, "Демо");
 const inject = <T = any>(method: "POST" | "PATCH", url: string, payload?: unknown) =>

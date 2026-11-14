@@ -21,6 +21,8 @@ export interface AppDeps {
   mqttInternalPass: string;
   /** пароль ffmpeg усередині MediaMTX (прямі трансляції); порожньо — лише браузер і екрани */
   liveInternalPass?: string;
+  /** чи йде трансляція зараз (API MediaMTX); без нього — завжди «не в ефірі» */
+  liveOnline?: import("./live/status.ts").LiveOnline;
   mediaRoot: string;
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */

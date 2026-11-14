@@ -77,10 +77,15 @@ export function CameraWidget({ cls, token, props }: Props) {
 export const VIDEO_CONFLICT = "sh:video-conflict";
 
 const android = /Android/i.test(navigator.userAgent);
+const GESTURES = ["pointerdown", "touchstart", "keydown"];
 const mse = (codecs: string) => { try { return window.MediaSource?.isTypeSupported(`video/mp4; codecs="${codecs}"`) ?? false; } catch { return false; } };
 
-/** Один потік: нативний HLS, якщо ТБ уміє, інакше hls.js окремим чанком. */
-function Player({ src, fit }: { src: string; fit: string }) {
+/**
+ * Один потік: нативний HLS, якщо ТБ уміє, інакше hls.js окремим чанком.
+ * sound — пряма трансляція: зі звуком, а якщо браузер не дозволяє автозапуск зі звуком,
+ * грає без нього до першої кнопки пульта (як радіо).
+ */
+export function Player({ src, fit, sound = false }: { src: string; fit: string; sound?: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   const [failed, setFailed] = useState<string | null>(null);
 
@@ -95,6 +100,18 @@ function Player({ src, fit }: { src: string; fit: string }) {
     let resetting = false;
     let native = false, nativeFailed = false;
     let recovers = 0;
+    let unmuteOff: (() => void) | undefined;
+    const play = () => {
+      v.muted = !sound;
+      v.play().catch((e: unknown) => {
+        if (!sound || (e as { name?: string })?.name !== "NotAllowedError") return;
+        v.muted = true;
+        v.play().catch(() => {});
+        const unmute = () => { v.muted = false; for (const ev of GESTURES) removeEventListener(ev, unmute, true); };
+        for (const ev of GESTURES) addEventListener(ev, unmute, true);
+        unmuteOff = () => { for (const ev of GESTURES) removeEventListener(ev, unmute, true); };
+      });
+    };
     const onPlaying = () => { recovers = 0; };
     const again = () => {
       if (!alive || resetting) return;
@@ -116,7 +133,7 @@ function Player({ src, fit }: { src: string; fit: string }) {
       if (!android && !nativeFailed && v.canPlayType("application/vnd.apple.mpegurl")) {
         native = true;
         v.src = src;
-        v.play().catch(() => {});
+        play();
         destroy = () => reset();
         return;
       }
@@ -147,7 +164,7 @@ function Player({ src, fit }: { src: string; fit: string }) {
         });
         hls.loadSource(src);
         hls.attachMedia(v);
-        v.play().catch(() => {});
+        play();
         destroy = () => { clearTimeout(watchdog); hls.destroy(); reset(); };
       }).catch(() => { if (alive) setFailed("цей телевізор не програє потік"); });
     };
@@ -155,9 +172,9 @@ function Player({ src, fit }: { src: string; fit: string }) {
     v.addEventListener("error", again);
     v.addEventListener("playing", onPlaying);
     start();
-    return () => { alive = false; clearTimeout(retry); v.removeEventListener("error", again); v.removeEventListener("playing", onPlaying); destroy?.(); };
-  }, [src]);
+    return () => { alive = false; clearTimeout(retry); unmuteOff?.(); v.removeEventListener("error", again); v.removeEventListener("playing", onPlaying); destroy?.(); };
+  }, [src, sound]);
 
   if (failed) return <div class="cam-msg">{failed}</div>;
-  return <video ref={ref} class={`cam-video fit-${fit}`} muted playsInline autoPlay preload="none" />;
+  return <video ref={ref} class={`cam-video fit-${fit}`} muted={!sound} playsInline autoPlay preload="none" />;
 }

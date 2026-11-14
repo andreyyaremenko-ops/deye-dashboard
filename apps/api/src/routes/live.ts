@@ -4,13 +4,21 @@ import * as live from "../live/service.ts";
 import { conflict } from "../lib/errors.ts";
 import { member, orgIdParams, orgParams, type Deps } from "./common.ts";
 
-/** Прямі трансляції закладу: список із ключем публікації — для персоналу, що веде трансляцію; створення й видалення — адмін. */
+/** Прямі трансляції закладу: список із ключем і статусом — для персоналу, що веде трансляцію; створення й видалення — адмін; статус ефіру — публічно. */
 export async function liveRoutes(app: FastifyInstance, deps: Deps) {
   const { db } = deps;
+  const online = deps.liveOnline ?? (async () => false);
+
+  // публічне: екран з віджетом «Пряма трансляція» питає, чи є ефір (pathId і так знає кожен такий екран)
+  app.get("/api/public/live/:pathId", async (req) => {
+    const { pathId } = z.object({ pathId: z.string().regex(/^[a-z0-9]{16}$/) }).parse(req.params);
+    return { online: await online(pathId) };
+  });
 
   app.get("/api/orgs/:orgId/live", async (req) => {
     const { orgId } = await member(deps, req, orgParams, "staff");
-    return live.listStreams(db, orgId);
+    const list = await live.listStreams(db, orgId);
+    return Promise.all(list.map(async (s) => ({ ...s, online: await online(s.pathId) })));
   });
   app.post("/api/orgs/:orgId/live", async (req, reply) => {
     const { orgId } = await member(deps, req, orgParams, "admin");

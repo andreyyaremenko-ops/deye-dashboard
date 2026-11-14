@@ -8,7 +8,9 @@ logLevel: info
 authMethod: http
 authHTTPAddress: http://api:3000/internal/mediamtx/auth
 
-api: false
+# API лише в docker-мережі (порт не опубліковано): наш API питає, чи йде трансляція
+api: true
+apiAddress: :9997
 metrics: false
 pprof: false
 playback: false

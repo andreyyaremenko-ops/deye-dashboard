@@ -144,6 +144,19 @@ SaaS: пристрій на ESP читає інвертор Deye через Sola
 - Кеш екрана (2026-11-14): HTML `/tv` і `/s/*` — `Cache-Control: no-cache`, `/s/assets/*` — immutable (сніпет `tv_cache`
   у Caddyfile). Без цього ТБ годинами тримав стару сторінку після деплою (новий віджет — «?web»). Перехід `/tv` ->
   `/s/<токен>` додає `?_=<час>`, щоб обійти вже закешоване.
+- Прямі трансляції (2026-11-14): камера телефона/ноутбука на ТБ. Ведучий — «Трансляції» в кабінеті
+  (`apps/web/src/pages/Live.tsx`, WHIP-клієнт `live/whip.ts`: без trickle, лише H.264, ~2.5 Мбіт/с, перепідключення,
+  replaceTrack для зміни камери). Сервер — MediaMTX 1.21 (`deploy/mediamtx/`, образ `-ffmpeg`): WebRTC на ICE-порт
+  8189 UDP/TCP (публічний IP — `LIVE_PUBLIC_IP`), `runOnOnline` ffmpeg (`tv.sh`) перепаковує звук Opus -> AAC у
+  `<pathId>/tv` (Opus ТБ не грають), HLS mpegts для старих Tizen. Caddy: `/live/whip/*`, `/live/hls/*` (дописує
+  префікс до `Location`: і cookieCheck HLS, і сесія WHIP). Права — хук API `/internal/mediamtx/auth`
+  (`live/service.ts`): публікація лише WebRTC з ключем трансляції, читання лише HLS `<id>/tv`, ffmpeg —
+  localhost + `LIVE_INTERNAL_PASS`, API MediaMTX — той самий пароль. Статус ефіру API бере з API MediaMTX
+  (`live/status.ts`, кеш 3 с) — `/api/public/live/<pathId>`; ТБ опитує його раз на 5 с, а не плейлист (кожен
+  запит плейлиста — нова HLS-сесія і виклик хука). Віджет `live` (`apps/tv/src/live.tsx`, props `pathId`, `name`,
+  `sound`, `fit`, `whenOff`) грає через Player камер; без ефіру — заглушка або нічого; ефір зі звуком глушить радіо
+  (подія `LIVE_AUDIO` -> `srcUrl` у app.tsx = null), на ТБ з одним медіа фон стає кадром, як із камерою.
+  Перевірено локально наскрізь (headless Chromium із тестовою камерою); на справжніх ТБ і телефоні — ще ні.
 - Сцени: `screens.config.scenes[]` (до 10) — кілька виглядів на один телевізор з таймером,
   розкладом за годинами і пріоритетом при відключенні; схема й нормалізація в
   `packages/shared/src/index.ts`, вибір сцени в `shared/scenes.ts`, ротація на ТБ у

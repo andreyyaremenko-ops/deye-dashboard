@@ -56,6 +56,7 @@ const MOCK: Partial<Record<W["type"], (p: Record<string, unknown>) => [string, s
   spectrum: (p) => { const m = String(p.mode ?? "bars"); return [m === "circle" ? "◎" : m === "orbit" ? "◍" : m === "mirror" ? "▚▞▚" : "▁▄█▆▂", `візуалізація звуку · ${({ bars: "стовпці", mirror: "дзеркало", circle: "коло", orbit: "орбіта" } as Record<string, string>)[m] ?? "стовпці"}`]; },
   camera: (p) => { const n = Array.isArray(p.cameras) ? p.cameras.length : 0; return ["▶ камера", n > 1 ? `${n} камери по черзі` : n === 1 ? String((p.cameras as string[])[0]) : "камери не вибрані"]; },
   qr: (p) => ["▦ QR", String(p.caption ?? "")],
+  live: (p) => ["● наживо", String(p.name ?? "") || "трансляцію не вибрано"],
   web: (p) => ["⧉ вебсторінка", String(p.url ?? "") || "адреса не вказана"],
 };
 function Mock({ w }: { w: W }) {

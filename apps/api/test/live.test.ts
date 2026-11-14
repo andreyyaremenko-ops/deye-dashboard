@@ -1,18 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { makeTestApp, signUp, api, INTERNAL, type TestApp } from "./helpers.ts";
+import { mediamtxStatus } from "../src/live/status.ts";
 
 describe("прямі трансляції", () => {
   let t: TestApp;
   let owner: ReturnType<typeof api>, staff: ReturnType<typeof api>, other: ReturnType<typeof api>;
   let orgId: string;
   let stream: { id: string; pathId: string; publishKey: string; whipUrl: string; hlsUrl: string };
+  const onAir = new Set<string>();
 
   /** Запит MediaMTX на authHTTPAddress (з docker-мережі або ззовні). */
   const auth = (body: Record<string, unknown>, remoteAddress = "172.19.0.9") =>
     t.app.inject({ method: "POST", url: "/internal/mediamtx/auth", payload: body, remoteAddress }).then((r) => r.statusCode);
 
   beforeAll(async () => {
-    t = await makeTestApp();
+    t = await makeTestApp({ liveOnline: async (pathId) => onAir.has(pathId) });
     const o = await signUp(t.app, "owner@live.test"); owner = api(t.app, o.cookie);
     const s = await signUp(t.app, "staff@live.test"); staff = api(t.app, s.cookie);
     const x = await signUp(t.app, "x@live.test"); other = api(t.app, x.cookie);
@@ -62,6 +64,36 @@ describe("прямі трансляції", () => {
     expect(await auth({ ...ff, action: "publish", path: stream.pathId })).toBe(401);
     expect(await auth({ ...ff, ip: "203.0.113.5", action: "read", path: stream.pathId })).toBe(401);
     expect(await auth({ ...ff, password: "nope", action: "read", path: stream.pathId })).toBe(401);
+  });
+
+  it("API MediaMTX (статус) — лише з внутрішнім паролем", async () => {
+    expect(await auth({ action: "api", user: "mtx", password: INTERNAL.livePass, ip: "172.19.0.4" })).toBe(200);
+    expect(await auth({ action: "api", user: "mtx", password: "nope", ip: "172.19.0.4" })).toBe(401);
+    expect(await auth({ action: "api", token: stream.publishKey })).toBe(401);
+  });
+
+  it("статус ефіру: публічно за pathId і в списку кабінету", async () => {
+    const pub = () => t.app.inject({ method: "GET", url: `/api/public/live/${stream.pathId}` }).then((r) => r.json().online);
+    expect(await pub()).toBe(false);
+    onAir.add(stream.pathId);
+    expect(await pub()).toBe(true);
+    expect((await owner.get(`/api/orgs/${orgId}/live`)).json()[0].online).toBe(true);
+    onAir.delete(stream.pathId);
+    expect((await t.app.inject({ method: "GET", url: "/api/public/live/..%2Fadmin" })).statusCode).toBe(400);
+  });
+
+  it("клієнт статусу питає <id>/tv з паролем і кешує відповідь", async () => {
+    const calls: { url: string; auth: string | null }[] = [];
+    const fake = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, auth: new Headers(init?.headers).get("authorization") });
+      return url.includes("aaaaaaaaaaaaaaaa") ? new Response(JSON.stringify({ online: true })) : new Response("{}", { status: 404 });
+    }) as typeof fetch;
+    const online = mediamtxStatus("http://mediamtx:9997", "pw", fake);
+    expect(await online("aaaaaaaaaaaaaaaa")).toBe(true);
+    expect(await online("aaaaaaaaaaaaaaaa")).toBe(true);
+    expect(await online("bbbbbbbbbbbbbbbb")).toBe(false);
+    expect(calls.map((c) => c.url)).toEqual(["http://mediamtx:9997/v3/paths/get/aaaaaaaaaaaaaaaa/tv", "http://mediamtx:9997/v3/paths/get/bbbbbbbbbbbbbbbb/tv"]);
+    expect(calls[0]!.auth).toBe(`Basic ${Buffer.from("mtx:pw").toString("base64")}`);
   });
 
   it("хук не відповідає ззовні docker-мережі", async () => {

@@ -6,7 +6,8 @@ const schema = z.object({
   MQTT_URL: z.string().default("mqtt://localhost:1883"),
   MQTT_INTERNAL_USER: z.string().default("api"),
   MQTT_INTERNAL_PASS: z.string().default(""),
-  LIVE_INTERNAL_PASS: z.string().default(""),     // ffmpeg усередині MediaMTX (deploy/mediamtx): порожньо — внутрішній вхід вимкнено
+  LIVE_INTERNAL_PASS: z.string().default(""),
+  LIVE_MTX_API: z.string().default("http://mediamtx:9997"),   // API MediaMTX у docker-мережі: статус трансляцій     // ffmpeg усередині MediaMTX (deploy/mediamtx): порожньо — внутрішній вхід вимкнено
   API_PORT: z.coerce.number().default(3000),
   MEDIA_ROOT: z.string().default("/media"),
   LOGGER_PORT: z.coerce.number().default(10000),

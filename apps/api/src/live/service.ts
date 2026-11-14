@@ -61,13 +61,17 @@ const isLocal = (ip = "") => ip === "127.0.0.1" || ip === "::1";
  * Рішення для MediaMTX:
  *  - ffmpeg усередині контейнера (localhost + внутрішній пароль) — читати оригінал і публікувати <id>/tv;
  *  - браузер — публікувати <id> лише по WebRTC і лише з ключем трансляції (Authorization: Bearer);
- *  - екран — читати <id>/tv лише по HLS: знати pathId достатньо, як і з посиланням на екран.
- * Усе інше (API, метрики, читання оригіналу ззовні, RTSP/RTMP/SRT) заборонено.
+ *  - екран — читати <id>/tv лише по HLS: знати pathId достатньо, як і з посиланням на екран;
+ *  - наш API — API MediaMTX (чи йде трансляція) з внутрішнім паролем.
+ * Усе інше (метрики, читання оригіналу ззовні, RTSP/RTMP/SRT) заборонено.
  */
 export async function mediamtxAuth(db: Db, internalPass: string, r: MtxAuthRequest): Promise<boolean> {
+  const internal = !!internalPass && r.user === MTX_INTERNAL_USER && same(r.password ?? "", internalPass);
+  // API MediaMTX (статус трансляцій) питає наш API з docker-мережі; назовні порт API не відкритий
+  if (r.action === "api") return internal;
   const m = PATH_RE.exec(r.path ?? "");
   if (!m) return false;
-  if (internalPass && r.user === MTX_INTERNAL_USER && isLocal(r.ip) && same(r.password ?? "", internalPass))
+  if (internal && isLocal(r.ip))
     return r.protocol === "rtsp" && (r.action === "read" ? !m[2] : r.action === "publish" && !!m[2]);
   const [row] = await db.select({ publishKey: liveStreams.publishKey }).from(liveStreams).where(eq(liveStreams.pathId, m[1]!));
   if (!row) return false;

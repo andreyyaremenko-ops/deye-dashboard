@@ -13,6 +13,7 @@ import { expireSubscriptions } from "./billing/service.ts";
 import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
 import { createMailer } from "./mail/index.ts";
 import { FeedHub, webhookSecret, webhookUrlFor } from "./feeds/hub.ts";
+import { mediamtxStatus } from "./live/status.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 // погода/тривоги: стартує після buildApp, щоб писати в app.log
@@ -30,6 +31,7 @@ const app = await buildApp({
   mqttInternalUser: config.MQTT_INTERNAL_USER,
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
   liveInternalPass: config.LIVE_INTERNAL_PASS,
+  liveOnline: config.LIVE_INTERNAL_PASS ? mediamtxStatus(config.LIVE_MTX_API, config.LIVE_INTERNAL_PASS) : undefined,
   mediaRoot: config.MEDIA_ROOT,
   mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
   imageProviders: [config.XAI_API_KEY && "xai", config.OPENAI_API_KEY && "openai"].filter((x): x is string => !!x),

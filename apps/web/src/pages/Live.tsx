@@ -9,7 +9,8 @@ export function LiveList({ org }: { org: Org }) {
   const [list, setList] = useState<LiveStream[] | null>(null);
   const canEdit = org.role !== "staff";
   const load = async () => setList(await api.get<LiveStream[]>(`/api/orgs/${org.id}/live`));
-  useEffect(() => { void load(); }, [org.id]);
+  // статус ефіру міняється з телефона ведучого — оновлюємо список
+  useEffect(() => { void load(); const t = setInterval(() => void load().catch(() => {}), 10_000); return () => clearInterval(t); }, [org.id]);
 
   const create = useAction(async () => {
     const name = prompt("Назва трансляції", list?.length ? `Трансляція ${list.length + 1}` : "Зал");
@@ -33,7 +34,7 @@ export function LiveList({ org }: { org: Org }) {
       : list.length === 0 ? <div className="empty">{canEdit ? "Ще немає трансляцій. Створіть першу." : "Адміністратор ще не створив жодної трансляції."}</div>
       : <table className="tbl"><thead><tr><th>Назва</th><th /></tr></thead>
         <tbody>{list.map((s) => <tr key={s.id}>
-          <td><Link href={`/o/${org.id}/live/${s.id}`} className="dev-name">{s.name}</Link></td>
+          <td><Link href={`/o/${org.id}/live/${s.id}`} className="dev-name">{s.name}</Link> {s.online && <span className="pill pill-live">в ефірі</span>}</td>
           <td className="actions">
             <Link href={`/o/${org.id}/live/${s.id}`} className="btn btn-sm btn-primary">● Вести</Link>
             {canEdit && <Btn kind="ghost" onClick={() => rotate.run(s)} title="Новий ключ публікації">Новий ключ</Btn>}

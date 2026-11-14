@@ -17,6 +17,7 @@ import { playVoice, preloadVoices, voiceClips } from "./voice.ts";
 const ALERT_PRIORITY: AlertKind[] = ["air_alert", "air_clear", "grid_down", "soc_low", "grid_up", "pv_high"];
 const TOAST_MS = 20_000;
 import { VIDEO_CONFLICT } from "./camera.tsx";
+import { LIVE_AUDIO } from "./live.tsx";
 
 function tokenFromUrl(): string | null {
   const m = /^\/s\/([A-Za-z0-9_-]{20,})/.exec(location.pathname);
@@ -52,6 +53,14 @@ export function App() {
     return () => removeEventListener(VIDEO_CONFLICT, on);
   }, []);
 
+  // пряма трансляція зі звуком в ефірі -> радіо замовкає, після ефіру вмикається знову
+  const [liveAudio, setLiveAudio] = useState(0);
+  useEffect(() => {
+    const on = (e: Event) => setLiveAudio((n) => Math.max(0, n + ((e as CustomEvent<boolean>).detail ? 1 : -1)));
+    addEventListener(LIVE_AUDIO, on);
+    return () => removeEventListener(LIVE_AUDIO, on);
+  }, []);
+
   // сцени: відключення світла на будь-якому пристрої екрана закріплює сцену з позначкою «при відключенні»
   const outage = !!live?.screen && live.screen.deviceIds.some((id) => { const st = live.states.get(id); return !!st && !st.stale && gridDown(st.metrics); });
   const scene = useActiveScene(live?.screen?.config, outage);
@@ -74,7 +83,7 @@ export function App() {
     return () => { alive = false; };
   }, [token, radioUrl, wantsViz]);
 
-  const srcUrl = source?.url ?? null;
+  const srcUrl = liveAudio ? null : source?.url ?? null;
   const wantCors = !!source?.analyser && !source.proxied;
   useEffect(() => {
     if (!native || !srcUrl) return;
@@ -211,8 +220,8 @@ export function App() {
   const preview = bg?.preview ? media(bg.preview) : null;
   const image = isImage && best && !lite ? media(best) : null;   // фото-фон: нерухомий кадр, радіо не заважає
   const mode = screen.config.tvVideo ?? "auto";
-  // камера в сцені — теж медіаелемент, і вона важливіша за рухомий фон
-  const hasCamera = scene.widgets.some((w) => w.type === "camera" && Array.isArray(w.props?.cameras) && w.props.cameras.length > 0);
+  // камера чи пряма трансляція в сцені — теж медіаелемент, і вона важливіша за рухомий фон
+  const hasCamera = scene.widgets.some((w) => (w.type === "camera" && Array.isArray(w.props?.cameras) && w.props.cameras.length > 0) || (w.type === "live" && !!w.props?.pathId));
   // радіо/камера + відео на ТБ з одним медіаелементом -> кадр замість відео; вручну можна примусити будь-який режим
   const posterOnly = ((!!radioUrl && !native) || hasCamera) && (mode === "poster" || (mode === "auto" && singleMedia));
   const src = !lite && !posterOnly && video ? media(video) : null;

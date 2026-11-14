@@ -3,17 +3,17 @@ import type { ReactNode } from "react";
 import { MENU_FONTS, MENU_FONT_SIZE, MENU_LOOKS, NEON_SIGN_FLICKER, NEON_SURFACES, menuStyle, neonSignStyle } from "@deye/shared/menu";
 import { VIZ_MODES, VIZ_SENS, VIZ_THEMES } from "@deye/shared/spectrum";
 import { OUTAGE_GROUPS, OUTAGE_REGIONS } from "@deye/shared/outages";
-import type { Device, MenuSummary, NvrCamera } from "../api.ts";
+import type { Device, LiveStream, MenuSummary, NvrCamera } from "../api.ts";
 import { Field } from "../components/ui.tsx";
 import { kindOf, type Widget } from "./widgetTypes.ts";
 
 type Theme = "dark" | "light";
 type Props = Record<string, unknown>;
-interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme; menus: MenuSummary[]; cameras: NvrCamera[] }
+interface Ctx { p: Props; set: (patch: Props) => void; theme: Theme; menus: MenuSummary[]; cameras: NvrCamera[]; streams: LiveStream[] }
 
-export function WidgetSettings({ widget, devices, menus = [], cameras = [], theme, onChange }: { widget: Widget; devices: Device[]; menus?: MenuSummary[]; cameras?: NvrCamera[]; theme: Theme; onChange: (w: Widget) => void }) {
+export function WidgetSettings({ widget, devices, menus = [], cameras = [], streams = [], theme, onChange }: { widget: Widget; devices: Device[]; menus?: MenuSummary[]; cameras?: NvrCamera[]; streams?: LiveStream[]; theme: Theme; onChange: (w: Widget) => void }) {
   const p = widget.props ?? {};
-  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme, menus, cameras };
+  const ctx: Ctx = { p, set: (patch) => onChange({ ...widget, props: { ...p, ...patch } }), theme, menus, cameras, streams };
   const pos = (k: "x" | "y" | "w" | "h") => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...widget, [k]: +e.currentTarget.value });
   return <>
     {(kindOf(widget.type)?.needsDevice || (kindOf(widget.type)?.optionalDevice && devices.length > 0)) && <Field label="Пристрій">
@@ -147,6 +147,30 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     </div>
     <Hint>Показує звук радіо цього екрана — увімкніть радіо в налаштуваннях екрана. Станції без CORS ми програємо через свій сервер, щоб дістати спектр; якщо звуку немає, віджет плавно анімує сам і пише «без спектра». Орієнтовний розмір 34×26 %.</Hint>
   </>,
+  live: (ctx) => {
+    const cur = String(ctx.p.pathId ?? "");
+    const known = ctx.streams.some((s) => s.pathId === cur);
+    return <>
+      <Field label="Трансляція">
+        {ctx.streams.length === 0
+          ? <p className="muted small">Ще немає трансляцій — створіть у розділі «Трансляції».</p>
+          : <select value={cur} onChange={(e) => { const s = ctx.streams.find((x) => x.pathId === e.currentTarget.value); ctx.set({ pathId: s?.pathId ?? "", name: s?.name ?? "" }); }}>
+            <option value="">— виберіть —</option>
+            {ctx.streams.map((s) => <option key={s.id} value={s.pathId}>{s.name}{s.online ? " · в ефірі" : ""}</option>)}
+            {cur && !known && <option value={cur}>видалена трансляція</option>}
+          </select>}
+      </Field>
+      <div className="row small">
+        <Toggle ctx={ctx} k="sound" label="Звук" on="зі звуком (радіо на паузі)" off="без звуку" />
+        <Select ctx={ctx} k="fit" label="Кадр" fallback="contain" options={[["contain", "вмістити цілком"], ["cover", "заповнити картку"]]} />
+      </div>
+      <div className="row small">
+        <Select ctx={ctx} k="whenOff" label="Коли ефіру немає" fallback="card" options={[["card", "показувати «не в ефірі»"], ["hide", "ховати віджет"]]} />
+        {Card(ctx)}
+      </div>
+      <Hint>Ведучий відкриває «Трансляції» на телефоні чи ноутбуці й натискає «Почати» — телевізор підхопить ефір за кілька секунд сам. Поки ефір зі звуком, радіо екрана на паузі. Для повного екрана — окрема сцена 100×100. На телевізорах, що тягнуть лише один медіаелемент, відеофон стане кадром.</Hint>
+    </>;
+  },
   camera: (ctx) => {
     const chosen = Array.isArray(ctx.p.cameras) ? (ctx.p.cameras as unknown[]).map(String) : [];
     const names = Array.isArray(ctx.p.names) ? (ctx.p.names as unknown[]).map(String) : [];
