@@ -13,7 +13,7 @@ import { ScreenControls } from "../editor/ScreenControls.tsx";
 import { BackgroundDialog } from "../editor/BackgroundDialog.tsx";
 import { bgPreview, useBackgrounds } from "../editor/useBackgrounds.ts";
 import { PairCard } from "../editor/PairCard.tsx";
-import { WIDGET_KINDS, labelOf, newWidget, type Widget, type WidgetKind } from "../editor/widgetTypes.ts";
+import { WIDGET_GROUPS, WIDGET_KINDS, labelOf, newWidget, type Widget, type WidgetKind } from "../editor/widgetTypes.ts";
 
 type Tab = "widgets" | "scene" | "screen";
 const TABS: [Tab, string][] = [["widgets", "Віджети"], ["scene", "Сцена"], ["screen", "Екран"]];
@@ -115,7 +115,10 @@ export function ScreenEditor({ org, screenId }: { org: Org; screenId: string }) 
         </div>
         {tab === "widgets" && <>
           <Card title="Додати віджет">
-            <div className="chips">{WIDGET_KINDS.map((k) => <button key={k.key ?? k.t} className="chip" disabled={!canEdit || (k.needsDevice && devices.length === 0)} onClick={() => addWidget(k)}>{k.label}</button>)}</div>
+            {WIDGET_GROUPS.map(([g, title]) => <div key={g} className="wgroup">
+              <div className="wgroup-h">{title}</div>
+              <div className="chips">{WIDGET_KINDS.filter((k) => k.group === g).map((k) => <button key={k.key ?? k.t} className="chip" disabled={!canEdit || (k.needsDevice && devices.length === 0)} onClick={() => addWidget(k)}>{k.label}</button>)}</div>
+            </div>)}
             {devices.length === 0 && <p className="muted small">Спершу привʼяжіть пристрій.</p>}
           </Card>
           {selected ? <Card title={`Віджет: ${labelOf(selected.type)}`} actions={canEdit && <Btn kind="danger" onClick={() => removeWidget(selected.id)}>Видалити</Btn>}>

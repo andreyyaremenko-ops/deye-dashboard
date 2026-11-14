@@ -3,7 +3,7 @@
  * Функції чисті й узагальнені (SceneLike), щоб не залежати від zod-схеми екрана.
  */
 export interface SceneSchedule { from: string; to: string }   // "HH:MM", локальний час телевізора
-export interface SceneLike { id: string; durationS: number; schedule: SceneSchedule | null; onOutage: boolean }
+export interface SceneLike { id: string; durationS: number; schedule: SceneSchedule | null; onOutage: boolean; enabled?: boolean }
 export type RotationMode = "sequence" | "random";
 export const MAX_SCENES = 10;
 
@@ -18,15 +18,17 @@ export function inSchedule(s: SceneSchedule | null, minuteOfDay: number): boolea
 }
 
 /**
- * Сцени, які можна показувати зараз. При відключенні світла — лише позначені onOutage (якщо такі є).
- * Якщо розклад відсіяв усе, лишається перша сцена: екран ніколи не порожній.
+ * Сцени, які можна показувати зараз: лише увімкнені; при відключенні світла — лише позначені onOutage (якщо такі є).
+ * Якщо розклад відсіяв усе, лишається перша увімкнена сцена (а якщо вимкнені всі — просто перша): екран ніколи не порожній.
  */
 export function eligibleScenes<T extends SceneLike>(scenes: T[], now: Date, outage: boolean): T[] {
   if (!scenes.length) return [];
-  if (outage) { const pinned = scenes.filter((s) => s.onOutage); if (pinned.length) return pinned; }
+  const on = scenes.filter((s) => s.enabled !== false);
+  if (!on.length) return [scenes[0]!];
+  if (outage) { const pinned = on.filter((s) => s.onOutage); if (pinned.length) return pinned; }
   const m = now.getHours() * 60 + now.getMinutes();
-  const ok = scenes.filter((s) => inSchedule(s.schedule, m));
-  return ok.length ? ok : [scenes[0]!];
+  const ok = on.filter((s) => inSchedule(s.schedule, m));
+  return ok.length ? ok : [on[0]!];
 }
 
 /** Наступна сцена: по колу або випадково (без повтору тієї самої двічі поспіль, якщо є вибір). */

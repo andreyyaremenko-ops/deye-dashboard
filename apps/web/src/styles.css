@@ -146,6 +146,7 @@ textarea { background: var(--input); color: var(--fg); border: 1px solid var(--l
 .scene-tab { display: inline-flex; align-items: center; gap: .5rem; padding: .4rem .8rem .4rem .45rem; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel); color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
 .scene-tab:hover { color: var(--fg); background: var(--panel-2); } .scene-tab.on { color: var(--fg); border-color: rgba(34,211,238,.55); background: rgba(34,211,238,.1); }
 .scene-tab small { font: 500 .66rem var(--mono); letter-spacing: .06em; opacity: .75; } .scene-tab:disabled { opacity: .4; cursor: default; }
+.scene-tab.off { opacity: .55; border-style: dashed; } .scene-tab.off .scene-name { text-decoration: line-through; } .scene-tab.off.on { opacity: .8; }
 .scene-n { display: inline-grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: rgba(255,255,255,.08); font: 600 .72rem var(--mono); } .scene-tab.on .scene-n { background: var(--cyan); color: #04121a; }
 .scene-add { padding-left: .8rem; border-style: dashed; color: var(--cyan); }
 .editor-body { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1rem; align-items: start; }
@@ -433,3 +434,7 @@ html, body { overflow-x: hidden; }
 .live-bar select { max-width: 14rem; }
 .live-tip { border: 1px solid rgba(242,178,27,.45); background: rgba(242,178,27,.1); color: #ffd98a; border-radius: 8px; padding: .5rem .75rem; font-size: .9rem; }
 @media (max-width: 640px) { .live-stage { aspect-ratio: 3 / 4; } .live-bar .grow { display: none; } .live-bar > .btn:last-child { flex: 1 1 100%; padding: .9rem; font-size: 1.05rem; } }
+
+/* «Додати віджет»: групи */
+.wgroup + .wgroup { margin-top: .7rem; }
+.wgroup-h { font: 600 .68rem var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem; }

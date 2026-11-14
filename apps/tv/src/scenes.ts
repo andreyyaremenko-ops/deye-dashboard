@@ -7,7 +7,7 @@ import { eligibleScenes, nextScene } from "@deye/shared/scenes";
 export function scenesOf(cfg: ScreenConfig | undefined | null): Scene[] {
   if (!cfg) return [];
   if (cfg.scenes?.length) return cfg.scenes;
-  return [{ id: "main", name: "", durationS: 30, backgroundId: cfg.backgroundId, theme: cfg.theme, widgets: cfg.widgets, schedule: null, onOutage: false }];
+  return [{ id: "main", name: "", durationS: 30, backgroundId: cfg.backgroundId, theme: cfg.theme, widgets: cfg.widgets, schedule: null, onOutage: false, enabled: true }];
 }
 
 /**

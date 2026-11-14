@@ -1,4 +1,4 @@
-/** Вкладка «Сцена»: назва, тривалість показу, розклад за годинами, пріоритет при відключенні, тема і фон. */
+/** Вкладка «Сцена»: показ на ТБ, назва, тривалість показу, розклад за годинами, пріоритет при відключенні, тема і фон. */
 import type { Scene } from "@deye/shared";
 import { Field } from "../components/ui.tsx";
 import { bgPreview, type Backgrounds } from "./useBackgrounds.ts";
@@ -10,6 +10,10 @@ export function SceneSettings({ scene, index, many, canEdit, bgs, update, openBa
   const thumb = bgPreview(bg);
   const sch = scene.schedule;
   return <>
+    <Field label="На телевізорі">
+      <select value={scene.enabled === false ? "0" : "1"} disabled={!canEdit} onChange={(e) => update({ enabled: e.currentTarget.value === "1" })}>
+        <option value="1">показувати</option><option value="0">вимкнена — не показувати</option>
+      </select></Field>
     <div className="row small">
       <Field label="Назва"><input value={scene.name} maxLength={60} placeholder={`Сцена ${index + 1}`} onChange={(e) => update({ name: e.currentTarget.value })} disabled={!canEdit} /></Field>
       <Field label="Показувати, с"><input type="number" min={5} max={3600} step={5} value={scene.durationS} disabled={!canEdit}

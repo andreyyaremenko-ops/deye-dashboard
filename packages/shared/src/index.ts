@@ -72,6 +72,8 @@ export const sceneSchema = z.object({
   schedule: z.object({ from: hhmm, to: hhmm }).nullable().default(null),
   /** під час відключення світла показувати лише такі сцени */
   onOutage: z.boolean().default(false),
+  /** вимкнена сцена лишається в конфігу, але на ТБ не показується (напр. трансляція — лише коли треба) */
+  enabled: z.boolean().default(true),
 });
 export type Scene = z.infer<typeof sceneSchema>;
 
@@ -97,7 +99,7 @@ const screenConfigBase = z.object({
  */
 export const screenConfigSchema = screenConfigBase.transform((cfg) => {
   const scenes = cfg.scenes.length ? cfg.scenes
-    : [{ id: "main", name: "", durationS: 30, backgroundId: cfg.backgroundId, theme: cfg.theme, widgets: cfg.widgets, schedule: null, onOutage: false } satisfies Scene];
+    : [{ id: "main", name: "", durationS: 30, backgroundId: cfg.backgroundId, theme: cfg.theme, widgets: cfg.widgets, schedule: null, onOutage: false, enabled: true } satisfies Scene];
   const first = scenes[0]!;
   return { ...cfg, scenes, backgroundId: first.backgroundId, theme: first.theme, widgets: first.widgets };
 });

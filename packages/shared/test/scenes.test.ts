@@ -47,6 +47,18 @@ describe("розклад і ротація", () => {
     expect(eligibleScenes([sc("a", { schedule: { from: "08:00", to: "09:00" } })], at(20), false).map((s) => s.id)).toEqual(["a"]);
     expect(eligibleScenes([sc("a"), sc("b")], at(20), true).map((s) => s.id)).toEqual(["a", "b"]); // немає onOutage -> звичайна ротація
   });
+  it("eligibleScenes: вимкнені сцени пропускаються всюди; усі вимкнені -> перша", () => {
+    const scenes = [sc("live", { enabled: false }), sc("main"), sc("power", { onOutage: true }), sc("off-power", { onOutage: true, enabled: false })];
+    expect(eligibleScenes(scenes, at(9), false).map((s) => s.id)).toEqual(["main", "power"]);
+    expect(eligibleScenes(scenes, at(9), true).map((s) => s.id)).toEqual(["power"]);
+    expect(eligibleScenes([sc("a", { enabled: false, onOutage: true }), sc("b")], at(9), true).map((s) => s.id)).toEqual(["b"]);
+    expect(eligibleScenes([sc("x", { enabled: false, schedule: { from: "08:00", to: "09:00" } }), sc("y", { schedule: { from: "10:00", to: "11:00" } })], at(20), false).map((s) => s.id)).toEqual(["y"]);
+    expect(eligibleScenes([sc("a", { enabled: false }), sc("b", { enabled: false })], at(9), false).map((s) => s.id)).toEqual(["a"]);
+  });
+  it("старі сцени без enabled — увімкнені", () => {
+    const c = screenConfigSchema.parse({ backgroundId: null, widgets: [], radioUrl: null, scenes: [{ id: "a", widgets: [] }] });
+    expect(c.scenes[0]!.enabled).toBe(true);
+  });
   it("nextScene: по колу; поточної немає серед дозволених -> перша; одна сцена -> вона сама", () => {
     const el = [sc("a"), sc("b"), sc("c")];
     expect(nextScene(el, "a", "sequence")!.id).toBe("b");
