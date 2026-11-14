@@ -74,6 +74,8 @@ export interface Billing {
 // --- AI-меню ---
 /** Камера NVR закладу (список для редактора екрана). */
 export interface NvrCamera { id: string; online: boolean; substream: boolean }
+/** Пряма трансляція: whipUrl/hlsUrl — шляхи на домені сервісу, publishKey — для сторінки ведучого. */
+export interface LiveStream { id: string; name: string; pathId: string; whipUrl: string; hlsUrl: string; publishKey: string; createdAt: string }
 export interface NvrSettings { baseUrl: string; tokenHint: string; updatedAt: string }
 
 export interface MenuSummary {

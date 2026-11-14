@@ -105,7 +105,10 @@ https://{$DOMAIN} {
     }
     # прямі трансляції (MediaMTX): WHIP з кабінету, HLS для екранів
     handle_path /live/whip/* {
-        reverse_proxy mediamtx:8889
+        # Location сесії (для DELETE при зупинці) — абсолютний шлях MediaMTX, дописуємо наш префікс
+        reverse_proxy mediamtx:8889 {
+            header_down Location "^/(.*)$" "/live/whip/$1"
+        }
     }
     import live_hls
     # сторінки для віджета «Вебсторінка», що є лише по http: проксі під /ext/<назва>/ (handle_path + reverse_proxy).
