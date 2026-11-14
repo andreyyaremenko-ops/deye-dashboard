@@ -28,7 +28,8 @@ export function App() {
   const isPairPage = /^\/tv\/?$/.test(location.pathname) || (location.pathname.startsWith("/s") && !token);
   // /tv із збереженим токеном -> одразу на екран; /s/<token> -> запамʼятати
   useEffect(() => {
-    if (isPairPage) { const t = savedToken(); if (t) location.replace(`/s/${t}`); }
+    // ?_= — нова адреса щоразу: HTML екрана, закешований ТБ до деплою, інакше лишився б зі старими скриптами
+    if (isPairPage) { const t = savedToken(); if (t) location.replace(`/s/${t}?_=${Date.now()}`); }
     else if (token) saveToken(token);
   }, []);
   const [live, setLive] = useState<LiveStore | null>(null);

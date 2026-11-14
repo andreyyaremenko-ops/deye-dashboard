@@ -1,3 +1,11 @@
+# Кеш екрана ТБ: HTML щоразу перевіряється (без цього ТБ евристично тримає стару сторінку зі старими скриптами
+# годинами після деплою), а файли з хешем у назві незмінні. Шлях тут уже без /s (handle_path).
+(tv_cache) {
+    @tv_html not path /assets/*
+    header @tv_html Cache-Control "no-cache"
+    header /assets/* Cache-Control "public, max-age=31536000, immutable"
+}
+
 # Старі ТБ без кореневого сертифіката Let's Encrypt: сторінка екрана доступна і по HTTP.
 http://{$DOMAIN} {
     @tv path /s/* /tv /api/public/* /ws /media/* /android /android/* /ext/*
@@ -33,12 +41,14 @@ http://{$DOMAIN} {
         handle /tv {
             root * /srv/tv
             header X-Robots-Tag "noindex, nofollow"
+            header Cache-Control "no-cache"
             rewrite * /index.html
             file_server
         }
         handle_path /s/* {
             root * /srv/tv
             header X-Robots-Tag "noindex, nofollow"
+            import tv_cache
             try_files {path} /index.html
             file_server
         }
@@ -81,12 +91,14 @@ https://{$DOMAIN} {
     handle_path /s/* {
         root * /srv/tv
         header X-Robots-Tag "noindex, nofollow"
+        import tv_cache
         try_files {path} /index.html
         file_server
     }
     handle /tv {
         root * /srv/tv
         header X-Robots-Tag "noindex, nofollow"
+        header Cache-Control "no-cache"
         rewrite * /index.html
         file_server
     }

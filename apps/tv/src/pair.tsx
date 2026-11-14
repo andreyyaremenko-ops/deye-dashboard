@@ -28,7 +28,7 @@ export function Pair() {
       if (!r.ok) { setErr(`Помилка ${r.status}`); return; }
       const { token } = (await r.json()) as { token: string };
       saveToken(token);
-      location.replace(`/s/${token}`);
+      location.replace(`/s/${token}?_=${Date.now()}`);
     } catch { setErr("Немає звʼязку з сервером"); }
     finally { setBusy(false); input.current?.focus(); }
   };
