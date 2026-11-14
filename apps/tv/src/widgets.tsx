@@ -28,6 +28,7 @@ import { VizWidget } from "./viz.tsx";
 import { QrWidget } from "./qr.tsx";
 import { MenuWidget } from "./menu.tsx";
 import { NeonSign } from "./neon.tsx";
+import { WebWidget } from "./web.tsx";
 import { ChalkFrame } from "./chalk.tsx";
 import { AlertWidget, EcoWidget, OutageWidget, WeatherWidget } from "./feeds.tsx";
 import type { Feeds, PublicMenu } from "./types.ts";
@@ -38,7 +39,7 @@ interface Props { type: string; state: DeviceState | undefined; props: Record<st
   /** адреса станції, що грає на екрані — для підпису у віджеті спектра */
   radioUrl?: string | null }
 
-const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum", "outage_schedule", "neon_sign"]);
+const NO_DEVICE = new Set(["clock", "text", "menu", "qr", "alert", "weather", "camera", "spectrum", "outage_schedule", "neon_sign", "web"]);
 export function Widget({ type, state, props, token, deviceId, device, socHistory, feeds, hasLocation, outageSince, menus, radioUrl }: Props) {
   const m = state?.metrics;
   // «дані застарілі» стосується лише віджетів інвертора: меню/годинник/QR/тривога/погода не тьмяніють
@@ -132,6 +133,8 @@ export function Widget({ type, state, props, token, deviceId, device, socHistory
       return <ScheduleWidget cls={cls} props={props} />;
     case "neon_sign":
       return <NeonSign cls={cls} props={props} />;
+    case "web":
+      return <WebWidget cls={cls} props={props} />;
     case "camera":
       return <CameraWidget cls={cls} token={token ?? ""} props={props} />;
     case "spectrum":

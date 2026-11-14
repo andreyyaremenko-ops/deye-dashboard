@@ -281,6 +281,9 @@ body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; co
 
 /* Камери: відео на всю картку, підпис і крапки ротації поверх нього */
 .w-camera { padding: 0; overflow: hidden; }
+.w-web { padding: 0; overflow: hidden; background: #000; }
+.w-web iframe { display: block; width: 100%; height: 100%; border: 0; }
+.w-web .text { padding: 1vw; }
 .w-camera .title { padding: .6vw .8vw .3vw; margin: 0; display: flex; justify-content: space-between; gap: .6vw; }
 .cam-name { text-transform: none; letter-spacing: 0; font-weight: 700; color: #7ceee6; opacity: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .w-camera.camera-plain { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }

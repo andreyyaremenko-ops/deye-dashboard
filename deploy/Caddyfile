@@ -1,7 +1,8 @@
 # Старі ТБ без кореневого сертифіката Let's Encrypt: сторінка екрана доступна і по HTTP.
 http://{$DOMAIN} {
-    @tv path /s/* /tv /api/public/* /ws /media/* /android /android/*
+    @tv path /s/* /tv /api/public/* /ws /media/* /android /android/* /ext/*
     handle @tv {
+        import /etc/caddy/extra/ext/*.caddy
         # застосунок для Android TV (apps/android): /android — сторінка з кнопкою (apps/web/public/android),
         # сам APK лежить у томі media; адреса стала й без кешу, щоб нова версія діставалась тим самим посиланням
         handle /android/sunhunter-tv.apk {
@@ -73,6 +74,9 @@ https://{$DOMAIN} {
         header X-Robots-Tag "noindex"
         file_server
     }
+    # сторінки для віджета «Вебсторінка», що є лише по http: проксі під /ext/<назва>/ (handle_path + reverse_proxy).
+    # Конкретні адреси — на сервері в caddy-extra/ext/*.caddy (поза git); порожньо — нічого не проксіюється.
+    import /etc/caddy/extra/ext/*.caddy
     # екран для ТБ: окремий легкий бандл. /tv — введення коду з пульта
     handle_path /s/* {
         root * /srv/tv

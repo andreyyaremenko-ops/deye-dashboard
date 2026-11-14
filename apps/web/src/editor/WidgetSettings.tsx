@@ -109,6 +109,11 @@ const SETTINGS: Partial<Record<Widget["type"], (ctx: Ctx) => ReactNode>> = {
     <Text ctx={ctx} k="caption" label="Підпис" />
     {Card(ctx)}
   </>,
+  web: (ctx) => <>
+    <Text ctx={ctx} k="url" label="Адреса сторінки" placeholder="https://… або /ext/<назва>/" />
+    <p className="muted small">Сторінка має віддаватись по https і дозволяти показ у фреймі. Сторінки лише з http — через проксі сервера (/ext/…).</p>
+    <Field label="Перезавантажувати, хв (0 — ні)"><input type="number" min={0} max={1440} value={Number(ctx.p.refreshMin ?? 0)} onChange={(e) => ctx.set({ refreshMin: Math.max(0, +e.currentTarget.value) })} /></Field>
+  </>,
   alert: (ctx) => <Toggle ctx={ctx} k="overlay" label="Під час тривоги" on="банер на весь екран" off="лише картка" />,
   outage_schedule: (ctx) => <>
     <div className="row small">
