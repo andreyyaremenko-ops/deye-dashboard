@@ -218,3 +218,92 @@ describe("ffmpegToMp3", () => {
     expect(mp3.subarray(0, 3).toString() === "ID3" || (mp3[0] === 0xff && (mp3[1]! & 0xe0) === 0xe0)).toBe(true);
   });
 });
+
+describe("телеграм-бот: банери й фони", () => {
+  let t: TestApp;
+  const tg = fakeTelegram();
+  let owner: ReturnType<typeof api>;
+  let orgId: string, hall: { id: string }, bar: { id: string };
+  let upd = 5000;
+  const user = { id: 888001, first_name: "Марія" };
+  const post = (payload: TgUpdate) => t.app.inject({ method: "POST", url: "/api/telegram/webhook", headers: { "x-telegram-bot-api-secret-token": "test-secret" }, payload });
+  const msg = (extra: Record<string, unknown>, from = user) => post({ update_id: upd++, message: { message_id: upd, chat: { id: from.id, type: "private" }, from, ...extra } as TgUpdate["message"] });
+  const press = (data: string, from = user) => post({ update_id: upd++, callback_query: { id: `cb${upd}`, from, data, message: { message_id: 42, chat: { id: from.id } } } });
+  const link = async (org: string, from = user) => { const { code } = (await owner.post(`/api/orgs/${org}/telegram/code`)).json(); await msg({ text: `/start ${code}` }, from); };
+  const until = async (cond: () => boolean | Promise<boolean>) => { for (let i = 0; i < 100 && !(await cond()); i++) await new Promise((r) => setTimeout(r, 20)); };
+  const btn = (label: string) => tg.lastButtons().flat().find((b) => b.text.includes(label))!;
+  let schema: typeof import("../src/db/schema.ts");
+
+  beforeAll(async () => {
+    schema = await import("../src/db/schema.ts");
+    t = await makeTestApp({ telegram: tg.bot, telegramBgPollMs: 20 });
+    const o = await signUp(t.app, "owner@tgb.test"); owner = api(t.app, o.cookie);
+    orgId = (await owner.post("/api/orgs", { name: "Кавʼярня" })).json().id;
+    await t.db.update(schema.organizations).set({ planId: "pro" });
+    hall = (await owner.post(`/api/orgs/${orgId}/screens`, { name: "Зал" })).json();
+    bar = (await owner.post(`/api/orgs/${orgId}/screens`, { name: "Бар" })).json();
+    await link(orgId);
+  });
+  afterAll(async () => { await t.close(); });
+
+  it("текст — банер на вибраний екран, час показу від довжини", async () => {
+    t.store.sentToScreens.length = 0;
+    await msg({ text: "Сьогодні живa музика о 19:00!" });
+    expect(tg.last()).toContain("✍️ Банер: «Сьогодні живa музика о 19:00!»");
+    await press(btn("Бар").callback_data);
+    expect(t.store.sentToScreens).toHaveLength(1);
+    expect(t.store.sentToScreens[0]).toMatchObject({ screenId: bar.id, msg: { type: "tg_message", kind: "text", text: "Сьогодні живa музика о 19:00!", from: "Марія", seconds: 15 } });
+
+    await msg({ text: "а".repeat(301) });
+    expect(tg.last()).toContain("до 300 символів");
+  });
+
+  it("фото — у фони закладу; готовий фон можна поставити на екран", async () => {
+    await msg({ photo: [{ file_id: "small", file_unique_id: "s", width: 90, height: 60, file_size: 900 }, { file_id: "big", file_unique_id: "b", width: 1920, height: 1080, file_size: 300_000 }], caption: "Тераса" });
+    expect(tg.last()).toContain("🖼 «Тераса» додано у фони «Кавʼярня» — обробляється");
+    const [bg] = await t.db.select().from(schema.backgrounds).where((await import("drizzle-orm")).eq(schema.backgrounds.name, "Тераса"));
+    expect(bg).toMatchObject({ orgId, kind: "image", status: "uploaded", category: "Мої" });
+    const jobs = await t.db.select().from(schema.transcodeJobs);
+    expect(jobs.some((j) => j.backgroundId === bg!.id)).toBe(true);
+
+    // «воркер» обробив — бот пропонує поставити на екран
+    const before = tg.sent.length;
+    await t.db.update(schema.backgrounds).set({ status: "ready" }).where((await import("drizzle-orm")).eq(schema.backgrounds.id, bg!.id));
+    await until(() => tg.sent.length > before);
+    expect(tg.last()).toContain("✅ Фон «Тераса» готовий");
+    expect(tg.lastButtons().flat().map((b) => b.text)).toEqual(["📺 Бар", "📺 Зал", "📢 На всі екрани", "Ні, лише в галерею"]);
+
+    t.store.notified.length = 0;
+    await press(btn("Зал").callback_data);
+    expect(tg.edits.at(-1)!.text).toBe("✅ Фон «Тераса» тепер на: Зал.");
+    expect(t.store.notified).toEqual([hall.id]);
+    const scr = (await owner.get(`/api/orgs/${orgId}/screens`)).json().find((s: { id: string }) => s.id === hall.id);
+    expect(scr.config.scenes.every((sc: { backgroundId: string }) => sc.backgroundId === bg!.id)).toBe(true);
+  });
+
+  it("фон не обробився — бот каже про це; не фото й не відео — відмова", async () => {
+    const { eq } = await import("drizzle-orm");
+    await msg({ video: { file_id: "v1", file_unique_id: "v1", duration: 5, width: 1280, height: 720, mime_type: "video/mp4", file_size: 900_000 } });
+    const [bg] = await t.db.select().from(schema.backgrounds).where(eq(schema.backgrounds.kind, "video"));
+    expect(bg!.name).toBe("З Telegram · Марія");
+    const before = tg.sent.length;
+    await t.db.update(schema.backgrounds).set({ status: "failed" }).where(eq(schema.backgrounds.id, bg!.id));
+    await until(() => tg.sent.length > before);
+    expect(tg.last()).toContain("не вдалося обробити");
+
+    await msg({ document: { file_id: "d", file_unique_id: "d", mime_type: "application/pdf", file_name: "menu.pdf", file_size: 1000 } });
+    expect(tg.last()).toContain("Такого бот не приймає");
+    await msg({ video: { file_id: "huge", file_unique_id: "h", duration: 60, mime_type: "video/mp4", file_size: 50_000_000 } });
+    expect(tg.last()).toContain("до 20 МБ");
+  });
+
+  it("кілька закладів — спершу питає, в який", async () => {
+    const second = (await owner.post("/api/orgs", { name: "Пекарня" })).json().id;
+    await t.db.update(schema.organizations).set({ planId: "pro" });
+    await link(second);
+    await msg({ photo: [{ file_id: "p2", file_unique_id: "p2", width: 800, height: 600, file_size: 50_000 }] });
+    expect(tg.last()).toContain("У фони якого закладу?");
+    await press(btn("Пекарня").callback_data);
+    expect(tg.edits.at(-1)!.text).toContain("додано у фони «Пекарня»");
+  });
+});

@@ -165,9 +165,22 @@ export function App() {
   const latest = useRef({ alertVolume, duckFor });
   latest.current = { alertVolume, duckFor };
   const tgQueue = useRef<Promise<void>>(Promise.resolve());
+  // текстовий банер з бота: великий напис унизу; новий замінює попередній
+  const [banner, setBanner] = useState<{ text: string; from: string; id: number; ms: number } | null>(null);
+  useEffect(() => {
+    if (!banner) return;
+    const t = window.setTimeout(() => setBanner((b) => (b?.id === banner.id ? null : b)), banner.ms);
+    return () => clearTimeout(t);
+  }, [banner]);
   useEffect(() => {
     const on = (e: Event) => {
-      const m = (e as CustomEvent<{ kind?: string; url?: string; from?: string }>).detail;
+      const m = (e as CustomEvent<{ kind?: string; url?: string; from?: string; text?: string; seconds?: number }>).detail;
+      if (m?.kind === "text" && m.text) {
+        const ms = Math.max(5, Math.min(120, Number(m.seconds) || 20)) * 1000;
+        setBanner({ text: m.text, from: m.from || "Telegram", id: Date.now(), ms });
+        if (chimesReady()) latest.current.duckFor(playChime("message", latest.current.alertVolume));
+        return;
+      }
       if (m?.kind !== "voice" || !m.url) return;
       const url = m.url, from = m.from || "Telegram";
       tgQueue.current = tgQueue.current.then(async () => {
@@ -275,6 +288,7 @@ export function App() {
     </div>
     {overlay && <AlertOverlay feed={live.feeds.alert} />}
     {toast && <div class={`event-toast ev-${toast.kind}`}>{toast.text}</div>}
+    {banner && <div class="tg-banner" key={banner.id}><div class="tg-from">✍️ {banner.from}</div><div class="tg-text">{banner.text}</div></div>}
     {srcUrl && !native && <audio ref={audio} preload="none" />}
     {soundLocked && !needTap && <div class="unmute" onClick={() => { unlockChimes(); setSoundLocked(!chimesReady()); }}>🔔 Натисніть будь-яку кнопку, щоб увімкнути звукові сповіщення</div>}
     {needTap && <div class="unmute" onClick={() => audio.current?.play().then(() => setNeedTap(false)).catch(() => {})}>🔇 Натисніть будь-яку кнопку, щоб увімкнути радіо</div>}

@@ -12,7 +12,7 @@ const same = (a: string, b: string) => { const x = Buffer.from(a), y = Buffer.fr
 export async function telegramRoutes(app: FastifyInstance, deps: Deps) {
   const { db } = deps;
   const tg = deps.telegram ?? null;
-  const bot = tg ? createBot({ db, tg: tg.client, store: deps.store, mediaRoot: deps.mediaRoot, convert: deps.telegramConvert, log: app.log }) : null;
+  const bot = tg ? createBot({ db, tg: tg.client, store: deps.store, mediaRoot: deps.mediaRoot, convert: deps.telegramConvert, bgPollMs: deps.telegramBgPollMs, log: app.log }) : null;
 
   // Telegram шле секрет у заголовку (setWebhook secret_token); відповідаємо 200 завжди, інакше він повторює оновлення
   app.post("/api/telegram/webhook", { config: { rateLimit: { max: 600, timeWindow: "1 minute" } } }, async (req, reply) => {

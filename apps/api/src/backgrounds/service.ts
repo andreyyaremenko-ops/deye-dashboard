@@ -40,6 +40,11 @@ function limitBytes(max: number) {
 
 export async function startUpload(db: Db, orgId: string, actorId: string, mime: string, filename: string, stream: Readable, mediaRoot: string, maxBytes = MAX_UPLOAD_BYTES) {
   await requireRole(db, orgId, actorId, "admin");
+  return storeUpload(db, orgId, mime, filename, stream, mediaRoot, maxBytes);
+}
+
+/** Зберегти файл фону й поставити в чергу воркера (без перевірки ролі: кабінет перевіряє вище, телеграм-бот — прив'язкою). */
+export async function storeUpload(db: Db, orgId: string, mime: string, filename: string, stream: Readable, mediaRoot: string, maxBytes = MAX_UPLOAD_BYTES) {
   const { plan } = await getOrgWithPlan(db, orgId);
   if (!plan.limits.custom_backgrounds) throw conflict("Custom backgrounds are not included in the plan", "plan_limit");
   const kind = kindOf(mime);

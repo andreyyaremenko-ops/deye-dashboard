@@ -27,6 +27,8 @@ export interface AppDeps {
   telegram?: import("./telegram/client.ts").TelegramBot | null;
   /** перекодування голосових Telegram у MP3 (типово ffmpeg; тести підміняють) */
   telegramConvert?: import("./telegram/audio.ts").AudioConverter;
+  /** як часто бот перевіряє, чи фон із Telegram оброблено (тести прискорюють) */
+  telegramBgPollMs?: number;
   mediaRoot: string;
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */

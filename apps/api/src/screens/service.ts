@@ -181,3 +181,13 @@ export async function resolvePairCode(db: Db, code: string) {
   if (!s || !s.expiresAt || s.expiresAt.getTime() < Date.now()) throw notFound("Code not found or expired");
   return { token: s.viewToken, name: s.name };
 }
+
+/** Фон для всіх сцен екрана (телеграм-бот: «поставити щойно надісланий фон»). Повертає false, якщо екрана немає. */
+export async function setScreenBackground(db: Db, orgId: string, screenId: string, backgroundId: string): Promise<boolean> {
+  const [row] = await db.select({ config: screens.config }).from(screens).where(and(eq(screens.id, screenId), eq(screens.orgId, orgId)));
+  if (!row) return false;
+  const cfg = normalized(row.config);
+  const next: ScreenConfig = { ...cfg, backgroundId, scenes: cfg.scenes.map((sc) => ({ ...sc, backgroundId })) };
+  await db.update(screens).set({ config: next, updatedAt: new Date() }).where(eq(screens.id, screenId));
+  return true;
+}
