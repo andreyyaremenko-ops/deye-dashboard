@@ -238,6 +238,27 @@ export const liveStreams = pgTable("live_streams", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [index("live_streams_org_idx").on(t.orgId)]);
 
+/**
+ * Телеграм-бот закладу: прив'язаний акаунт може слати на екрани організації голосові, текстові банери й фони.
+ * Прив'язка — одноразовим кодом із кабінету (`/start <код>`); один акаунт може належати кільком закладам.
+ */
+export const telegramLinks = pgTable("telegram_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  tgUserId: bigint("tg_user_id", { mode: "number" }).notNull(),
+  tgName: text("tg_name").notNull(),          // ім'я/username на момент прив'язки — для кабінету й підпису на екрані
+  linkedBy: text("linked_by"),                 // хто видав код
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [uniqueIndex("telegram_links_org_user_idx").on(t.orgId, t.tgUserId), index("telegram_links_user_idx").on(t.tgUserId)]);
+
+/** Одноразовий код прив'язки: 6 цифр, недовго; використаний видаляється. */
+export const telegramCodes = pgTable("telegram_codes", {
+  code: text("code").primaryKey(),
+  orgId: uuid("org_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  createdBy: text("created_by").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
 // --- AI-меню: розпізнане з фото меню закладу + згенеровані фото страв ---
 
 export const menuStatus = pgEnum("menu_status", ["importing", "draft", "published"]);
@@ -349,6 +370,6 @@ export const aiUsage = pgTable("ai_usage", {
 export const schema = {
   user, session, account, verification, plans, organizations, memberships, invites, inverterModels, devices,
   telemetryRaw, telemetry, deviceState, deviceCounters, backgrounds, transcodeJobs, screens, firmware, loggerFrames, payments,
-  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations, nvrServers, liveStreams,
+  menuStyles, menus, menuSections, menuItems, dishImages, aiJobs, aiUsage, radioStations, nvrServers, liveStreams, telegramLinks, telegramCodes,
 };
 export { sql };

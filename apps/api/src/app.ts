@@ -23,6 +23,8 @@ export interface AppDeps {
   liveInternalPass?: string;
   /** чи йде трансляція зараз (API MediaMTX); без нього — завжди «не в ефірі» */
   liveOnline?: import("./live/status.ts").LiveOnline;
+  /** телеграм-бот закладів (TELEGRAM_BOT_TOKEN); без нього вебхук відповідає 401, кабінет пише «не налаштовано» */
+  telegram?: import("./telegram/client.ts").TelegramBot | null;
   mediaRoot: string;
   mono?: MonoClient | null;
   /** погода/тривоги; без нього екрани отримують feeds = null */

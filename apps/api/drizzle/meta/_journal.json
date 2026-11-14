@@ -155,6 +155,13 @@
       "when": 1794688535774,
       "tag": "0021_live_streams",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794696342406,
+      "tag": "0022_telegram",
+      "breakpoints": true
     }
   ]
 }

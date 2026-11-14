@@ -1,7 +1,7 @@
 import { track } from "../analytics.ts";
 import { useEffect, useState } from "react";
 import { orgRoles, type OrgRole } from "@deye/shared";
-import { api, type Billing, type Invite, type Member, type NvrSettings, type Org } from "../api.ts";
+import { api, type Billing, type Invite, type Member, type NvrSettings, type Org, type TelegramState } from "../api.ts";
 import { Btn, Card, ErrorBox, Field, fmtDate, useAction } from "../components/ui.tsx";
 
 const ROLE: Record<OrgRole, string> = { owner: "власник", admin: "адмін", staff: "персонал" };
@@ -108,8 +108,56 @@ export function Settings({ org, onPlanChange }: { org: Org; onPlanChange?: () =>
         {b.payments.map((p) => <tr key={p.id}><td data-l="Дата">{fmtDate(p.createdAt)}</td><td data-l="Тариф">{p.planId} · {p.months} міс.</td><td data-l="Сума">{uah(p.amount)}</td><td data-l="Статус">{STATUS_UA[p.status] ?? p.status}</td><td className="actions">{p.status === "created" && p.pageUrl && <a href={p.pageUrl} className="btn btn-ghost">Сплатити</a>}</td></tr>)}
       </tbody></table>}
     </Card>
+    <TelegramCard org={org} />
     <NvrCard org={org} />
   </>;
+}
+
+/**
+ * Телеграм-бот закладу: код для прив'язки акаунта (діє 10 хв, одноразовий) і список прив'язаних.
+ * Прив'язаний акаунт шле на екрани голосові, текстові банери й фони.
+ */
+function TelegramCard({ org }: { org: Org }) {
+  const [st, setSt] = useState<TelegramState | null>(null);
+  const [code, setCode] = useState<{ code: string; expiresAt: string; link: string | null } | null>(null);
+  const [left, setLeft] = useState(0);
+  const isAdmin = org.role !== "staff";
+  const load = async () => {
+    const next = await api.get<TelegramState>(`/api/orgs/${org.id}/telegram`);
+    // код одноразовий: з'явилась нова прив'язка — його вже використали, ховаємо
+    setSt((prev) => { if (prev && next.links.length > prev.links.length) setCode(null); return next; });
+  };
+  useEffect(() => { if (isAdmin) void load(); }, [org.id, isAdmin]);
+  // поки код діє — рахуємо час і підтягуємо список, щоб нова прив'язка з'явилась сама
+  useEffect(() => {
+    if (!code) return;
+    const tick = () => { const s = Math.max(0, Math.round((Date.parse(code.expiresAt) - Date.now()) / 1000)); setLeft(s); if (!s) setCode(null); };
+    tick();
+    const t = setInterval(tick, 1000), r = setInterval(() => void load().catch(() => {}), 5000);
+    return () => { clearInterval(t); clearInterval(r); };
+  }, [code]);
+  const issue = useAction(async () => { setCode(await api.post(`/api/orgs/${org.id}/telegram/code`)); });
+  const unlink = useAction(async (l: TelegramState["links"][number]) => {
+    if (confirm(`Відв'язати ${l.tgName}? Надсилати на екрани він більше не зможе.`)) { await api.del(`/api/orgs/${org.id}/telegram/${l.id}`); await load(); }
+  });
+
+  if (!isAdmin || !st) return null;
+  return <Card title="Телеграм-бот" actions={st.enabled && <Btn kind="primary" onClick={() => issue.run(undefined)} disabled={issue.busy}>Видати код</Btn>}>
+    {!st.enabled ? <p className="muted small">Бот на сервері ще не налаштований.</p> : <>
+      <p className="muted small">
+        Через бот{st.botUsername ? <> <a href={`https://t.me/${st.botUsername}`} target="_blank" rel="noreferrer">@{st.botUsername}</a></> : ""} можна надсилати
+        на екрани закладу голосові, текстові оголошення й фото чи відео для фонів. Видайте код і передайте його людині:
+        вона відкриває бота й надсилає код (або просто переходить за посиланням). Код одноразовий і діє 10 хвилин.
+      </p>
+      <ErrorBox err={issue.err ?? unlink.err} />
+      {code && <div className="paircode"><b>{code.code.slice(0, 3)} {code.code.slice(3)}</b>
+        <span className="muted small">діє ще {Math.floor(left / 60)}:{String(left % 60).padStart(2, "0")}{code.link && <> · <a href={code.link} target="_blank" rel="noreferrer">посилання для Telegram</a> <button type="button" className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(code.link!)}>копіювати</button></>}</span></div>}
+      {st.links.length === 0 ? <div className="empty">Ще ніхто не підключений.</div>
+        : <table className="tbl"><thead><tr><th>Хто</th><th>Підключено</th><th /></tr></thead>
+          <tbody>{st.links.map((l) => <tr key={l.id}><td>{l.tgName}</td><td className="muted small">{fmtDate(l.createdAt)}</td>
+            <td className="actions"><Btn kind="ghost" onClick={() => unlink.run(l)}>Відв'язати</Btn></td></tr>)}</tbody></table>}
+    </>}
+  </Card>;
 }
 
 /**

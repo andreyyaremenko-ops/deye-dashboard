@@ -76,6 +76,8 @@ export interface Billing {
 export interface NvrCamera { id: string; online: boolean; substream: boolean }
 /** Пряма трансляція: whipUrl/hlsUrl — шляхи на домені сервісу, publishKey — для сторінки ведучого. */
 export interface LiveStream { id: string; name: string; pathId: string; whipUrl: string; hlsUrl: string; publishKey: string; createdAt: string; online: boolean }
+/** Телеграм-бот закладу: чи налаштований на сервері, його username і прив'язані акаунти. */
+export interface TelegramState { enabled: boolean; botUsername: string | null; links: { id: string; tgName: string; createdAt: string }[] }
 export interface NvrSettings { baseUrl: string; tokenHint: string; updatedAt: string }
 
 export interface MenuSummary {

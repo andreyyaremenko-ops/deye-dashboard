@@ -14,12 +14,18 @@ import { notifyExpired, sendExpiryReminders } from "./billing/reminders.ts";
 import { createMailer } from "./mail/index.ts";
 import { FeedHub, webhookSecret, webhookUrlFor } from "./feeds/hub.ts";
 import { mediamtxStatus } from "./live/status.ts";
+import { httpTelegramClient, type TelegramBot } from "./telegram/client.ts";
+import { sha256 } from "./lib/crypto.ts";
 
 const store = new RedisStateStore(config.REDIS_URL);
 // погода/тривоги: стартує після buildApp, щоб писати в app.log
 const feeds = new FeedHub({ db, store, alertsUrl: config.ALERTS_URL === "off" ? null : config.ALERTS_URL, alertsKey: config.ALERTS_API_KEY ?? null, alertsApi: config.ALERTS_API,
   webhookUrl: config.ALERTS_API_KEY && config.PUBLIC_URL.startsWith("https://") ? webhookUrlFor(config.PUBLIC_URL, config.ALERTS_API_KEY) : null,
   log: { info: (o, m) => app.log.info(o, m), warn: (o, m) => app.log.warn(o, m) } });
+// телеграм-бот: секрет вебхука виводимо з токена (окремо зберігати не треба), username — після getMe
+const telegram: TelegramBot | null = config.TELEGRAM_BOT_TOKEN
+  ? { client: httpTelegramClient(config.TELEGRAM_BOT_TOKEN), secret: sha256("telegram-webhook:" + config.TELEGRAM_BOT_TOKEN).slice(0, 40), info: { username: null } }
+  : null;
 let anenji: ReturnType<typeof startAnenjiServer> | null = null;
 let udpJson: ReturnType<typeof startUdpJsonServer> | null = null;
 const app = await buildApp({
@@ -32,12 +38,23 @@ const app = await buildApp({
   mqttInternalPass: config.MQTT_INTERNAL_PASS,
   liveInternalPass: config.LIVE_INTERNAL_PASS,
   liveOnline: config.LIVE_INTERNAL_PASS ? mediamtxStatus(config.LIVE_MTX_API, config.LIVE_INTERNAL_PASS) : undefined,
+  telegram,
   mediaRoot: config.MEDIA_ROOT,
   mono: config.MONO_TOKEN ? createMonoClient(config.MONO_TOKEN, config.MONO_API) : null,
   imageProviders: [config.XAI_API_KEY && "xai", config.OPENAI_API_KEY && "openai"].filter((x): x is string => !!x),
   logger: { level: config.NODE_ENV === "production" ? "info" : "debug" },
 });
 feeds.start();
+// вебхук реєструємо при кожному старті: адреса й секрет можуть змінитись разом із доменом чи токеном
+if (telegram) {
+  void (async () => {
+    try {
+      telegram.info.username = (await telegram.client.getMe()).username;
+      if (config.PUBLIC_URL.startsWith("https://")) await telegram.client.setWebhook(`${config.PUBLIC_URL.replace(/\/$/, "")}/api/telegram/webhook`, telegram.secret);
+      app.log.info({ bot: telegram.info.username }, "telegram bot ready");
+    } catch (e) { app.log.warn({ err: String(e) }, "telegram bot init failed"); }
+  })();
+}
 
 // MQTT-інжест: API сам є підписником брокера
 const client = mqtt.connect(config.MQTT_URL, {
