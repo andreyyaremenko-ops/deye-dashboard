@@ -31,11 +31,15 @@ describe("transcode", () => {
     expect(streams.trim().split("\n")).toEqual(["video"]);
     expect(r.bytes[".jpg"]).toBeGreaterThan(1000);
   }, 60_000);
-  it("відхиляє вертикальне відео", async () => {
+  it("вертикальне відео (з телефона) -> 16:9 з розмитими краями", async () => {
     const v = join(dir, "vert.mp4");
     execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=720x1280:rate=25", "-t", "1", "-pix_fmt", "yuv420p", v]);
-    await expect(transcode(v, join(dir, "bg", "v"), dir)).rejects.toThrow(/vertical/);
-  });
+    const r = await transcode(v, join(dir, "bg", "v"), dir);
+    const p1080 = await probe(join(dir, r.files["1080"]));
+    expect([p1080.width, p1080.height]).toEqual([1920, 1080]);
+    const p720 = await probe(join(dir, r.files["720"]));
+    expect([p720.width, p720.height]).toEqual([1280, 720]);
+  }, 60_000);
 });
 
 describe("transcodeImage", () => {
@@ -51,9 +55,14 @@ describe("transcodeImage", () => {
     expect((await probe(join(dir, r.preview))).width).toBe(480);
     expect(r.bytes["-1080.jpg"]).toBeGreaterThan(1000);
   });
-  it("відхиляє вертикальне фото", async () => {
-    const v = join(dir, "vert.jpg");
-    execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=size=900x1600", "-frames:v", "1", v]);
-    await expect(transcodeImage(v, join(dir, "bg", "pv"), dir)).rejects.toThrow(/vertical/);
+  it("вертикальне й квадратне фото -> 16:9 з розмитими краями", async () => {
+    for (const [name, size] of [["vert.jpg", "900x1600"], ["square.jpg", "1200x1200"]] as const) {
+      const v = join(dir, name);
+      execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "lavfi", "-i", `testsrc=size=${size}`, "-frames:v", "1", v]);
+      const r = await transcodeImage(v, join(dir, "bg", name), dir);
+      const p1080 = await probe(join(dir, r.files["1080"]));
+      expect([p1080.width, p1080.height]).toEqual([1920, 1080]);
+      expect([(await probe(join(dir, r.files["720"]))).width, (await probe(join(dir, r.preview))).width]).toEqual([1280, 480]);
+    }
   });
 });
