@@ -21,7 +21,7 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
     <header className="land-top">
       <Link href={pathOf(lang)} className="brand"><Logo />{PRODUCT_NAME}</Link>
       <nav>
-        <a href="#signage">{t.nav.signage}</a><a href="#how">{t.nav.how}</a><a href="#features">{t.nav.features}</a><a href="#energy">{t.nav.energy}</a><a href="#tv-app">{t.nav.tvApp}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a>
+        <a href="#signage">{t.nav.signage}</a><a href="#how">{t.nav.how}</a><a href="#features">{t.nav.features}</a><a href="#live">{t.nav.live}</a><a href="#energy">{t.nav.energy}</a><a href="#partners">{t.nav.partners}</a><a href="#tv-app">{t.nav.tvApp}</a><a href="#pricing">{t.nav.pricing}</a><a href="#faq">{t.nav.faq}</a>
         {/* повне перезавантаження: інша мова — окремий пререндерений документ зі своїм <head> */}
         <a href={pathOf(other)} hrefLang={other} className="lang-switch" onClick={cta(`lang_${other}`)}>{t.nav.otherLang}</a>
         {me ? <Link href="/app" className="btn btn-primary">{t.nav.cabinet}</Link> : <><Link href="/login" className="btn btn-ghost">{t.nav.login}</Link><Link href="/signup" className="btn btn-primary" onClick={cta("header")}>{t.nav.tryFree}</Link></>}
@@ -88,6 +88,15 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
       </div>
     </section>
 
+    <section id="live" className="land-sec">
+      <span className="kicker">{t.live.kicker}</span>
+      <h2>{t.live.title}</h2>
+      <p className="lead">{t.live.lead}</p>
+      <div className="steps">
+        {t.live.cards.map(([i, h, p], k) => <div key={h} className="step"><span className={`n ${ICON_TONE[k]}`}>{i}</span><h3>{h}</h3><p>{p}</p></div>)}
+      </div>
+    </section>
+
     <section id="tv-app" className="land-sec">
       <span className="kicker">{t.tvApp.kicker}</span>
       <h2>{t.tvApp.title}</h2>
@@ -109,6 +118,22 @@ export function Landing({ me, lang = "uk" }: { me: Me | null; lang?: Lang }) {
       <div className="steps">
         {t.energy.cards.map(([i, h, p], k) => <div key={h} className="step"><span className={`n ${ICON_TONE[k]}`}>{i}</span><h3>{h}</h3><p>{p}</p></div>)}
       </div>
+    </section>
+
+    <section id="partners" className="land-sec">
+      <span className="kicker">{t.partners.kicker}</span>
+      <h2>{t.partners.title}</h2>
+      <p className="lead">{t.partners.lead}</p>
+      {t.partners.items.map((p) => <div key={p.name} className="partner">
+        <a href={p.url} target="_blank" rel="noopener" className="partner-logo" onClick={cta(`partner_${p.name}`)}><img src={p.logo} width={88} height={88} alt={p.name} /></a>
+        <div className="partner-body">
+          <span className="partner-tag">{p.tag}</span>
+          <h3>{p.name}</h3>
+          <p>{p.text}</p>
+          <ul>{p.points.map((x) => <li key={x}>{x}</li>)}</ul>
+          <a href={p.url} target="_blank" rel="noopener" className="btn" onClick={cta(`partner_${p.name}_cta`)}>{p.cta} ↗</a>
+        </div>
+      </div>)}
     </section>
 
     <section id="pricing" className="land-sec">

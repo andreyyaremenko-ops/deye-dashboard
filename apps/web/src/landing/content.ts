@@ -13,12 +13,16 @@ type Card = [icon: string, title: string, text: string];
 export interface LandingContent {
   htmlLang: string; ogLocale: string;
   meta: { title: string; description: string; ogTitle: string; ogDescription: string; appDescription: string };
-  nav: { signage: string; how: string; features: string; energy: string; pricing: string; faq: string; login: string; cabinet: string; tryFree: string; otherLang: string; tvApp: string };
+  nav: { signage: string; how: string; features: string; live: string; energy: string; partners: string; pricing: string; faq: string; login: string; cabinet: string; tryFree: string; otherLang: string; tvApp: string };
   hero: { eyebrow: string; h1a: string; h1em: string; lead: string; cta: string; how: string; openTv: string; notes: string[]; tvBar: string; live: string; chips: [string, string][]; watchLive: string; videoAlt: string; imgAlt: string };
   signage: { kicker: string; title: string; lead: string; cards: Card[] };
   how: { kicker: string; title: string; steps: [string, string][] };
   features: { kicker: string; title: string; bigTag: string; bigTitle: string; bigText: string; stats: [string, string][]; cards: Card[]; wide: string[] };
   energy: { kicker: string; title: string; lead: string; cards: Card[] };
+  /** наживо з телефона: пряма трансляція з камери і телеграм-бот закладу */
+  live: { kicker: string; title: string; lead: string; cards: Card[] };
+  /** партнери, з якими зроблено інтеграцію (дані їхніх станцій — на наших екранах) */
+  partners: { kicker: string; title: string; lead: string; items: { name: string; url: string; logo: string; tag: string; text: string; points: string[]; cta: string }[] };
   /** застосунок для Android TV (apps/android) і вхід на екран з телевізора без набору адреси */
   tvApp: { kicker: string; title: string; lead: string; cards: Card[]; download: string; downloadNote: string; openTv: string; tvNote: string };
   pricing: { kicker: string; title: string; lead: string; forever: string; perMonth: string; proNote: string; badge: string; onRequest: string;
@@ -35,9 +39,9 @@ const uk: LandingContent = {
     description: "Меню-борд і digital signage на будь-якому Smart TV: меню з цінами, сцени за розкладом, відеофони, QR-коди, радіо. Плюс віджети сонячної станції Deye. Безкоштовний тариф назавжди, відкритий код.",
     ogTitle: "SunHunter TV — електронне меню і digital signage на телевізорі закладу",
     ogDescription: "Зберіть екран у редакторі, відкрийте посилання на телевізорі. Меню, сцени за розкладом, відеофони, QR, радіо, а для закладів на сонці — батарея і час автономії наживо.",
-    appDescription: "Сервіс електронних меню та digital signage для кафе, магазинів і офісів на Smart TV: меню з цінами, сцени за розкладом, відеофони, QR-коди, онлайн-радіо, віджети сонячної станції Deye.",
+    appDescription: "Сервіс електронних меню та digital signage для кафе, магазинів і офісів на Smart TV: меню з цінами, сцени за розкладом, відеофони, QR-коди, онлайн-радіо, пряма трансляція з телефона, голосові й оголошення через Telegram, віджети сонячної станції Deye.",
   },
-  nav: { signage: "Меню-борд", how: "Як це працює", features: "Можливості", energy: "Сонячна станція", pricing: "Тарифи", faq: "Питання", login: "Увійти", cabinet: "Кабінет", tryFree: "Спробувати безкоштовно", otherLang: "EN", tvApp: "Android TV" },
+  nav: { signage: "Меню-борд", how: "Як це працює", features: "Можливості", live: "Наживо", energy: "Сонячна станція", partners: "Партнери", pricing: "Тарифи", faq: "Питання", login: "Увійти", cabinet: "Кабінет", tryFree: "Спробувати безкоштовно", otherLang: "EN", tvApp: "Android TV" },
   hero: {
     eyebrow: "Електронне меню · digital signage · будь-який Smart TV",
     h1a: "Електронне меню на", h1em: "телевізорі вашого закладу",
@@ -73,7 +77,7 @@ const uk: LandingContent = {
     bigText: "Багаторядкове меню з розділами й цінами, великий читабельний шрифт, кольори й картка під інтерʼєр. Оновили в кабінеті — оновилось на всіх телевізорах.",
     stats: [["Еспресо", "45 ₴"], ["Капучино", "65 ₴"], ["Чізкейк", "95 ₴"]],
     cards: [
-      ["⏱", "Сцени та розклад", "Кілька виглядів на один телевізор з таймером і годинами показу."],
+      ["⏱", "Сцени та розклад", "Кілька виглядів на один телевізор з таймером і годинами показу. Непотрібну сцену вимикаєте одним кліком, не видаляючи."],
       ["🎞", "Відеофони", "Камін, водоспад, акваріум, дощ за вікном: понад 30 кліпів з ліцензією для закладів, або власні відео та фото."],
       ["🔲", "QR-коди", "Wi-Fi для гостей одним сканом, меню, Instagram чи відгуки. Просто вставте посилання або пароль."],
       ["📻", "Онлайн-радіо", "14 українських станцій одним кліком у кабінеті, перемикання без перезавантаження телевізора."],
@@ -81,8 +85,10 @@ const uk: LandingContent = {
       ["🌤", "Погода і сонце на завтра", "Температура, вітер, захід сонця, а для сонячних станцій ще й прогноз генерації на завтра."],
       ["☀", "Показники станції наживо", "Сонце, батарея, мережа, споживання і потік енергії. Оновлення кожні 10 секунд."],
       ["📈", "Графіки й еко-статистика", "Крива генерації за добу на екрані, історія за рік у кабінеті, кВт·год від сонця і збережений CO₂ за місяць."],
+      ["📷", "Камери відеоспостереження", "Камери з реєстратора закладу на екрані, по черзі за таймером. Ключ реєстратора лишається на сервері."],
+      ["🌐", "Вебсторінка в сцені", "Будь-яка сторінка на весь екран чи в куточку: дашборд, мапа, сайт. Оновлюється сама за розкладом."],
     ],
-    wide: ["Повітряна тривога", "Погода і сонце на завтра"],
+    wide: ["Повітряна тривога", "Погода і сонце на завтра", "Камери відеоспостереження"],
   },
   tvApp: {
     kicker: "Застосунок для Android TV", title: "Відео й радіо разом — на будь-якій приставці",
@@ -105,6 +111,25 @@ const uk: LandingContent = {
       ["🍳", "Що можна вмикати", "Споживання наживо: увімкнули гриль чи бойлер — цифра і прогноз змінились тут же. Персонал сам вирішує, що відкласти до світла."],
     ],
   },
+  live: {
+    kicker: "Наживо з телефона", title: "Скажіть залу щось просто зараз",
+    lead: "Телефон адміністратора стає пультом закладу: пряма трансляція, голосове оголошення чи банер — за кілька секунд на всіх потрібних телевізорах.",
+    cards: [
+      ["📹", "Пряма трансляція з камери", "Відкриваєте трансляцію в кабінеті на телефоні чи ноутбуці — і камера з мікрофоном уже на телевізорах. На сучасних ТБ затримка менше секунди, без жодних додатків. Сцену з трансляцією вмикаєте лише тоді, коли треба."],
+      ["🎙", "Голосові через Telegram", "Записали голосове в боті закладу — на телевізорі сигнал, ваш голос і банер з імʼям. Радіо й трансляція на цей час притишуються. Доступ видаєте кодом з кабінету."],
+      ["✍️", "Оголошення й фони з Telegram", "Текст стає великим банером на екрані. Фото чи відео — одразу у фони закладу, і бот запропонує поставити його на потрібний телевізор."],
+    ],
+  },
+  partners: {
+    kicker: "Партнери", title: "Працюємо разом",
+    lead: "Інтеграції, які дають вашій станції більше: дані надходять напряму, без зайвого обладнання.",
+    items: [{
+      name: "CORDTEH Solar", url: "https://solar.cordteh.com/", logo: "/landing/partners/cordteh.svg", tag: "Моніторинг сонячних станцій",
+      text: "Хмарний моніторинг і автоматизація сонячної станції в телефоні. Ми зробили прямий звʼязок: показники станції з CORDTEH Solar надходять на екрани SunHunter TV, а показ вмикається одним перемикачем у їхньому кабінеті.",
+      points: ["Сонце, батарея й споживання наживо на Smart TV — поруч із меню закладу", "Підготовка до відключень за графіком черг і заряд за дешевим тарифом", "Драйвер під ваш інвертор, якщо його ще немає — не лише Deye", "Сповіщення в Telegram про відключення, заряд і аварії"],
+      cta: "solar.cordteh.com",
+    }],
+  },
   pricing: {
     kicker: "Прозорі тарифи", title: "Тарифи",
     lead: "Код відкритий, можна підняти на власному сервері. Платна підписка свідомо коштує не більше за оренду такого сервера.",
@@ -124,6 +149,8 @@ const uk: LandingContent = {
       ["Чи можна показувати різне меню вранці та ввечері?", "Так. На одному телевізорі може бути до десяти сцен. Кожна має свій час показу і необовʼязковий розклад за годинами, наприклад сніданки з 8:00 до 12:00."],
       ["Скільки це коштує?", "Тариф Free безкоштовний назавжди і має весь функціонал: один телевізор і один логер, усі віджети, власні відеофони й фото, радіо, історія за рік. Pro — 600 ₴ на місяць: те саме на 5 телевізорів і 5 логерів, без брендингу на екрані. Оплата карткою через monobank."],
       ["Які інвертори підтримуються?", "Гібридні інвертори Deye: однофазні SG0xLP1, трифазні низьковольтні SG04LP3 і високовольтні SG01HP3. Дані читаються через Wi-Fi-стік Solarman, який уже є в інверторі; застосунок Solarman продовжує працювати. Інші бренди підключаємо за запитом у тарифі Max."],
+      ["У мене інвертор не Deye. Що робити?", "Підключіть станцію через нашого партнера CORDTEH Solar (solar.cordteh.com): вони пишуть драйвери під різні інвертори, а показники зі станції напряму надходять на екран SunHunter TV. Для мереж закладів інші бренди підключаємо й самі в тарифі Max."],
+      ["Як швидко щось оголосити в залі?", "Через телеграм-бот закладу: адміністратор видає код у кабінеті, і далі голосове, текст чи фото з телефона за кілька секунд на вибраному телевізорі. Для подій наживо є пряма трансляція з камери телефона."],
       ["Що бачить персонал під час відключення світла?", "Червоний банер «світла немає з 14:20», залишок батареї у відсотках і прогноз «вистачить ≈ 3 год 20 хв при поточному споживанні». Увімкнули гриль — прогноз перерахувався одразу."],
       ["Чи можна розгорнути сервіс у себе?", "Так. Код відкритий за ліцензією AGPL-3.0 і лежить на GitHub. Для власного сервера достатньо VDS на 2 ядра і 2 ГБ памʼяті."],
     ],
@@ -139,9 +166,9 @@ const en: LandingContent = {
     description: "Digital menu board and signage software for cafés, shops and offices: menus with prices, scheduled scenes, video backgrounds, QR codes, radio, plus live Deye solar widgets. Free plan forever, open source.",
     ogTitle: "SunHunter TV — digital menu boards and signage on the TV you already have",
     ogDescription: "Build a screen in the web editor, open one link on the TV. Menus, scheduled scenes, video backgrounds, QR codes, radio, and for solar-powered venues, live battery and blackout runtime.",
-    appDescription: "Digital menu board and signage service for cafés, shops and offices on any Smart TV: menus with prices, scheduled scenes, video backgrounds, QR codes, online radio, and live Deye solar inverter widgets.",
+    appDescription: "Digital menu board and signage service for cafés, shops and offices on any Smart TV: menus with prices, scheduled scenes, video backgrounds, QR codes, online radio, live streaming from a phone, voice messages and announcements via Telegram, and live Deye solar inverter widgets.",
   },
-  nav: { signage: "Menu board", how: "How it works", features: "Features", energy: "Solar", pricing: "Pricing", faq: "FAQ", login: "Log in", cabinet: "Dashboard", tryFree: "Try it free", otherLang: "UA", tvApp: "Android TV" },
+  nav: { signage: "Menu board", how: "How it works", features: "Features", live: "Live", energy: "Solar", partners: "Partners", pricing: "Pricing", faq: "FAQ", login: "Log in", cabinet: "Dashboard", tryFree: "Try it free", otherLang: "UA", tvApp: "Android TV" },
   hero: {
     eyebrow: "Digital menu board · signage · any Smart TV",
     h1a: "A digital menu board on", h1em: "the TV you already have",
@@ -177,7 +204,7 @@ const en: LandingContent = {
     bigText: "A multi-section menu with prices in a large, readable font, with colours and a card style to suit your interior. Update it in the dashboard and every TV follows.",
     stats: [["Espresso", "45 ₴"], ["Cappuccino", "65 ₴"], ["Cheesecake", "95 ₴"]],
     cards: [
-      ["⏱", "Scenes and schedule", "Several layouts on one TV with a timer and hours of display."],
+      ["⏱", "Scenes and schedule", "Several layouts on one TV with a timer and hours of display. Switch a scene off in one click without deleting it."],
       ["🎞", "Video backgrounds", "Fireplace, waterfall, aquarium, rain on the window: 30+ clips licensed for venues, or your own videos and photos."],
       ["🔲", "QR codes", "Guest Wi-Fi in one scan, your menu, Instagram or reviews. Just paste a link or a password."],
       ["📻", "Online radio", "14 Ukrainian stations, switched from the dashboard without touching the TV."],
@@ -185,8 +212,10 @@ const en: LandingContent = {
       ["🌤", "Weather and tomorrow's sun", "Temperature, wind, sunset, and for solar stations a generation forecast for tomorrow."],
       ["☀", "Live solar readings", "Solar, battery, grid, load and an energy-flow diagram. Updated every 10 seconds."],
       ["📈", "Charts and eco stats", "The day's generation curve on screen, a year of history in the dashboard, monthly solar kWh and CO₂ saved."],
+      ["📷", "Security cameras", "Cameras from your venue's recorder on screen, rotating on a timer. The recorder key stays on the server."],
+      ["🌐", "Web page in a scene", "Any page full-screen or in a corner: a dashboard, a map, a website. It refreshes on its own schedule."],
     ],
-    wide: ["Air-raid alerts", "Weather and tomorrow's sun"],
+    wide: ["Air-raid alerts", "Weather and tomorrow's sun", "Security cameras"],
   },
   tvApp: {
     kicker: "Android TV app", title: "Video and radio together, on any TV box",
@@ -209,6 +238,25 @@ const en: LandingContent = {
       ["🍳", "What is safe to switch on", "Live consumption: turn on the grill or the boiler and both the number and the estimate change right away. Staff decide what can wait."],
     ],
   },
+  live: {
+    kicker: "Live from your phone", title: "Tell the room something right now",
+    lead: "The manager's phone becomes the venue's remote: a live stream, a voice announcement or a banner on the right TVs within seconds.",
+    cards: [
+      ["📹", "Live stream from a camera", "Open the stream in the dashboard on a phone or a laptop and the camera and microphone are on your TVs. Under a second of delay on modern TVs, no apps needed. Turn the stream scene on only when you need it."],
+      ["🎙", "Voice messages via Telegram", "Record a voice message in the venue's bot: the TV plays a chime, your voice and a banner with your name. Radio and the live stream dip while it plays. Access is granted with a code from the dashboard."],
+      ["✍️", "Announcements and backgrounds via Telegram", "Text becomes a large banner on screen. A photo or video goes straight into the venue's backgrounds, and the bot offers to put it on the TV you choose."],
+    ],
+  },
+  partners: {
+    kicker: "Partners", title: "Working together",
+    lead: "Integrations that do more with your solar station: data flows in directly, no extra hardware.",
+    items: [{
+      name: "CORDTEH Solar", url: "https://solar.cordteh.com/en/", logo: "/landing/partners/cordteh.svg", tag: "Solar station monitoring",
+      text: "Cloud monitoring and automation for solar stations, on your phone. We built a direct link: station readings from CORDTEH Solar flow to SunHunter TV screens, and showing them is a single switch in their dashboard.",
+      points: ["Live solar, battery and consumption on a Smart TV, next to the venue's menu", "Blackout preparation by the outage schedule and charging on cheap tariffs", "A driver for your inverter if there isn't one yet, not just Deye", "Telegram alerts for outages, battery level and faults"],
+      cta: "solar.cordteh.com",
+    }],
+  },
   pricing: {
     kicker: "Transparent pricing", title: "Pricing",
     lead: "The code is open, so you can run it on your own server. The paid plan is priced on purpose at no more than renting that server.",
@@ -228,6 +276,8 @@ const en: LandingContent = {
       ["Can I show a different menu in the morning and in the evening?", "Yes. One TV can have up to ten scenes. Each has its own display time and an optional schedule, for example breakfast from 8:00 to 12:00."],
       ["How much does it cost?", "The Free plan is free forever with every feature: one TV and one logger, all widgets, your own videos and photos, radio, a year of history. Pro is 600 UAH per month (about $15): the same for 5 TVs and 5 loggers, with no branding on screen."],
       ["Which inverters are supported?", "Deye hybrid inverters: single-phase SG0xLP1, three-phase low-voltage SG04LP3 and high-voltage SG01HP3. Data is read through the Solarman Wi-Fi stick the inverter already has, and the Solarman app keeps working. Other brands on request in the Max plan."],
+      ["My inverter isn't a Deye. What can I do?", "Connect your station through our partner CORDTEH Solar (solar.cordteh.com): they write drivers for different inverters, and the station's readings flow directly to your SunHunter TV screen. For venue chains we also connect other brands ourselves on the Max plan."],
+      ["How do I announce something in the room quickly?", "Through the venue's Telegram bot: the manager issues a code in the dashboard, and from then on a voice message, text or photo from a phone is on the chosen TV within seconds. For live events there is a live stream from the phone's camera."],
       ["What do staff see during a blackout?", "A red banner \"no grid power since 14:20\", the remaining battery in percent and an estimate \"about 3 h 20 min at the current load\". Turn on the grill and the estimate is recalculated at once."],
       ["Can I self-host it?", "Yes. The code is open source under AGPL-3.0 on GitHub. A VDS with 2 cores and 2 GB of RAM is enough."],
     ],
